@@ -124,10 +124,10 @@ type serdeFieldInfo struct {
 	marshaller            func(v any) ([]byte, error)
 }
 
-var marshalFieldsCache syncparam.Map[reflect.Value, serdeMeta]
+var serdeInfoCache syncparam.Map[reflect.Type, serdeMeta]
 
 func loadOrCreateSerdeMeta(v reflect.Value) (serdeMeta, error) {
-	fields, ok := marshalFieldsCache.Load(v)
+	fields, ok := serdeInfoCache.Load(v.Type())
 	if ok {
 		return fields, nil
 	}
@@ -135,7 +135,7 @@ func loadOrCreateSerdeMeta(v reflect.Value) (serdeMeta, error) {
 	if err != nil {
 		return serdeMeta{}, err
 	}
-	fields, _ = marshalFieldsCache.LoadOrStore(v, meta)
+	fields, _ = serdeInfoCache.LoadOrStore(v.Type(), meta)
 	return fields, nil
 }
 
