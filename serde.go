@@ -238,6 +238,9 @@ func unmarshalFieldsJSON(data []byte, rv reflect.Value) error {
 
 	// TODO: We only need to do this if we find keys of embedded field in input data.
 	for _, fieldName := range serdeInfo.untaggedEmbedded {
+		// Recursion is needed because embedded fields may have another embedded field.
+		// Flatten them is a bit harder to implement.
+		// TODO: elaborate more?
 		frv := rv.Field(serdeInfo.fields[fieldName].index)
 		err := unmarshalFieldsJSON(data, frv)
 		if err != nil {
