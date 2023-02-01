@@ -180,6 +180,11 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 			}
 
 			if field.Type.Kind() == reflect.Struct {
+				_, err := readFieldInfo(frv)
+				if err != nil {
+					return serdeMeta{}, err
+				}
+
 				fieldInfo.marshaller = func(v any) ([]byte, error) {
 					// the embedded struct field receive same treatment.
 					return MarshalFieldsJSON(v)
