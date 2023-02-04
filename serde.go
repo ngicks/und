@@ -180,7 +180,7 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 			}
 
 			if field.Type.Kind() == reflect.Struct {
-				_, err := readFieldInfo(frv)
+				_, err := loadOrCreateSerdeMeta(frv)
 				if err != nil {
 					return serdeMeta{}, err
 				}
