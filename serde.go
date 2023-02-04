@@ -147,11 +147,16 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 	untaggedEmbedded := make([]string, 0, rv.NumField())
 
 	for i := 0; i < rv.NumField(); i++ {
+		field := rt.Field(i)
+
+		if !field.IsExported() {
+			continue
+		}
+
 		var fieldInfo serdeFieldInfo
 
 		fieldInfo.index = i
 
-		field := rt.Field(i)
 		fieldName, options, tagged, shouldSkip := GetFieldName(field)
 		frv := rv.Field(i)
 		valueInterface := frv.Interface()
