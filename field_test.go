@@ -32,8 +32,8 @@ func (e NonComparableButEquality) Equal(other NonComparableButEquality) bool {
 }
 
 type pairNullable[T any] struct {
-	l, r                undefinedablejson.Nullable[T]
-	equal, sameInstance bool
+	l, r  undefinedablejson.Nullable[T]
+	equal bool
 }
 
 func runNullableTests[T any](t *testing.T, pairs []pairNullable[T]) bool {
@@ -42,10 +42,16 @@ func runNullableTests[T any](t *testing.T, pairs []pairNullable[T]) bool {
 	for idx, testCase := range pairs {
 		isEqual := testCase.l.Equal(testCase.r)
 		if isEqual != testCase.equal {
+			var shouldBe string
+			if testCase.equal {
+				shouldBe = "be equal"
+			} else {
+				shouldBe = "not be equal"
+			}
 			didError = true
 			t.Errorf(
-				"case number = %d. not equal: type = %T left = %v, right = %v",
-				idx, testCase.l, formatValue[T](testCase.l), formatValue[T](testCase.r),
+				"case number = %d. should %s: type = %T left = %v, right = %v",
+				idx, shouldBe, testCase.l, formatValue[T](testCase.l), formatValue[T](testCase.r),
 			)
 		}
 	}
@@ -54,19 +60,14 @@ func runNullableTests[T any](t *testing.T, pairs []pairNullable[T]) bool {
 }
 
 type pairUndefinedable[T any] struct {
-	l, r           undefinedablejson.Undefinedable[T]
-	equal, ignored bool
+	l, r  undefinedablejson.Undefinedable[T]
+	equal bool
 }
 
 func runUndefinedableTests[T any](t *testing.T, pairs []pairUndefinedable[T]) bool {
 	t.Helper()
 	didError := false
 	for idx, testCase := range pairs {
-		// same instance test need to be ignored: conversion may not correctly place same instance.
-		if testCase.ignored {
-			continue
-		}
-
 		isEqual := testCase.l.Equal(testCase.r)
 		if isEqual != testCase.equal {
 			didError = true
@@ -89,160 +90,132 @@ func formatValue[T any](v interface{ Value() *T }) string {
 }
 
 // case 1: comparable.
-var nullableInt = undefinedablejson.NonNull(0)
 var caseComparable = []pairNullable[int]{
 	{
-		nullableInt, nullableInt,
-		true, true,
-	},
-	{
 		undefinedablejson.NonNull(123), undefinedablejson.NonNull(123),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(123), undefinedablejson.NonNull(224),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[int](), undefinedablejson.Null[int](),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(123), undefinedablejson.Null[int](),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[int](), undefinedablejson.NonNull(123),
-		false, false,
+		false,
 	},
 }
-
-var nullableSlice = undefinedablejson.NonNull([]string{})
 
 // case 2: non comparable
 var caseNonComparable = []pairNullable[[]string]{
 	{
-		nullableSlice, nullableSlice,
-		true, true,
-	},
-	{
 		undefinedablejson.NonNull([]string{"foo"}), undefinedablejson.NonNull([]string{"foo"}),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.NonNull([]string{"foo"}), undefinedablejson.NonNull([]string{"bar"}),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[[]string](), undefinedablejson.Null[[]string](),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull([]string{"foo"}), undefinedablejson.Null[[]string](),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[[]string](), undefinedablejson.NonNull([]string{"foo"}),
-		false, false,
+		false,
 	},
 }
 
-var nullableP = undefinedablejson.NonNull(&[]string{})
 var sampleSlice = []string{"foo", "bar", "baz"}
 
 // case 3: pointer value
 var casePointer = []pairNullable[*[]string]{
 	{
-		nullableP, nullableP, // same instance (always true)
-		true, true,
-	},
-	{
 		undefinedablejson.NonNull(&[]string{"foo"}), undefinedablejson.NonNull(&[]string{"foo"}),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.NonNull(&[]string{"foo"}), undefinedablejson.NonNull(&[]string{"bar"}),
-		false, false,
+		false,
 	},
 	{ // same pointer = true (of course).
 		undefinedablejson.NonNull(&sampleSlice), undefinedablejson.NonNull(&sampleSlice),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.Null[*[]string](), undefinedablejson.Null[*[]string](),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(&[]string{"foo"}), undefinedablejson.Null[*[]string](),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[*[]string](), undefinedablejson.NonNull(&[]string{"foo"}),
-		false, false,
+		false,
 	},
 }
-
-var nullableNonComparableButEquality = undefinedablejson.NonNull(NonComparableButEquality{})
 
 // case 4: non comparable but implements Equality.
 var caseNonComparableButCustomEquality = []pairNullable[NonComparableButEquality]{
 	{
-		nullableNonComparableButEquality, nullableNonComparableButEquality, // same instance (always true)
-		true, true,
-	},
-	{
 		undefinedablejson.NonNull(NonComparableButEquality{"foo"}), undefinedablejson.NonNull(NonComparableButEquality{"foo"}),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(NonComparableButEquality{"foo"}), undefinedablejson.NonNull(NonComparableButEquality{"bar"}),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[NonComparableButEquality](), undefinedablejson.Null[NonComparableButEquality](),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(NonComparableButEquality{"foo"}), undefinedablejson.Null[NonComparableButEquality](),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[NonComparableButEquality](), undefinedablejson.NonNull(NonComparableButEquality{"foo"}),
-		false, false,
+		false,
 	},
 }
-
-var nullableCustomizedEquality = undefinedablejson.NonNull(CustomizedEquality{util.Escape(123)})
 
 // case 5: comparable but has customized equality.
 var caseComparableButCustomEquality = []pairNullable[CustomizedEquality]{
 	{
-		nullableCustomizedEquality, nullableCustomizedEquality, // same instance (always true)
-		true, true,
-	},
-	{
 		undefinedablejson.NonNull(CustomizedEquality{util.Escape(123)}), undefinedablejson.NonNull(CustomizedEquality{util.Escape(123)}),
-		true, false,
+		true,
 	},
 	{ // uses customized equality method
 		undefinedablejson.NonNull(CustomizedEquality{util.Escape(1)}), undefinedablejson.NonNull(CustomizedEquality{util.Escape(31)}),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(CustomizedEquality{util.Escape(123)}), undefinedablejson.NonNull(CustomizedEquality{util.Escape(124)}),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[CustomizedEquality](), undefinedablejson.Null[CustomizedEquality](),
-		true, false,
+		true,
 	},
 	{
 		undefinedablejson.NonNull(CustomizedEquality{util.Escape(123)}), undefinedablejson.Null[CustomizedEquality](),
-		false, false,
+		false,
 	},
 	{
 		undefinedablejson.Null[CustomizedEquality](), undefinedablejson.NonNull(CustomizedEquality{util.Escape(123)}),
-		false, false,
+		false,
 	},
 }
 
@@ -262,24 +235,24 @@ func TestFields_equality(t *testing.T) {
 	runUndefinedableTests(t, []pairUndefinedable[int]{
 		{ // undefined - undefined
 			undefinedablejson.UndefinedField[int](), undefinedablejson.UndefinedField[int](),
-			true, false,
+			true,
 		},
 		// undefined - value
 		{
 			undefinedablejson.Field(123), undefinedablejson.UndefinedField[int](),
-			false, false,
+			false,
 		}, {
 			undefinedablejson.UndefinedField[int](), undefinedablejson.Field(123),
-			false, false,
+			false,
 		},
 		// undefined - null
 		{
 			undefinedablejson.UndefinedField[int](), undefinedablejson.NullField[int](),
-			false, false,
+			false,
 		},
 		{
 			undefinedablejson.NullField[int](), undefinedablejson.UndefinedField[int](),
-			false, false,
+			false,
 		},
 	})
 }
@@ -303,7 +276,7 @@ func convertNullableCasesToUndefined[T any](cases []pairNullable[T]) []pairUndef
 
 		ret[idx] = pairUndefinedable[T]{
 			l, r,
-			testCase.equal, testCase.sameInstance,
+			testCase.equal,
 		}
 	}
 	return ret

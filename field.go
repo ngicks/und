@@ -1,24 +1,31 @@
 package undefinedablejson
 
 import (
-	"bytes"
 	"encoding/json"
 	"reflect"
 )
 
+var nullByte = []byte(`null`)
+
+type Equality[T any] interface {
+	Equal(T) bool
+}
+
 type Nullable[T any] struct {
-	v *T
+	isNonNull bool
+	v         T
 }
 
 func NewNullable[T any](v T) *Nullable[T] {
 	return &Nullable[T]{
-		v: &v,
+		v: v,
 	}
 }
 
 func NonNull[T any](v T) Nullable[T] {
 	return Nullable[T]{
-		v: &v,
+		isNonNull: true,
+		v:         v,
 	}
 }
 
@@ -27,75 +34,59 @@ func Null[T any]() Nullable[T] {
 }
 
 func (n Nullable[T]) IsNull() bool {
-	return n.v == nil
+	return !n.isNonNull
 }
 
 func (n Nullable[T]) Value() *T {
-	return n.v
-}
-
-// IsZero reports if the inner value is zero value for T.
-// Null n return false.
-func (n Nullable[T]) IsZero() bool {
-	if n.v == nil {
-		return false
+	if !n.isNonNull {
+		return nil
 	}
-	return reflect.ValueOf(*n.v).IsZero()
-}
-
-type Equality[T any] interface {
-	Equal(T) bool
+	return &n.v
 }
 
 func (n Nullable[T]) Equal(other Nullable[T]) bool {
-	if n.v == other.v {
-		return true
-	}
-	if n.v == nil || other.v == nil {
-		return n.v == nil && other.v == nil
+	if !n.isNonNull || !other.isNonNull {
+		return n.isNonNull == other.isNonNull
 	}
 
 	// Try type assert first.
 	// reflect.ValueOf escapes value into heap (currently).
-	var asAny any = *n.v
-	eq, ok := asAny.(Equality[T])
+	//
+	// check for *T so that we can find method implemented for *T not only ones for T.
+	eq, ok := any(n.v).(Equality[T])
 	if ok {
-		return eq.Equal(*other.v)
+		return eq.Equal(other.v)
 	}
-	// In case *T implements Equality[T].
-	asAny = n.v
-	eq, ok = asAny.(Equality[T])
+	eq, ok = any(&n.v).(Equality[T])
 	if ok {
-		return eq.Equal(*other.v)
+		return eq.Equal(other.v)
 	}
 
-	rv := reflect.Indirect(reflect.ValueOf(n.v))
+	rv := reflect.ValueOf(n.v)
 
 	if !rv.Type().Comparable() {
 		return false
 	}
 
-	otherRv := reflect.Indirect(reflect.ValueOf(other.v))
+	otherRv := reflect.ValueOf(other.v)
 	return rv.Interface() == otherRv.Interface()
 }
 
 func (n Nullable[T]) MarshalJSON() ([]byte, error) {
+	if !n.isNonNull {
+		return nullByte, nil
+	}
 	return json.Marshal(n.v)
 }
 
 func (n *Nullable[T]) UnmarshalJSON(data []byte) error {
-	// zero out
-	n.v = nil
-
-	data = bytes.TrimLeftFunc(data, func(r rune) bool { return r == ' ' || r == '\n' })
-	if string(data) == `null` {
+	if string(data) == string(nullByte) {
+		n.isNonNull = false
 		return nil
 	}
 
-	var zero T
-	n.v = &zero
-
-	return json.Unmarshal(data, n.v)
+	n.isNonNull = true
+	return json.Unmarshal(data, &n.v)
 }
 
 func (f Nullable[T]) IsQuotable() bool {
@@ -104,19 +95,21 @@ func (f Nullable[T]) IsQuotable() bool {
 }
 
 type Undefinedable[T any] struct {
-	v *Nullable[T]
+	isDefined bool
+	v         Nullable[T]
 }
 
 func Field[T any](v T) Undefinedable[T] {
-	n := NonNull(v)
 	return Undefinedable[T]{
-		v: &n,
+		isDefined: true,
+		v:         NonNull(v),
 	}
 }
 
 func NullField[T any]() Undefinedable[T] {
 	return Undefinedable[T]{
-		v: &Nullable[T]{},
+		isDefined: true,
+		v:         Nullable[T]{},
 	}
 }
 
@@ -130,37 +123,29 @@ func NewField[T any](v T) *Undefinedable[T] {
 }
 
 func (f Undefinedable[T]) IsNull() bool {
-	if f.v == nil {
+	if !f.isDefined {
 		return false
 	}
 	return f.v.IsNull()
 }
 
 func (f Undefinedable[T]) IsUndefined() bool {
-	return f.v == nil
+	return !f.isDefined
 }
 
 func (f Undefinedable[T]) Value() *T {
-	if f.v == nil {
+	if !f.isDefined {
 		return nil
 	}
 	return f.v.Value()
 }
 
-func (f Undefinedable[T]) IsZero() bool {
-	if f.v == nil {
-		return false
-	}
-	return f.v.IsZero()
-}
 func (f Undefinedable[T]) Equal(other Undefinedable[T]) bool {
-	if f.v == other.v {
-		return true
+	if !f.isDefined || !other.isDefined {
+		return f.isDefined == other.isDefined
 	}
-	if f.v == nil || other.v == nil {
-		return f.v == nil && other.v == nil
-	}
-	return f.v.Equal(*other.v)
+
+	return f.v.Equal(other.v)
 }
 
 func (f Undefinedable[T]) MarshalJSON() ([]byte, error) {
@@ -168,7 +153,9 @@ func (f Undefinedable[T]) MarshalJSON() ([]byte, error) {
 }
 
 func (f *Undefinedable[T]) UnmarshalJSON(data []byte) error {
-	f.v = &Nullable[T]{}
+	// json.Unmarshal would not call this if input json has corresponding field.
+	// So at the moment this line is reached, f is q defined field.
+	f.isDefined = true
 	return f.v.UnmarshalJSON(data)
 }
 
