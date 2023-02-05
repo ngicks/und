@@ -23,9 +23,7 @@ var ErrIncorrectType = errors.New("incorrect")
 //
 // It outputs `null` for a null Undefinable field, skips for an undefined Field.
 //
-// If v:
-//   - is not struct, returns a wrapped ErrIncorrectType error.
-//   - has any unexported field, then it panics.
+// If v is not a struct, it returns a wrapped ErrIncorrectType error.
 func MarshalFieldsJSON(v any) ([]byte, error) {
 	rv := reflect.ValueOf(v)
 	rt := rv.Type()
