@@ -361,7 +361,7 @@ func IsQuotable(ty reflect.Type) bool {
 	return false
 }
 
-// IsEmpty reports whether json marshaller need to skip the field if they are tagged with "omitempty".
+// IsEmpty reports true if v should be skipped when tagged with omitempty, false otherwise.
 func IsEmpty(v reflect.Value) bool {
 	switch v.Kind() {
 	// false
