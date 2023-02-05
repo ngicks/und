@@ -53,11 +53,7 @@ func (n Nullable[T]) Equal(other Nullable[T]) bool {
 	// reflect.ValueOf escapes value into heap (currently).
 	//
 	// check for *T so that we can find method implemented for *T not only ones for T.
-	eq, ok := any(n.v).(Equality[T])
-	if ok {
-		return eq.Equal(other.v)
-	}
-	eq, ok = any(&n.v).(Equality[T])
+	eq, ok := any(&n.v).(Equality[T])
 	if ok {
 		return eq.Equal(other.v)
 	}
