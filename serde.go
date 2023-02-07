@@ -81,11 +81,12 @@ func MarshalFieldsJSON(v any) ([]byte, error) {
 			writer.RawString(":")
 		}
 
-		if fieldInfo.quote {
+		shouldQuote := fieldInfo.quote && string(marshalled) == string(nullByte)
+		if shouldQuote {
 			writer.RawString("\"")
 		}
 		writer.Raw(marshalled, err)
-		if fieldInfo.quote {
+		if shouldQuote {
 			writer.RawString("\"")
 		}
 	}
@@ -264,7 +265,7 @@ func unmarshalFieldsJSON(data []byte, rv reflect.Value) error {
 				value = data[offset-len(value)-2 : offset]
 			}
 
-			if info.quote {
+			if info.quote && string(value) != string(nullByte) {
 				value = bytes.Trim(value, "\"")
 			}
 
