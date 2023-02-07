@@ -1,6 +1,6 @@
 # undefinedablejson
 
-json fields that can be undefined or null or T.
+json fields that can be undefined or null or T. And the marshaller for the struct type containing them.
 
 ## Usage
 
@@ -24,24 +24,24 @@ type sample struct {
 
 func main() {
 	v := sample{
-        Emm: Emm("emm"),
-        Embedded: Embedded{
-            Foo: "aaa",
-            Bar: undefinedablejson.Null[string](),
-            Baz: undefinedablejson.UndefinedField[string](),
-        },
-        Corge:  "corge",
-        Grault: undefinedablejson.NonNull("grault"),
-        Garply: undefinedablejson.UndefinedField[string](),
-    }
+    Emm: Emm("emm"),
+    Embedded: Embedded{
+      Foo: "aaa",
+      Bar: undefinedablejson.Null[string](),
+      Baz: undefinedablejson.UndefinedField[string](),
+    },
+    Corge:  "corge",
+    Grault: undefinedablejson.NonNull("grault"),
+    Garply: undefinedablejson.UndefinedField[string](),
+  }
 
-    // Marshal with MarshalFieldsJSON,
-    // Unmarshal with UnmarshalFieldsJSON.
-    bin, _ := undefinedablejson.MarshalFieldsJSON(v)
+  // Marshal with MarshalFieldsJSON,
+  // Unmarshal with UnmarshalFieldsJSON.
+  bin, _ := undefinedablejson.MarshalFieldsJSON(v)
 
-    // string(bin) is
-	// {"Emm":"emm","Foo":"aaa","bar":null,"Corge":"corge","Grault":"grault"}
-    // See it skips undefined Undefinedable[T]
+  // string(bin) is
+  // {"Emm":"emm","Foo":"aaa","bar":null,"Corge":"corge","Grault":"grault"}
+  // See it skips undefined Undefinedable[T]
 }
 ```
 
@@ -55,41 +55,44 @@ func main() {
   - It also works on `Nullable[T]` and `Undefinedable[T]`.
   - If you don't like linters warn about incorrect json:",string" usage, use und:"string" instead.
 
-## Rationale
+## Background
 
-- Go has no way to express `undefined` field, which is often useful in javascript.
-- JSON PATCHing in RESTful API is easier when data payload can express explicit empty value, `null` namely.
-  - Implementations can clear the field if input json has `null` for corresponding fields.
-- Go has `omitempty` option that skip the field when marshalling.
-- Go's std `encoding/json` package marshal `nil` pointer to `null`, and vice versa.
-- User codes can utilize \*\*T to define 3 states, `undefined` or `null` or T.
-  - But it is harder to write: It end up clutter codes like `num := 3; numP := &num; {Field: &numP}`. You always need to do this.
-- Helper types can make it easier.
-- There's no way to skip field other than `omitmepty` tag, in std `encoding/json`.
-  - Unfortunately, `omitempty` does not skip struct type.
-- So user code must pay some effort on it.
+- Some APIs are aware of `undefined | null | T`.
+  - For example, Elasticsearch's update API can use [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document) Setting `null` for fields overwrites that field to be `null`.
+- AFAIK most of programming languages do not natively have 2 types to express `being empty`. That's the JavaScript's good or odd point.
+  - Namely `undefined` and `null`
+- Go also does not have 2 types to state `being empty`.
+  - Go uses `*T` for `being empty`. `nil` is empty of course.
+- If you need to determine, what field and whether you should skip or set `null` to, at runtime, you need an additional data structure for that.
 
 ## How is it implemented
 
-The Nullable is simply
+Above 1.18 or later, Go has generics.
+
+With help of type parameters, the Nullable is simply
 
 ```go
+type Option[T any] struct {
+	some bool
+	v    T
+}
+
 type Nullable[T any] struct {
-	v *T
+	Option[T]
 }
 ```
 
-if v is nil, it is null.
+If some is false, it is null.
 
 The Undefinedable is wraps Nullable:
 
 ```go
 type Undefinedable[T any] struct {
-	v *Nullable[T]
+	Option[Option[T]]
 }
 ```
 
-if v is nil, it is undefined, if v.v is nil, it is null.
+If some is false, it is undefined. If v.some is false, it is null.
 
 MarshalFieldsJSON and UnmarshalFieldsJSON are far-less careful version of json.Marshal / json.Unmarshal.
 Those rely on `reflect` package. First they read through information of given type, cache result, and then marshal/unmarhsal given type.
