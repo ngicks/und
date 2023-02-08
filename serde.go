@@ -124,11 +124,11 @@ type serdeFieldInfo struct {
 	marshaller            func(v any) ([]byte, error)
 }
 
-type getSerdeMeta func() (*serdeMeta, error)
+type getSerdeMeta func() (serdeMeta, error)
 
 var serdeInfoCache syncparam.Map[reflect.Type, getSerdeMeta]
 
-func loadOrCreateSerdeMeta(v reflect.Value) (*serdeMeta, error) {
+func loadOrCreateSerdeMeta(v reflect.Value) (serdeMeta, error) {
 	getter, loaded := serdeInfoCache.Load(v.Type())
 	if loaded {
 		return getter()
@@ -140,7 +140,7 @@ func loadOrCreateSerdeMeta(v reflect.Value) (*serdeMeta, error) {
 	)
 
 	wg.Add(1)
-	getter, loaded = serdeInfoCache.LoadOrStore(v.Type(), func() (*serdeMeta, error) {
+	getter, loaded = serdeInfoCache.LoadOrStore(v.Type(), func() (serdeMeta, error) {
 		wg.Wait()
 		return f()
 	})
@@ -149,8 +149,8 @@ func loadOrCreateSerdeMeta(v reflect.Value) (*serdeMeta, error) {
 	}
 
 	meta, err := readFieldInfo(v)
-	f = func() (*serdeMeta, error) {
-		return &meta, err
+	f = func() (serdeMeta, error) {
+		return meta, err
 	}
 	wg.Done()
 
