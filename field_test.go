@@ -2,7 +2,10 @@ package undefinedablejson_test
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/ngicks/type-param-common/util"
 	"github.com/ngicks/undefinedablejson"
@@ -280,4 +283,100 @@ func convertNullableCasesToUndefined[T any](cases []pairNullable[T]) []pairUndef
 		}
 	}
 	return ret
+}
+
+type RaceTestA struct {
+	Foo undefinedablejson.Undefinedable[int] `und:"string"`
+}
+
+func (r RaceTestA) F() *int {
+	return r.Foo.Value()
+}
+
+type RaceTestB struct {
+	Foo undefinedablejson.Undefinedable[int] `und:"string"`
+}
+
+func (r RaceTestB) F() *int {
+	return r.Foo.Value()
+}
+
+type RaceTestC struct {
+	Foo undefinedablejson.Undefinedable[int] `und:"string"`
+	ErroneousEmbedded
+}
+
+func (r RaceTestC) F() *int {
+	return r.Foo.Value()
+}
+
+type ErroneousEmbedded struct {
+	Bar string
+}
+
+func (e ErroneousEmbedded) MarshalJSON() ([]byte, error) {
+	return []byte(`null`), nil
+}
+
+func unmarshal[T interface{ F() *int }]() error {
+	var (
+		t                 T
+		err, unmarshalErr error
+	)
+	if rand.Int31n(10) >= 5 {
+		err = undefinedablejson.UnmarshalFieldsJSON([]byte(`{"Foo":"123"}`), &t)
+		if err != nil {
+			return err
+		}
+		if *t.F() != 123 {
+			unmarshalErr = fmt.Errorf("error")
+		}
+	} else {
+		err = undefinedablejson.UnmarshalFieldsJSON([]byte(`{}`), &t)
+		if err != nil {
+			return err
+		}
+		if t.F() != nil {
+			unmarshalErr = fmt.Errorf("error")
+		}
+	}
+
+	if unmarshalErr != nil {
+		return unmarshalErr
+	}
+	return nil
+}
+
+func TestSerde_serde_info_cache_race(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			time.Sleep(time.Duration(rand.Int31n(5)))
+			if err := unmarshal[RaceTestA](); err != nil {
+				t.Errorf("%+v", err)
+			}
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			time.Sleep(time.Duration(rand.Int31n(5)))
+			if err := unmarshal[RaceTestB](); err != nil {
+				t.Errorf("%+v", err)
+			}
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			time.Sleep(time.Duration(rand.Int31n(5)))
+			if err := unmarshal[RaceTestC](); err == nil {
+				t.Error("must be error but nil")
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }

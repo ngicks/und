@@ -8,6 +8,7 @@ import (
 	"math"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/buger/jsonparser"
 	"github.com/mailru/easyjson/jwriter"
@@ -123,19 +124,39 @@ type serdeFieldInfo struct {
 	marshaller            func(v any) ([]byte, error)
 }
 
-var serdeInfoCache syncparam.Map[reflect.Type, serdeMeta]
+type getSerdeMeta func() (*serdeMeta, error)
 
-func loadOrCreateSerdeMeta(v reflect.Value) (serdeMeta, error) {
-	fields, ok := serdeInfoCache.Load(v.Type())
-	if ok {
-		return fields, nil
+var serdeInfoCache syncparam.Map[reflect.Type, getSerdeMeta]
+
+func loadOrCreateSerdeMeta(v reflect.Value) (*serdeMeta, error) {
+	getter, loaded := serdeInfoCache.Load(v.Type())
+	if loaded {
+		return getter()
 	}
+
+	var (
+		f  getSerdeMeta
+		wg sync.WaitGroup
+	)
+
+	wg.Add(1)
+	getter, loaded = serdeInfoCache.LoadOrStore(v.Type(), func() (*serdeMeta, error) {
+		wg.Wait()
+		return f()
+	})
+	if loaded {
+		return getter()
+	}
+
 	meta, err := readFieldInfo(v)
-	if err != nil {
-		return serdeMeta{}, err
+	f = func() (*serdeMeta, error) {
+		return &meta, err
 	}
-	fields, _ = serdeInfoCache.LoadOrStore(v.Type(), meta)
-	return fields, nil
+	wg.Done()
+
+	serdeInfoCache.Store(v.Type(), f)
+
+	return f()
 }
 
 func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
