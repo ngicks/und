@@ -81,7 +81,7 @@ func MarshalFieldsJSON(v any) ([]byte, error) {
 			writer.RawString(":")
 		}
 
-		shouldQuote := fieldInfo.quote && string(marshalled) == string(nullByte)
+		shouldQuote := fieldInfo.quote && string(marshalled) != string(nullByte)
 		if shouldQuote {
 			writer.RawString("\"")
 		}

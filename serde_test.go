@@ -131,7 +131,7 @@ var nullableCases = []testCase[nullable]{
 			undefinedablejson.NonNull(111),
 			undefinedablejson.NonNull(0),
 		},
-		[]byte(`{"Foo":"foofoo","-":"null","Qux":111,"Quux":"0"}`),
+		[]byte(`{"Foo":"foofoo","-":null,"Qux":111,"Quux":"0"}`),
 	},
 	{
 		nullable{
@@ -142,7 +142,7 @@ var nullableCases = []testCase[nullable]{
 			undefinedablejson.Null[int](), // it ignores type
 		},
 		nil,
-		[]byte(`{"Foo":null,"-":"null","Qux":null,"Quux":"null"}`),
+		[]byte(`{"Foo":null,"-":null,"Qux":null,"Quux":null}`),
 	},
 }
 
@@ -196,7 +196,7 @@ var fieldsCases = []testCase[fields]{
 			undefinedablejson.NullField[int](),
 			undefinedablejson.NullField[int](), // it ignores type
 		},
-		[]byte(`{"Foo":null,"-":"null","Qux":null,"Quux":"null"}`),
+		[]byte(`{"Foo":null,"-":null,"Qux":null,"Quux":null}`),
 	},
 	{
 		fields{
