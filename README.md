@@ -23,7 +23,7 @@ type sample struct {
 }
 
 func main() {
-	v := sample{
+  v := sample{
     Emm: Emm("emm"),
     Embedded: Embedded{
       Foo: "aaa",
@@ -52,7 +52,7 @@ func main() {
   - json:"-," tags the field as `-`.
 - json:",omitempty"
 - json:",string"
-  - It also works on `Nullable[T]` and `Undefinedable[T]`.
+  - It also works on `Nullable[T]`, `Undefinedable[T]` and any type that implements `interface { IsQuotable() bool }`.
   - If you don't like linters warn about incorrect json:",string" usage, use und:"string" instead.
 
 ## Background
@@ -84,24 +84,29 @@ type Nullable[T any] struct {
 
 If some is false, it is null.
 
-The Undefinedable is wraps Nullable:
+The Undefinedable is `Option[Nullable[T]]`.
 
 ```go
 type Undefinedable[T any] struct {
-	Option[Option[T]]
+	Option[Nullable[T]]
 }
 ```
 
-If some is false, it is undefined. If v.some is false, it is null.
+If some is false, it is `undefined`. If v.some is false, it is null.
 
 MarshalFieldsJSON and UnmarshalFieldsJSON are far-less careful version of json.Marshal / json.Unmarshal.
-Those rely on `reflect` package. First they read through information of given type, cache result, and then marshal/unmarhsal given type.
+Those rely on `reflect` package. First they read through information of given type, cache result, and then marshal/unmarhsal given types.
+It skips fields if they are `undefined`. Also it supports \`json:",string"\` (or \`und:"string"\`) struct tag support for `Undefinedable[T]` and `Nullable[T]`.
 
 ## TODO
 
 - [ ] add support for `any`
-- [ ] add `und:"disallowNull"`, `und:"disallowUndefined"`, `und:"required"`
+- [ ] disallow duplicated field names.
+  - [The spec does not recommend it to happen (SHOULD be unique)](https://datatracker.ietf.org/doc/html/rfc8259#section-4).
+  - Marshal in `encoding/json` removes **all** fields if names of fields overlap.
+- [ ] add \`und:"disallowNull"\`, \`und:"disallowUndefined"\`, \`und:"required"\`
 - [ ] add code generator to avoid `reflect` usage.
+  - This has relatively a low priority.
 - [ ] add more tests.
-- [ ] find other packages doing same thing, and implemented more elegantly.
+- [ ] find other packages doing same thing, implemented more elegantly.
   - Once found, archive this package and support that package.
