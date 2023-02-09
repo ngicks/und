@@ -282,12 +282,21 @@ func unmarshalFieldsJSON(data []byte, rv reflect.Value) error {
 			}
 
 			if dataType == jsonparser.String {
-				// jsonparser trims wrapping double quotations. Get it back here.
+				// jsonparser trims wrapping double quotations. Get those back here.
 				value = data[offset-len(value)-2 : offset]
 			}
 
 			if info.quote && string(value) != string(nullByte) {
-				value = bytes.Trim(value, "\"")
+				if len(value) < 2 || (value[0] != '"' || value[len(value)-1] != '"') {
+					// mimicking json.Unmarshal behavior.
+					return fmt.Errorf(
+						"broken quotation. field ( %s ) is tagged with string option"+
+							" but input value is neither 'null'"+
+							" nor a value wrapped with double quotations. value = %s",
+						info.name, string(value),
+					)
+				}
+				value = value[1 : len(value)-1]
 			}
 
 			frv := rv.Field(info.index)
@@ -322,7 +331,6 @@ func unmarshalFieldsJSON(data []byte, rv reflect.Value) error {
 			return nil
 		},
 	)
-
 }
 
 func GetFieldName(field reflect.StructField) (fieldName string, options string, tagged bool, shouldSkip bool) {
