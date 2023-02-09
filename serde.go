@@ -210,10 +210,8 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 					return serdeMeta{}, err
 				}
 
-				fieldInfo.marshaller = func(v any) ([]byte, error) {
-					// the embedded struct field receive same treatment.
-					return MarshalFieldsJSON(v)
-				}
+				// the embedded struct field receive same treatment.
+				fieldInfo.marshaller = MarshalFieldsJSON
 
 				if !tagged {
 					untaggedEmbedded = append(untaggedEmbedded, fieldName)
