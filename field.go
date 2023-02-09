@@ -161,9 +161,14 @@ func (o Option[T]) Equal(other Option[T]) bool {
 
 	// Try type assert first.
 	// reflect.ValueOf escapes value into heap (currently).
-	//
+
+	// Check for T. Below *T is also checked but in case T is already a pointer type, *(*U) might not implement Equality.
+	eq, ok := any(o.v).(Equality[T])
+	if ok {
+		return eq.Equal(other.v)
+	}
 	// check for *T so that we can find method implemented for *T not only ones for T.
-	eq, ok := any(&o.v).(Equality[T])
+	eq, ok = any(&o.v).(Equality[T])
 	if ok {
 		return eq.Equal(other.v)
 	}
