@@ -41,16 +41,18 @@ func (n Nullable[T]) Equal(other Nullable[T]) bool {
 }
 
 type Undefinedable[T any] struct {
-	Option[Option[T]]
+	Option[Nullable[T]]
 }
 
 func Field[T any](v T) Undefinedable[T] {
 	return Undefinedable[T]{
-		Option: Option[Option[T]]{
+		Option: Option[Nullable[T]]{
 			some: true,
-			v: Option[T]{
-				some: true,
-				v:    v,
+			v: Nullable[T]{
+				Option: Option[T]{
+					some: true,
+					v:    v,
+				},
 			},
 		},
 	}
@@ -58,9 +60,9 @@ func Field[T any](v T) Undefinedable[T] {
 
 func NullField[T any]() Undefinedable[T] {
 	return Undefinedable[T]{
-		Option: Option[Option[T]]{
+		Option: Option[Nullable[T]]{
 			some: true,
-			v:    Option[T]{},
+			v:    Nullable[T]{},
 		},
 	}
 }
@@ -81,14 +83,14 @@ func (u Undefinedable[T]) IsNull() bool {
 	if u.IsUndefined() {
 		return false
 	}
-	return u.v.IsNone()
+	return u.v.IsNull()
 }
 
 func (u Undefinedable[T]) IsNonNull() bool {
 	if u.IsUndefined() {
 		return false
 	}
-	return u.v.IsSome()
+	return u.v.IsNonNull()
 }
 
 func (f Undefinedable[T]) Value() *T {
@@ -111,8 +113,8 @@ func (f Undefinedable[T]) MarshalJSON() ([]byte, error) {
 }
 
 func (f *Undefinedable[T]) UnmarshalJSON(data []byte) error {
-	// json.Unmarshal would not call this if input json has corresponding field.
-	// So at the moment this line is reached, f is q defined field.
+	// json.Unmarshal would not call this if input json has a corresponding field.
+	// So at the moment this line is reached, f is a defined field.
 	f.some = true
 	return f.v.UnmarshalJSON(data)
 }
