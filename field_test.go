@@ -84,11 +84,17 @@ func runUndefinedableTests[T any](t *testing.T, pairs []pairUndefinedable[T]) bo
 	return !didError
 }
 
-func formatValue[T any](v interface{ Value() *T }) string {
-	if val := v.Value(); val == nil {
-		return `<nil>`
+func formatValue[T any](v interface {
+	IsNull() bool
+	Value() T
+}) string {
+	if und, ok := v.(interface{ IsUndefined() bool }); ok && und.IsUndefined() {
+		return `<undefined>`
+	}
+	if v.IsNull() {
+		return `<null>`
 	} else {
-		return fmt.Sprintf("%+v", *val)
+		return fmt.Sprintf("%+v", v.Value())
 	}
 }
 
@@ -264,17 +270,17 @@ func convertNullableCasesToUndefined[T any](cases []pairNullable[T]) []pairUndef
 
 	for idx, testCase := range cases {
 		var l undefinedablejson.Undefinedable[T]
-		if v := testCase.l.Value(); v == nil {
+		if testCase.l.IsNull() {
 			l = undefinedablejson.NullField[T]()
 		} else {
-			l = undefinedablejson.Field(*v)
+			l = undefinedablejson.Field(testCase.l.Value())
 		}
 
 		var r undefinedablejson.Undefinedable[T]
-		if v := testCase.r.Value(); v == nil {
+		if testCase.r.IsNull() {
 			r = undefinedablejson.NullField[T]()
 		} else {
-			r = undefinedablejson.Field(*v)
+			r = undefinedablejson.Field(testCase.r.Value())
 		}
 
 		ret[idx] = pairUndefinedable[T]{
@@ -289,7 +295,7 @@ type RaceTestA struct {
 	Foo undefinedablejson.Undefinedable[int] `und:"string"`
 }
 
-func (r RaceTestA) F() *int {
+func (r RaceTestA) F() int {
 	return r.Foo.Value()
 }
 
@@ -297,7 +303,7 @@ type RaceTestB struct {
 	Foo undefinedablejson.Undefinedable[int] `und:"string"`
 }
 
-func (r RaceTestB) F() *int {
+func (r RaceTestB) F() int {
 	return r.Foo.Value()
 }
 
@@ -306,7 +312,7 @@ type RaceTestC struct {
 	ErroneousEmbedded
 }
 
-func (r RaceTestC) F() *int {
+func (r RaceTestC) F() int {
 	return r.Foo.Value()
 }
 
@@ -318,7 +324,7 @@ func (e ErroneousEmbedded) MarshalJSON() ([]byte, error) {
 	return []byte(`null`), nil
 }
 
-func unmarshal[T interface{ F() *int }]() error {
+func unmarshal[T interface{ F() int }]() error {
 	var (
 		t                 T
 		err, unmarshalErr error
@@ -328,7 +334,7 @@ func unmarshal[T interface{ F() *int }]() error {
 		if err != nil {
 			return err
 		}
-		if *t.F() != 123 {
+		if t.F() != 123 {
 			unmarshalErr = fmt.Errorf("error")
 		}
 	} else {
@@ -336,7 +342,7 @@ func unmarshal[T interface{ F() *int }]() error {
 		if err != nil {
 			return err
 		}
-		if t.F() != nil {
+		if t.F() != 0 {
 			unmarshalErr = fmt.Errorf("error")
 		}
 	}

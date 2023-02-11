@@ -93,10 +93,7 @@ func (u Undefinedable[T]) IsNonNull() bool {
 	return u.v.IsNonNull()
 }
 
-func (f Undefinedable[T]) Value() *T {
-	if f.IsUndefined() {
-		return nil
-	}
+func (f Undefinedable[T]) Value() T {
 	return f.v.Value()
 }
 
@@ -109,7 +106,7 @@ func (f Undefinedable[T]) Equal(other Undefinedable[T]) bool {
 }
 
 func (f Undefinedable[T]) MarshalJSON() ([]byte, error) {
-	return json.Marshal(f.Value())
+	return f.v.MarshalJSON()
 }
 
 func (f *Undefinedable[T]) UnmarshalJSON(data []byte) error {
@@ -147,11 +144,8 @@ func (o Option[T]) IsNone() bool {
 	return !o.IsSome()
 }
 
-func (o Option[T]) Value() *T {
-	if !o.some {
-		return nil
-	}
-	return &o.v
+func (o Option[T]) Value() T {
+	return o.v
 }
 
 func (o Option[T]) Equal(other Option[T]) bool {
@@ -162,7 +156,7 @@ func (o Option[T]) Equal(other Option[T]) bool {
 	// Try type assert first.
 	// reflect.ValueOf escapes value into heap (currently).
 
-	// Check for T. Below *T is also checked but in case T is already a pointer type, *(*U) might not implement Equality.
+	// Check for T. Below *T is also checked but in case T is already a pointer type, when T = *U, *(*U) might not implement Equality.
 	eq, ok := any(o.v).(Equality[T])
 	if ok {
 		return eq.Equal(other.v)
