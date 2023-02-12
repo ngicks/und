@@ -58,16 +58,17 @@ func main() {
 ## Background
 
 - Some APIs are aware of `undefined | null | T`.
-  - For example, Elasticsearch's update API can use [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document) Setting `null` for fields overwrites that field to be `null`.
+  - For example, Elasticsearch's update API can use [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document) Setting `null` for fields overwrites that field to `null`.
 - AFAIK most of programming languages do not natively have 2 types to express `being empty`. That's the JavaScript's good or odd point.
   - Namely `undefined` and `null`
 - Go also does not have 2 types to state `being empty`.
   - Go uses `*T` for `being empty`. `nil` is empty of course.
 - If you need to determine, what field and whether you should skip or set `null` to, at runtime, you need an additional data structure for that.
+  - As far as I observed, it is `map[string]any`.
 
 ## How is it implemented
 
-Above 1.18 or later, Go has generics.
+Above 1.18, Go has generics.
 
 With help of type parameters, the Nullable is simply
 
