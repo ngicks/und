@@ -12,7 +12,12 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/mailru/easyjson/jwriter"
+	"github.com/ngicks/type-param-common/iterator"
 	syncparam "github.com/ngicks/type-param-common/sync-param"
+)
+
+var bufPool syncparam.Pool[*bytes.Buffer] = syncparam.NewPool(
+	func() *bytes.Buffer { return bytes.NewBuffer([]byte{}) },
 )
 
 var ErrIncorrectType = errors.New("incorrect")
@@ -41,7 +46,11 @@ func MarshalFieldsJSON(v any) ([]byte, error) {
 	writer := jwriter.Writer{}
 	writer.RawByte('{')
 
-	buf := new(bytes.Buffer)
+	buf := bufPool.Get()
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
 
 	appendComma := false
 
@@ -185,8 +194,13 @@ func loadOrCreateSerdeMeta(v reflect.Value) (serdeMeta, error) {
 func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 	rt := rv.Type()
 
+	// json.Marshal removes all fields if it conflicts its field name to others.
+	// This package also mimics that behavior.
+	overlappingField := make(map[string]struct{}, 0)
+
 	layout := make([]string, 0, rv.NumField())
-	fields := make(map[string]serdeFieldInfo, rv.NumField())
+	taggedFields := make(map[string]serdeFieldInfo, rv.NumField())
+	untaggedFields := make(map[string]serdeFieldInfo, rv.NumField())
 	untaggedEmbedded := make([]string, 0, rv.NumField())
 
 	for i := 0; i < rv.NumField(); i++ {
@@ -196,19 +210,24 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 			continue
 		}
 
-		var fieldInfo serdeFieldInfo
-
-		fieldInfo.index = i
-
 		fieldName, options, tagged, shouldSkip := GetFieldName(field)
-		frv := rv.Field(i)
-		valueInterface := frv.Interface()
 
 		if shouldSkip {
 			// tagged as "-"
 			continue
 		}
 
+		if _, overlaps := taggedFields[fieldName]; tagged && overlaps {
+			overlappingField[fieldName] = struct{}{}
+			continue
+		}
+
+		frv := rv.Field(i)
+		valueInterface := frv.Interface()
+
+		var fieldInfo serdeFieldInfo
+
+		fieldInfo.index = i
 		fieldInfo.name = fieldName
 		fieldInfo.taggedFieldName = tagged
 		fieldInfo.taggedOmitempty = OptContain(options, "omitempty")
@@ -255,10 +274,25 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 			shouldQuote(field.Type, valueInterface)
 
 		layout = append(layout, fieldInfo.name)
-		fields[fieldInfo.name] = fieldInfo
+
+		if tagged {
+			taggedFields[fieldInfo.name] = fieldInfo
+		} else {
+			untaggedFields[fieldInfo.name] = fieldInfo
+		}
 	}
 
-	return serdeMeta{layout, fields, untaggedEmbedded}, nil
+	// tagged has priority.
+	for k, v := range taggedFields {
+		untaggedFields[k] = v
+	}
+
+	for overlapping := range overlappingField {
+		delete(untaggedFields, overlapping)
+		layout = iterator.FromSlice(layout).Exclude(func(s string) bool { return s == overlapping }).Collect()
+	}
+
+	return serdeMeta{layout, untaggedFields, untaggedEmbedded}, nil
 }
 
 func UnmarshalFieldsJSON(data []byte, v any) error {
