@@ -41,6 +41,8 @@ func MarshalFieldsJSON(v any) ([]byte, error) {
 	writer := jwriter.Writer{}
 	writer.RawByte('{')
 
+	buf := new(bytes.Buffer)
+
 	appendComma := false
 
 	for _, fieldName := range marshalFields.layout {
@@ -65,12 +67,28 @@ func MarshalFieldsJSON(v any) ([]byte, error) {
 		}
 		appendComma = true
 
-		shouldSkipFieldName := false
 		marshalled, err := fieldInfo.marshaller(valueInterface)
+		if err != nil {
+			writer.Error = err
+			break
+		}
+
+		if fieldInfo.implementsJsonMarshal {
+			buf.Reset()
+			err = json.Compact(buf, marshalled)
+			if err != nil {
+				writer.Error = err
+				break
+			}
+
+			marshalled = buf.Bytes()
+		}
+
+		shouldSkipFieldName := false
 		if fieldInfo.embedded && !fieldInfo.taggedFieldName {
 			// Unwrap opening and closing braces only if field is struct.
 			if frv.Kind() == reflect.Struct &&
-				(marshalled[0] == '{' || marshalled[len(marshalled)-1] == '}') {
+				len(marshalled) >= 2 && marshalled[0] == '{' { // already Compact-ed.
 				shouldSkipFieldName = true
 				marshalled = marshalled[1 : len(marshalled)-1]
 			}
@@ -90,17 +108,21 @@ func MarshalFieldsJSON(v any) ([]byte, error) {
 		if shouldQuote {
 			writer.RawString("\"")
 		}
-	}
 
-	writer.RawString("}")
+		if writer.Error != nil {
+			break
+		}
+	}
 
 	if writer.Error != nil {
 		return nil, writer.Error
 	}
 
-	var buf bytes.Buffer
+	writer.RawString("}")
+
+	buf.Reset()
 	buf.Grow(writer.Size())
-	if _, err := writer.DumpTo(&buf); err != nil {
+	if _, err := writer.DumpTo(buf); err != nil {
 		return nil, err
 	}
 
@@ -122,6 +144,7 @@ type serdeFieldInfo struct {
 	embedded              bool
 	implementsIsUndefined bool
 	marshaller            func(v any) ([]byte, error)
+	implementsJsonMarshal bool
 }
 
 type getSerdeMeta func() (serdeMeta, error)
@@ -224,6 +247,8 @@ func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
 				return json.Marshal(v)
 			}
 		}
+
+		_, fieldInfo.implementsJsonMarshal = valueInterface.(json.Marshaler)
 
 		fieldInfo.quote = (OptContain(options, "string") ||
 			OptContain(field.Tag.Get("und"), "string")) &&
