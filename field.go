@@ -116,10 +116,6 @@ func (f *Undefinedable[T]) UnmarshalJSON(data []byte) error {
 	return f.v.UnmarshalJSON(data)
 }
 
-func (u Undefinedable[T]) IsQuotable() bool {
-	return u.v.IsQuotable()
-}
-
 type Option[T any] struct {
 	some bool
 	v    T
@@ -192,11 +188,6 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 
 	o.some = true
 	return json.Unmarshal(data, &o.v)
-}
-
-func (Option[T]) IsQuotable() bool {
-	var t T
-	return IsQuotable(reflect.TypeOf(t))
 }
 
 func (o Option[T]) Map(f func(v T) T) Option[T] {

@@ -1,26 +1,115 @@
 package undefinedablejson
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"math"
 	"reflect"
 	"strings"
-	"sync"
+	"unsafe"
 
-	"github.com/buger/jsonparser"
-	"github.com/mailru/easyjson/jwriter"
-	"github.com/ngicks/type-param-common/iterator"
-	syncparam "github.com/ngicks/type-param-common/sync-param"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/modern-go/reflect2"
 )
 
-var bufPool syncparam.Pool[*bytes.Buffer] = syncparam.NewPool(
-	func() *bytes.Buffer { return bytes.NewBuffer([]byte{}) },
-)
+var config = jsoniter.Config{
+	EscapeHTML:             true,
+	SortMapKeys:            true,
+	ValidateJsonRawMessage: true,
+}.Froze()
 
-var ErrIncorrectType = errors.New("incorrect")
+func init() {
+	config.RegisterExtension(&UndefinedableExtension{})
+}
+
+type IsUndefineder interface {
+	IsUndefined() bool
+}
+
+var undefinedableTy = reflect2.TypeOfPtr((*IsUndefineder)(nil)).Elem()
+
+// undefinedableEncoder fakes Encoder so that
+// the undefined Undefinedable fields are considered to be empty.
+type undefinedableEncoder struct {
+	ty  reflect2.Type
+	org jsoniter.ValEncoder
+}
+
+func (e undefinedableEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+	val := e.ty.UnsafeIndirect(ptr)
+	return val.(IsUndefineder).IsUndefined()
+}
+
+func (e undefinedableEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+	e.org.Encode(ptr, stream)
+}
+
+// fakingTagField implements reflect2.StructField interface,
+// faking the struct tag to pretend it is always tagged with ,omitempty option.
+type fakingTagField struct {
+	reflect2.StructField
+}
+
+func (f fakingTagField) Tag() reflect.StructTag {
+	t := f.StructField.Tag()
+	if jsonTag, ok := t.Lookup("json"); !ok {
+		return reflect.StructTag(`json:",omitempty"`)
+	} else {
+		splitted := strings.Split(jsonTag, ",")
+		hasOmitempty := false
+		for _, opt := range splitted {
+			if opt == "omitempty" {
+				hasOmitempty = true
+				break
+			}
+		}
+
+		if !hasOmitempty {
+			return reflect.StructTag(`json:"` + strings.Join(splitted, ",") + `,omitempty"`)
+		}
+	}
+
+	return t
+}
+
+// UndefinedableExtension
+type UndefinedableExtension struct {
+}
+
+func (extension *UndefinedableExtension) UpdateStructDescriptor(structDescriptor *jsoniter.StructDescriptor) {
+	if structDescriptor.Type.Implements(undefinedableTy) {
+		return
+	}
+
+	for _, binding := range structDescriptor.Fields {
+		if binding.Field.Type().Implements(undefinedableTy) {
+			enc := binding.Encoder
+			binding.Field = fakingTagField{binding.Field}
+			binding.Encoder = undefinedableEncoder{ty: binding.Field.Type(), org: enc}
+		}
+	}
+}
+
+func (extension *UndefinedableExtension) CreateMapKeyDecoder(typ reflect2.Type) jsoniter.ValDecoder {
+	return nil
+}
+
+func (extension *UndefinedableExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEncoder {
+	return nil
+}
+
+func (extension *UndefinedableExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder {
+	return nil
+}
+
+func (extension *UndefinedableExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder {
+	return nil
+}
+
+func (extension *UndefinedableExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder {
+	return decoder
+}
+
+func (extension *UndefinedableExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder {
+	return encoder
+}
 
 // MarshalFieldsJSON encodes v into JSON.
 // Some or all fields of v are expected to be Undefinedable[T any].
@@ -31,447 +120,9 @@ var ErrIncorrectType = errors.New("incorrect")
 //
 // If v is not a struct, it returns a wrapped ErrIncorrectType error.
 func MarshalFieldsJSON(v any) ([]byte, error) {
-	rv := reflect.ValueOf(v)
-	rt := rv.Type()
-
-	if rt.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("%w. want = struct, but is %s", ErrIncorrectType, rt.Kind())
-	}
-
-	marshalFields, err := loadOrCreateSerdeMeta(rv)
-	if err != nil {
-		return nil, err
-	}
-
-	writer := jwriter.Writer{}
-	writer.RawByte('{')
-
-	buf := bufPool.Get()
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
-
-	appendComma := false
-
-	for _, fieldName := range marshalFields.layout {
-		fieldInfo := marshalFields.fields[fieldName]
-
-		frv := rv.Field(fieldInfo.index)
-		valueInterface := frv.Interface()
-
-		if fieldInfo.implementsIsUndefined {
-			if valueInterface.(interface{ IsUndefined() bool }).IsUndefined() {
-				continue
-			}
-		} else if fieldInfo.taggedOmitempty {
-			if IsEmpty(frv) {
-				// skip this field.
-				continue
-			}
-		}
-
-		if appendComma {
-			writer.RawString(",")
-		}
-		appendComma = true
-
-		marshalled, err := fieldInfo.marshaller(valueInterface)
-		if err != nil {
-			writer.Error = err
-			break
-		}
-
-		if fieldInfo.implementsJsonMarshal {
-			buf.Reset()
-			err = json.Compact(buf, marshalled)
-			if err != nil {
-				writer.Error = err
-				break
-			}
-
-			marshalled = buf.Bytes()
-		}
-
-		shouldSkipFieldName := false
-		if fieldInfo.embedded && !fieldInfo.taggedFieldName {
-			// Unwrap opening and closing braces only if field is struct.
-			if frv.Kind() == reflect.Struct &&
-				len(marshalled) >= 2 && marshalled[0] == '{' { // already Compact-ed.
-				shouldSkipFieldName = true
-				marshalled = marshalled[1 : len(marshalled)-1]
-			}
-		}
-
-		// skip field name only if not tagged and is struct.
-		if !shouldSkipFieldName {
-			writer.String(fieldInfo.name)
-			writer.RawString(":")
-		}
-
-		shouldQuote := fieldInfo.quote && string(marshalled) != string(nullByte)
-		if shouldQuote {
-			writer.RawString("\"")
-		}
-		writer.Raw(marshalled, err)
-		if shouldQuote {
-			writer.RawString("\"")
-		}
-
-		if writer.Error != nil {
-			break
-		}
-	}
-
-	if writer.Error != nil {
-		return nil, writer.Error
-	}
-
-	writer.RawString("}")
-
-	buf.Reset()
-	buf.Grow(writer.Size())
-	if _, err := writer.DumpTo(buf); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-type serdeMeta struct {
-	layout           []string // ordering is first written field to the last; layout order. contents are one defined by json:"" tag or field name.
-	fields           map[string]serdeFieldInfo
-	untaggedEmbedded []string
-}
-
-type serdeFieldInfo struct {
-	index                 int
-	name                  string
-	taggedFieldName       bool
-	taggedOmitempty       bool
-	quote                 bool
-	embedded              bool
-	implementsIsUndefined bool
-	marshaller            func(v any) ([]byte, error)
-	implementsJsonMarshal bool
-}
-
-type getSerdeMeta func() (serdeMeta, error)
-
-var serdeInfoCache syncparam.Map[reflect.Type, getSerdeMeta]
-
-func loadOrCreateSerdeMeta(v reflect.Value) (serdeMeta, error) {
-	getter, loaded := serdeInfoCache.Load(v.Type())
-	if loaded {
-		return getter()
-	}
-
-	var (
-		f  getSerdeMeta
-		wg sync.WaitGroup
-	)
-
-	wg.Add(1)
-	getter, loaded = serdeInfoCache.LoadOrStore(v.Type(), func() (serdeMeta, error) {
-		wg.Wait()
-		return f()
-	})
-	if loaded {
-		return getter()
-	}
-
-	meta, err := readFieldInfo(v)
-	f = func() (serdeMeta, error) {
-		return meta, err
-	}
-	wg.Done()
-
-	serdeInfoCache.Store(v.Type(), f)
-
-	return f()
-}
-
-func readFieldInfo(rv reflect.Value) (serdeMeta, error) {
-	rt := rv.Type()
-
-	// json.Marshal removes all fields if it conflicts its field name to others.
-	// This package also mimics that behavior.
-	overlappingField := make(map[string]struct{}, 0)
-
-	layout := make([]string, 0, rv.NumField())
-	taggedFields := make(map[string]serdeFieldInfo, rv.NumField())
-	untaggedFields := make(map[string]serdeFieldInfo, rv.NumField())
-	untaggedEmbedded := make([]string, 0, rv.NumField())
-
-	for i := 0; i < rv.NumField(); i++ {
-		field := rt.Field(i)
-
-		if !field.IsExported() {
-			continue
-		}
-
-		fieldName, options, tagged, shouldSkip := GetFieldName(field)
-
-		if shouldSkip {
-			// tagged as "-"
-			continue
-		}
-
-		if _, overlaps := taggedFields[fieldName]; tagged && overlaps {
-			overlappingField[fieldName] = struct{}{}
-			continue
-		}
-
-		frv := rv.Field(i)
-		valueInterface := frv.Interface()
-
-		var fieldInfo serdeFieldInfo
-
-		fieldInfo.index = i
-		fieldInfo.name = fieldName
-		fieldInfo.taggedFieldName = tagged
-		fieldInfo.taggedOmitempty = OptContain(options, "omitempty")
-		_, fieldInfo.implementsIsUndefined = valueInterface.(interface {
-			IsUndefined() bool
-		})
-		fieldInfo.embedded = field.Anonymous
-
-		if field.Anonymous {
-			// If the embedded (Anonymous) field implements json.Marshaler:
-			// json.Marshal finds that MarshalJSON because the Go's method look up mechanism works in that way,
-			// meaning the result of marshalling is to be that method's result.
-			//
-			// This function explicitly forbids that.
-			if _, ok := valueInterface.(json.Marshaler); ok {
-				return serdeMeta{}, fmt.Errorf("%w. embedded field implements json.Marshaler", ErrIncorrectType)
-			}
-
-			if field.Type.Kind() == reflect.Struct {
-				_, err := loadOrCreateSerdeMeta(frv)
-				if err != nil {
-					return serdeMeta{}, err
-				}
-
-				// the embedded struct field receive same treatment.
-				fieldInfo.marshaller = MarshalFieldsJSON
-
-				if !tagged {
-					untaggedEmbedded = append(untaggedEmbedded, fieldName)
-				}
-			}
-		}
-
-		if fieldInfo.marshaller == nil {
-			fieldInfo.marshaller = func(v any) ([]byte, error) {
-				return json.Marshal(v)
-			}
-		}
-
-		_, fieldInfo.implementsJsonMarshal = valueInterface.(json.Marshaler)
-
-		fieldInfo.quote = (OptContain(options, "string") ||
-			OptContain(field.Tag.Get("und"), "string")) &&
-			shouldQuote(field.Type, valueInterface)
-
-		layout = append(layout, fieldInfo.name)
-
-		if tagged {
-			taggedFields[fieldInfo.name] = fieldInfo
-		} else {
-			untaggedFields[fieldInfo.name] = fieldInfo
-		}
-	}
-
-	// tagged has priority.
-	for k, v := range taggedFields {
-		untaggedFields[k] = v
-	}
-
-	for overlapping := range overlappingField {
-		delete(untaggedFields, overlapping)
-		layout = iterator.FromSlice(layout).Exclude(func(s string) bool { return s == overlapping }).Collect()
-	}
-
-	return serdeMeta{layout, untaggedFields, untaggedEmbedded}, nil
+	return config.Marshal(v)
 }
 
 func UnmarshalFieldsJSON(data []byte, v any) error {
-	rv := reflect.ValueOf(v)
-
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return &json.InvalidUnmarshalError{Type: rv.Type()}
-	}
-
-	return unmarshalFieldsJSON(data, rv)
-}
-
-func unmarshalFieldsJSON(data []byte, rv reflect.Value) error {
-	rv = reflect.Indirect(rv)
-	rt := rv.Type()
-
-	if rt.Kind() != reflect.Struct {
-		return fmt.Errorf("%w. want = struct, but is %s", ErrIncorrectType, rt.Kind())
-	}
-
-	serdeInfo, err := loadOrCreateSerdeMeta(rv)
-	if err != nil {
-		return err
-	}
-
-	// TODO: We only need to do this if we find keys of embedded field in input data.
-	for _, fieldName := range serdeInfo.untaggedEmbedded {
-		// Recursion is needed because embedded fields may have another embedded field.
-		// Flatten them is a bit harder to implement.
-		// TODO: elaborate more?
-		frv := rv.Field(serdeInfo.fields[fieldName].index)
-		err := unmarshalFieldsJSON(data, frv)
-		if err != nil {
-			return err
-		}
-	}
-
-	return jsonparser.ObjectEach(
-		data,
-		func(key, value []byte, dataType jsonparser.ValueType, offset int) error {
-			info, has := serdeInfo.fields[string(key)]
-			if !has {
-				return nil
-			}
-
-			if dataType == jsonparser.String {
-				// jsonparser trims wrapping double quotations. Get those back here.
-				value = data[offset-len(value)-2 : offset]
-			}
-
-			if info.quote && string(value) != string(nullByte) {
-				if len(value) < 2 || (value[0] != '"' || value[len(value)-1] != '"') {
-					// mimicking json.Unmarshal behavior.
-					return fmt.Errorf(
-						"broken quotation. field ( %s ) is tagged with string option"+
-							" but input value is neither 'null'"+
-							" nor a value wrapped with double quotations. value = %s",
-						info.name, string(value),
-					)
-				}
-				value = value[1 : len(value)-1]
-			}
-
-			frv := rv.Field(info.index)
-
-			v := frv
-			if v.Kind() != reflect.Pointer && v.Type().Name() != "" && v.CanAddr() {
-				// adder this value so that we can find method of *T, not only ones for T.
-				v = v.Addr()
-			}
-
-			if info.embedded && frv.Type().Kind() == reflect.Struct {
-				// tagged embedded field.
-				err := unmarshalFieldsJSON(value, v)
-				if err != nil {
-					return err
-				}
-			}
-
-			if decoder, ok := v.Interface().(json.Unmarshaler); ok {
-				err := decoder.UnmarshalJSON(value)
-				if err != nil {
-					return err
-				}
-			} else {
-				internalValue := v.Interface()
-				err := json.Unmarshal(value, internalValue)
-				if err != nil {
-					return err
-				}
-			}
-
-			return nil
-		},
-	)
-}
-
-func GetFieldName(field reflect.StructField) (fieldName string, options string, tagged bool, shouldSkip bool) {
-	tagged = true
-	fieldName, options, shouldSkip = GetJsonTag(field)
-	if len(fieldName) == 0 {
-		tagged = false
-		fieldName = field.Name
-	}
-	return fieldName, options, tagged, shouldSkip
-}
-
-func GetJsonTag(field reflect.StructField) (name string, opt string, shouldSkip bool) {
-	tag := field.Tag.Get("json")
-	if tag == "-" {
-		return "", "", true
-	}
-	name, opt, _ = strings.Cut(tag, ",")
-	return name, opt, false
-}
-
-func OptContain(options string, target string) bool {
-	if len(options) == 0 {
-		return false
-	}
-	var opt string
-	for len(options) != 0 {
-		opt, options, _ = strings.Cut(options, ",")
-		if opt == target {
-			return true
-		}
-	}
-	return false
-}
-
-func shouldQuote(ty reflect.Type, value any) bool {
-	if IsQuotable(ty) {
-		return true
-	}
-	if quotable, ok := value.(interface{ IsQuotable() bool }); ok {
-		return quotable.IsQuotable()
-	}
-	return false
-}
-
-func IsQuotable(ty reflect.Type) bool {
-	// string options work only for
-	// string, floating point, integer, or boolean types.
-	switch ty.Kind() {
-	case reflect.String,
-		reflect.Float32, reflect.Float64,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
-		reflect.Bool:
-		return true
-	}
-
-	return false
-}
-
-// IsEmpty reports true if v should be skipped when tagged with omitempty, false otherwise.
-func IsEmpty(v reflect.Value) bool {
-	switch v.Kind() {
-	// false
-	case reflect.Bool:
-		return !v.Bool()
-		// 0
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return math.Float64bits(v.Float()) == 0
-		// empty array
-	case reflect.Array:
-		return v.Len() == 0
-		// nil interface or pointer
-	case reflect.Interface, reflect.Pointer:
-		return v.IsNil()
-		// empty map, slice, string
-	case reflect.Map, reflect.Slice:
-		return v.IsNil() || v.Len() == 0
-	case reflect.String:
-		return v.Len() == 0
-	}
-	return false
+	return config.Unmarshal(data, v)
 }
