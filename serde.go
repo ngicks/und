@@ -69,7 +69,8 @@ func (f fakingTagField) Tag() reflect.StructTag {
 	return t
 }
 
-// UndefinedableExtension
+// UndefinedableExtension is the extension for jsoniter.API.
+// This forces jsoniter.API to skip undefined Undefinedable[T] when marshalling.
 type UndefinedableExtension struct {
 }
 
@@ -112,17 +113,19 @@ func (extension *UndefinedableExtension) DecorateEncoder(typ reflect2.Type, enco
 }
 
 // MarshalFieldsJSON encodes v into JSON.
-// Some or all fields of v are expected to be Undefinedable[T any].
-// There's no point using this function if v has no Undefinable[T] field,
-// only being more expensive.
+// It skips fields if those are undefined Undefinedable[T].
 //
-// It outputs `null` for a null Undefinable field, skips for an undefined Field.
-//
-// If v is not a struct, it returns a wrapped ErrIncorrectType error.
+// v can be any type.
 func MarshalFieldsJSON(v any) ([]byte, error) {
 	return config.Marshal(v)
 }
 
+// UnmarshalFieldsJSON decodes data into v.
+// v must be pointer type, return error otherwise.
+//
+// Currently this is almost same as json.Unmarshal.
+// Future releases may change behavior of this function.
+// It is safe to unmarshal data through this if v has at least an Undefinedable[T] field.
 func UnmarshalFieldsJSON(data []byte, v any) error {
 	return config.Unmarshal(data, v)
 }
