@@ -1,7 +1,6 @@
 package undefinedablejson
 
 import (
-	"encoding/json"
 	"reflect"
 )
 
@@ -177,7 +176,7 @@ func (o Option[T]) MarshalJSON() ([]byte, error) {
 	if o.IsNone() {
 		return nullByte, nil
 	}
-	return json.Marshal(o.v)
+	return MarshalFieldsJSON(o.v)
 }
 
 func (o *Option[T]) UnmarshalJSON(data []byte) error {
@@ -187,7 +186,7 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 	}
 
 	o.some = true
-	return json.Unmarshal(data, &o.v)
+	return UnmarshalFieldsJSON(data, &o.v)
 }
 
 func (o Option[T]) Map(f func(v T) T) Option[T] {

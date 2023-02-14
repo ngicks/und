@@ -63,3 +63,81 @@ func TestSerde(t *testing.T) {
 		}
 	}
 }
+
+func TestSerde_nested(t *testing.T) {
+	type nested struct {
+		Bar undefinedablejson.Undefinedable[int]
+		Baz int `json:",omitempty"`
+	}
+	type skippableNested struct {
+		Foo     undefinedablejson.Undefinedable[string]
+		Nested  nested
+		Nested2 undefinedablejson.Undefinedable[nested]
+	}
+	type testCase struct {
+		parsed     skippableNested
+		serialized string
+	}
+
+	for _, tc := range []testCase{
+		{
+			parsed: skippableNested{
+				Foo: undefinedablejson.Field("foo"),
+				Nested: nested{
+					Bar: undefinedablejson.Field(0),
+					Baz: 1,
+				},
+				Nested2: undefinedablejson.Field(nested{
+					Bar: undefinedablejson.Field(123),
+					Baz: 333,
+				}),
+			},
+			serialized: `{"Foo":"foo","Nested":{"Bar":0,"Baz":1},"Nested2":{"Bar":123,"Baz":333}}`,
+		},
+		{
+			parsed: skippableNested{
+				Nested: nested{
+					Bar: undefinedablejson.NullField[int](),
+					Baz: 0,
+				},
+				Nested2: undefinedablejson.Field(nested{
+					Bar: undefinedablejson.NullField[int](),
+					Baz: 0,
+				}),
+			},
+			serialized: `{"Nested":{"Bar":null},"Nested2":{"Bar":null}}`,
+		},
+		{
+			parsed: skippableNested{
+				Nested: nested{
+					Bar: undefinedablejson.UndefinedField[int](),
+				},
+				Nested2: undefinedablejson.NullField[nested](),
+			},
+			serialized: `{"Nested":{},"Nested2":null}`,
+		},
+		{
+			parsed:     skippableNested{},
+			serialized: `{"Nested":{}}`,
+		},
+	} {
+		bin, err := undefinedablejson.MarshalFieldsJSON(tc.parsed)
+		if err != nil {
+			t.Errorf("must not error: %+v", err)
+		}
+
+		if diff := cmp.Diff(tc.serialized, string(bin)); diff != "" {
+			t.Errorf("not equal. diff = %s", diff)
+		}
+
+		var s skippableNested
+		err = undefinedablejson.UnmarshalFieldsJSON([]byte(tc.serialized), &s)
+		if err != nil {
+			t.Errorf("must not error: %+v", err)
+		}
+
+		if s != tc.parsed {
+			t.Errorf("not equal: expected = %+v, actual = %+v", tc.parsed, s)
+		}
+	}
+}
