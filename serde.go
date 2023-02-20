@@ -25,48 +25,80 @@ type IsUndefineder interface {
 
 var undefinedableTy = reflect2.TypeOfPtr((*IsUndefineder)(nil)).Elem()
 
-// undefinedableEncoder fakes Encoder so that
-// the undefined Undefinedable fields are considered to be empty.
-type undefinedableEncoder struct {
+// UndefinedableEncoder fakes the Encoder so that
+// undefined Undefinedable[T] fields are skipped.
+type UndefinedableEncoder struct {
 	ty  reflect2.Type
 	org jsoniter.ValEncoder
 }
 
-func (e undefinedableEncoder) IsEmpty(ptr unsafe.Pointer) bool {
+func (e UndefinedableEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	val := e.ty.UnsafeIndirect(ptr)
 	return val.(IsUndefineder).IsUndefined()
 }
 
-func (e undefinedableEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+func (e UndefinedableEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	e.org.Encode(ptr, stream)
 }
 
-// fakingTagField implements reflect2.StructField interface,
+// FakedOmitemptyField implements reflect2.StructField interface,
 // faking the struct tag to pretend it is always tagged with ,omitempty option.
-type fakingTagField struct {
+type FakedOmitemptyField struct {
 	reflect2.StructField
+	fakedTag reflect.StructTag
 }
 
-func (f fakingTagField) Tag() reflect.StructTag {
-	t := f.StructField.Tag()
-	if jsonTag, ok := t.Lookup("json"); !ok {
-		return reflect.StructTag(`json:",omitempty"`)
-	} else {
-		splitted := strings.Split(jsonTag, ",")
+func NewFakedOmitemptyField(f reflect2.StructField) FakedOmitemptyField {
+	return FakedOmitemptyField{
+		StructField: f,
+		fakedTag:    FakeOmitempty(f.Tag()),
+	}
+}
+
+func (f FakedOmitemptyField) Tag() reflect.StructTag {
+	return f.fakedTag
+}
+
+func FakeOmitempty(t reflect.StructTag) reflect.StructTag {
+	tags, err := ParseStructTag(t)
+	if err != nil {
+		panic(err)
+	}
+
+	found := false
+	for i, tag := range tags {
+		if found {
+			break
+		}
+		if tag.Key != "json" {
+			continue
+		}
+
+		found = true
+
+		options := strings.Split(tag.Value, ",")
+		if len(options) > 0 {
+			// skip a first element since it is the field name.
+			options = options[1:]
+		}
+
 		hasOmitempty := false
-		for _, opt := range splitted {
+		for _, opt := range options {
 			if opt == "omitempty" {
 				hasOmitempty = true
-				break
 			}
 		}
 
 		if !hasOmitempty {
-			return reflect.StructTag(`json:"` + strings.Join(splitted, ",") + `,omitempty"`)
+			tags[i].Value += ",omitempty"
 		}
 	}
 
-	return t
+	if !found {
+		tags = append(tags, Tag{Key: "json", Value: ",omitempty"})
+	}
+
+	return FlattenStructTag(tags)
 }
 
 // UndefinedableExtension is the extension for jsoniter.API.
@@ -82,8 +114,8 @@ func (extension *UndefinedableExtension) UpdateStructDescriptor(structDescriptor
 	for _, binding := range structDescriptor.Fields {
 		if binding.Field.Type().Implements(undefinedableTy) {
 			enc := binding.Encoder
-			binding.Field = fakingTagField{binding.Field}
-			binding.Encoder = undefinedableEncoder{ty: binding.Field.Type(), org: enc}
+			binding.Field = NewFakedOmitemptyField(binding.Field)
+			binding.Encoder = UndefinedableEncoder{ty: binding.Field.Type(), org: enc}
 		}
 	}
 }
