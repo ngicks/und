@@ -45,16 +45,6 @@ func main() {
 }
 ```
 
-## Supported tags
-
-- json:"name"
-  - json:"-" skips the field
-  - json:"-," tags the field as `-`.
-- json:",omitempty"
-- json:",string"
-  - It also works on `Nullable[T]`, `Undefinedable[T]` and any type that implements `interface { IsQuotable() bool }`.
-  - If you don't like linters warn about incorrect json:",string" usage, use und:"string" instead.
-
 ## Background
 
 - Some APIs are aware of `undefined | null | T`.
@@ -93,21 +83,14 @@ type Undefinedable[T any] struct {
 }
 ```
 
-If some is false, it is `undefined`. If v.some is false, it is null.
+If some is false, it is `undefined`. If v.some is false, it is `null`.
 
-MarshalFieldsJSON and UnmarshalFieldsJSON are far-less careful version of json.Marshal / json.Unmarshal.
-Those rely on `reflect` package. First they read through information of given type, cache result, and then marshal/unmarhsal given types.
-It skips fields if they are `undefined`. Also it supports \`json:",string"\` (or \`und:"string"\`) struct tag support for `Undefinedable[T]` and `Nullable[T]`.
+MarshalFieldsJSON and UnmarshalFieldsJSON uses [github.com/json-iterator/go](https://github.com/json-iterator/go) under the hood.
+A customized extension is used to skip `undefined` `Undefinedable[T]` fields.
 
 ## TODO
 
-- [ ] add support for `any`
-- [ ] disallow duplicated field names.
-  - [The spec does not recommend it to happen (SHOULD be unique)](https://datatracker.ietf.org/doc/html/rfc8259#section-4).
-  - Marshal in `encoding/json` removes **all** fields if names of fields overlap.
-- [ ] add \`und:"disallowNull"\`, \`und:"disallowUndefined"\`, \`und:"required"\`
-- [ ] add code generator to avoid `reflect` usage.
-  - This has relatively a low priority.
+- [ ] add \`und:"disallowNull"\`, \`und:"disallowUndefined"\`, \`und:"required"\` and add validation maybe?
 - [ ] add more tests.
 - [ ] find other packages doing same thing, implemented more elegantly.
   - Once found, archive this package and support that package.
