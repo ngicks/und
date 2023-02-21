@@ -66,8 +66,8 @@ func TestSerde(t *testing.T) {
 
 func TestSerde_nested(t *testing.T) {
 	type nested struct {
-		Bar undefinedablejson.Undefinedable[int]
-		Baz int `json:",omitempty"`
+		Bar undefinedablejson.Undefinedable[int] `json:"bar"`
+		Baz int                                  `json:",omitempty"`
 	}
 	type skippableNested struct {
 		Foo     undefinedablejson.Undefinedable[string]
@@ -92,7 +92,7 @@ func TestSerde_nested(t *testing.T) {
 					Baz: 333,
 				}),
 			},
-			serialized: `{"Foo":"foo","Nested":{"Bar":0,"Baz":1},"Nested2":{"Bar":123,"Baz":333}}`,
+			serialized: `{"Foo":"foo","Nested":{"bar":0,"Baz":1},"Nested2":{"bar":123,"Baz":333}}`,
 		},
 		{
 			parsed: skippableNested{
@@ -105,7 +105,7 @@ func TestSerde_nested(t *testing.T) {
 					Baz: 0,
 				}),
 			},
-			serialized: `{"Nested":{"Bar":null},"Nested2":{"Bar":null}}`,
+			serialized: `{"Nested":{"bar":null},"Nested2":{"bar":null}}`,
 		},
 		{
 			parsed: skippableNested{
