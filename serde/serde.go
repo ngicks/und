@@ -1,8 +1,8 @@
-package undefinedablejson
+package serde
 
 import (
+	"io"
 	"reflect"
-	"strings"
 	"unsafe"
 
 	jsoniter "github.com/json-iterator/go"
@@ -59,48 +59,6 @@ func (f FakedOmitemptyField) Tag() reflect.StructTag {
 	return f.fakedTag
 }
 
-func FakeOmitempty(t reflect.StructTag) reflect.StructTag {
-	tags, err := ParseStructTag(t)
-	if err != nil {
-		panic(err)
-	}
-
-	found := false
-	for i, tag := range tags {
-		if found {
-			break
-		}
-		if tag.Key != "json" {
-			continue
-		}
-
-		found = true
-
-		options := strings.Split(tag.Value, ",")
-		if len(options) > 0 {
-			// skip a first element since it is the field name.
-			options = options[1:]
-		}
-
-		hasOmitempty := false
-		for _, opt := range options {
-			if opt == "omitempty" {
-				hasOmitempty = true
-			}
-		}
-
-		if !hasOmitempty {
-			tags[i].Value += ",omitempty"
-		}
-	}
-
-	if !found {
-		tags = append(tags, Tag{Key: "json", Value: ",omitempty"})
-	}
-
-	return FlattenStructTag(tags)
-}
-
 // UndefinedableExtension is the extension for jsoniter.API.
 // This forces jsoniter.API to skip undefined Undefinedable[T] when marshalling.
 type UndefinedableExtension struct {
@@ -144,20 +102,28 @@ func (extension *UndefinedableExtension) DecorateEncoder(typ reflect2.Type, enco
 	return encoder
 }
 
-// MarshalFieldsJSON encodes v into JSON.
+// MarshalJSON encodes v into JSON.
 // It skips fields if those are undefined Undefinedable[T].
 //
 // v can be any type.
-func MarshalFieldsJSON(v any) ([]byte, error) {
+func MarshalJSON(v any) ([]byte, error) {
 	return config.Marshal(v)
 }
 
-// UnmarshalFieldsJSON decodes data into v.
+func NewEncoder(w io.Writer) *jsoniter.Encoder {
+	return config.NewEncoder(w)
+}
+
+// UnmarshalJSON decodes data into v.
 // v must be pointer type, return error otherwise.
 //
 // Currently this is almost same as json.Unmarshal.
 // Future releases may change behavior of this function.
 // It is safe to unmarshal data through this if v has at least an Undefinedable[T] field.
-func UnmarshalFieldsJSON(data []byte, v any) error {
+func UnmarshalJSON(data []byte, v any) error {
 	return config.Unmarshal(data, v)
+}
+
+func NewDecoder(r io.Reader) *jsoniter.Decoder {
+	return config.NewDecoder(r)
 }

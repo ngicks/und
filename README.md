@@ -1,6 +1,6 @@
-# undefinedablejson
+# und - option, nullable and undefinedable types for JSON field.
 
-json fields that can be undefined or null or T. And the marshaller for the struct type containing them.
+Types that can be `undefined` or `null` or `T`. And a marshaller implementation for struct types containing them which skips undefined `Undefinable[T]`.
 
 ## Usage
 
@@ -49,12 +49,13 @@ func main() {
 
 - Some APIs are aware of `undefined | null | T`.
   - For example, Elasticsearch's update API can use [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document) Setting `null` for fields overwrites that field to `null`.
-- AFAIK most of programming languages do not natively have 2 types to express `being empty`. That's the JavaScript's good or odd point.
+- AFAIK most of programming languages do not natively have 2 types to express `being empty`.
   - Namely `undefined` and `null`
+  - That's the JavaScript's good or odd point.
 - Go also does not have 2 types to state `being empty`.
-  - Go uses `*T` for `being empty`. `nil` is empty of course.
+  - User code usually uses `*T` for `being empty`. `nil` is empty of course.
 - If you need to determine, what field and whether you should skip or set `null` to, at runtime, you need an additional data structure for that.
-  - As far as I observed, it is `map[string]any`.
+  - As far as I observed, user codes can use `map[string]any`.
 
 ## How is it implemented
 

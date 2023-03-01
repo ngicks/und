@@ -1,4 +1,4 @@
-module github.com/ngicks/undefinedablejson
+module github.com/ngicks/und
 
 go 1.19
 

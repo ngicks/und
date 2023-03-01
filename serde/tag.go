@@ -1,4 +1,4 @@
-package undefinedablejson
+package serde
 
 import (
 	"errors"
@@ -79,5 +79,52 @@ func FlattenStructTag(tags []Tag) reflect.StructTag {
 		buf.Write([]byte(tag.Flatten()))
 		buf.WriteByte(' ')
 	}
-	return reflect.StructTag(buf.String())
+
+	out := buf.String()
+	if len(out) > 0 {
+		out = out[:len(out)-1]
+	}
+	return reflect.StructTag(out)
+}
+
+func FakeOmitempty(t reflect.StructTag) reflect.StructTag {
+	tags, err := ParseStructTag(t)
+	if err != nil {
+		panic(err)
+	}
+
+	found := false
+	for i, tag := range tags {
+		if found {
+			break
+		}
+		if tag.Key != "json" {
+			continue
+		}
+
+		found = true
+
+		options := strings.Split(tag.Value, ",")
+		if len(options) > 0 {
+			// skip a first element since it is the field name.
+			options = options[1:]
+		}
+
+		hasOmitempty := false
+		for _, opt := range options {
+			if opt == "omitempty" {
+				hasOmitempty = true
+			}
+		}
+
+		if !hasOmitempty {
+			tags[i].Value += ",omitempty"
+		}
+	}
+
+	if !found {
+		tags = append(tags, Tag{Key: "json", Value: ",omitempty"})
+	}
+
+	return FlattenStructTag(tags)
 }
