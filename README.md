@@ -5,43 +5,52 @@ Types that can be `undefined` or `null` or `T`. And a marshaller implementation 
 ## Usage
 
 ```go
+// or run this by calling go run ./example/main.go
+package main
+
+import (
+	"fmt"
+
+	"github.com/ngicks/und/nullable"
+	"github.com/ngicks/und/serde"
+	"github.com/ngicks/und/undefinedable"
+)
+
 // define struct with UndefinedableField[T]
 type Emm string
 
 type Embedded struct {
 	Foo string
-	Bar undefinedablejson.Nullable[string]      `json:"bar"`
-	Baz undefinedablejson.Undefinedable[string] `json:"baz"`
+	Bar nullable.Nullable[string]           `json:"bar"`
+	Baz undefinedable.Undefinedable[string] `json:"baz"`
 }
 
 type sample struct {
 	Emm // embedded non struct.
 	Embedded
 	Corge  string
-	Grault undefinedablejson.Nullable[string]
-	Garply undefinedablejson.Undefinedable[string]
+	Grault nullable.Nullable[string]
+	Garply undefinedable.Undefinedable[string]
 }
 
 func main() {
-  v := sample{
-    Emm: Emm("emm"),
-    Embedded: Embedded{
-      Foo: "aaa",
-      Bar: undefinedablejson.Null[string](),
-      Baz: undefinedablejson.UndefinedField[string](),
-    },
-    Corge:  "corge",
-    Grault: undefinedablejson.NonNull("grault"),
-    Garply: undefinedablejson.UndefinedField[string](),
-  }
+	v := sample{
+		Emm: Emm("emm"),
+		Embedded: Embedded{
+			Foo: "aaa",
+			Bar: nullable.Null[string](),
+			Baz: undefinedable.Undefined[string](),
+		},
+		Corge:  "corge",
+		Grault: nullable.NonNull("grault"),
+		Garply: undefinedable.Undefined[string](),
+	}
 
-  // Marshal with MarshalFieldsJSON,
-  // Unmarshal with UnmarshalFieldsJSON.
-  bin, _ := undefinedablejson.MarshalFieldsJSON(v)
-
-  // string(bin) is
-  // {"Emm":"emm","Foo":"aaa","bar":null,"Corge":"corge","Grault":"grault"}
-  // See it skips undefined Undefinedable[T]
+	bin, _ := serde.MarshalJSON(v)
+	fmt.Println(string(bin))
+	// This prints
+	// {"Emm":"emm","Foo":"aaa","bar":null,"Corge":"corge","Grault":"grault"}
+	// See Baz and Garply fields are skipped.
 }
 ```
 
@@ -57,41 +66,17 @@ func main() {
 - If you need to determine, what field and whether you should skip or set `null` to, at runtime, you need an additional data structure for that.
   - As far as I observed, user codes can use `map[string]any`.
 
-## How is it implemented
+## How it is implemented
 
-Above 1.18, Go has generics.
+With help of generics which is added in Go 1.18, we can define `Null[T]`, `Option[T]` or whatever.
 
-With help of type parameters, the Nullable is simply
+`Undefinedable[T]` simply is `Option[Nullable[T]]`.
 
-```go
-type Option[T any] struct {
-	some bool
-	v    T
-}
+Now we only need to skip undefined fields when marshalling struct types.
 
-type Nullable[T any] struct {
-	Option[T]
-}
-```
+As you already know, json has `,omitempty` option. However unfortunately, [it won't skip struct type fields](https://cs.opensource.google/go/go/+/refs/tags/go1.20.0:src/encoding/json/encode.go;drc=d5de62df152baf4de6e9fe81933319b86fd95ae4;l=339).
 
-If some is false, it is null.
+While std does not allow us to determine emptiness of fields by their value, [github.com/json-iterator/go](https://github.com/json-iterator/go), an excellent json serializer/deserializer library that is almost 100% compatible with std interface, exposes IsEmpty function.
+It also allow us to fake struct tags set to fields.
 
-The Undefinedable is `Option[Nullable[T]]`.
-
-```go
-type Undefinedable[T any] struct {
-	Option[Nullable[T]]
-}
-```
-
-If some is false, it is `undefined`. If v.some is false, it is `null`.
-
-MarshalFieldsJSON and UnmarshalFieldsJSON uses [github.com/json-iterator/go](https://github.com/json-iterator/go) under the hood.
-A customized extension is used to skip `undefined` `Undefinedable[T]` fields.
-
-## TODO
-
-- [ ] add \`und:"disallowNull"\`, \`und:"disallowUndefined"\`, \`und:"required"\` and add validation maybe?
-- [ ] add more tests.
-- [ ] find other packages doing same thing, implemented more elegantly.
-  - Once found, archive this package and support that package.
+`serde.MarshalJSON` uses `UndefinedableExtension` to swap IsEmpty to IsUndefined, and fake struct tag so that those fields look like always tagged with `,omitmepty`.

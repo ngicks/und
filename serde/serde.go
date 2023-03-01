@@ -43,6 +43,8 @@ func (e UndefinedableEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream
 
 // FakedOmitemptyField implements reflect2.StructField interface,
 // faking the struct tag to pretend it is always tagged with ,omitempty option.
+//
+// The Zero value is not ready for use. Make it with NewFakedOmitemptyField.
 type FakedOmitemptyField struct {
 	reflect2.StructField
 	fakedTag reflect.StructTag
@@ -60,7 +62,7 @@ func (f FakedOmitemptyField) Tag() reflect.StructTag {
 }
 
 // UndefinedableExtension is the extension for jsoniter.API.
-// This forces jsoniter.API to skip undefined Undefinedable[T] when marshalling.
+// This forces jsoniter.API to skip undefined Undefinedable[T] struct fields when marshalling.
 type UndefinedableExtension struct {
 }
 
