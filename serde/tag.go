@@ -93,16 +93,13 @@ func FakeOmitempty(t reflect.StructTag) reflect.StructTag {
 		panic(err)
 	}
 
-	found := false
+	hasTag := false
 	for i, tag := range tags {
-		if found {
-			break
-		}
 		if tag.Key != "json" {
 			continue
 		}
 
-		found = true
+		hasTag = true
 
 		options := strings.Split(tag.Value, ",")
 		if len(options) > 0 {
@@ -114,15 +111,17 @@ func FakeOmitempty(t reflect.StructTag) reflect.StructTag {
 		for _, opt := range options {
 			if opt == "omitempty" {
 				hasOmitempty = true
+				break
 			}
 		}
 
 		if !hasOmitempty {
 			tags[i].Value += ",omitempty"
 		}
+		break
 	}
 
-	if !found {
+	if !hasTag {
 		tags = append(tags, Tag{Key: "json", Value: ",omitempty"})
 	}
 
