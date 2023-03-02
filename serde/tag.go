@@ -103,24 +103,25 @@ func FakeOmitempty(t reflect.StructTag) reflect.StructTag {
 	}
 
 	hasTag := false
-	for i, tag := range tags {
-		if tag.Key != "json" {
+	for i := 0; i < len(tags); i++ {
+		if tags[i].Key != "json" {
 			continue
 		}
 
 		hasTag = true
 
-		options := strings.Split(tag.Value, ",")
-		if len(options) > 0 {
-			// skip a first element since it is the field name.
-			options = options[1:]
-		}
-
 		hasOmitempty := false
-		for _, opt := range options {
-			if opt == "omitempty" {
-				hasOmitempty = true
-				break
+
+		// skip first opt since it is field name.
+		_, rest, found := strings.Cut(tags[i].Value, ",")
+		if found {
+			var opt string
+			for len(rest) > 0 {
+				opt, rest, _ = strings.Cut(rest, ",")
+				if opt == "omitempty" {
+					hasOmitempty = true
+					break
+				}
 			}
 		}
 
