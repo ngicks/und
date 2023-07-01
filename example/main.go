@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/ngicks/und/jsonfield"
 	"github.com/ngicks/und/nullable"
 	"github.com/ngicks/und/serde"
-	"github.com/ngicks/und/undefinedable"
 )
 
 // define struct with UndefinedableField[T]
@@ -13,8 +13,8 @@ type Emm string
 
 type Embedded struct {
 	Foo string
-	Bar nullable.Nullable[string]           `json:"bar"`
-	Baz undefinedable.Undefinedable[string] `json:"baz"`
+	Bar nullable.Nullable[string]   `json:"bar"`
+	Baz jsonfield.JsonField[string] `json:"baz"`
 }
 
 type sample struct {
@@ -22,7 +22,7 @@ type sample struct {
 	Embedded
 	Corge  string
 	Grault nullable.Nullable[string]
-	Garply undefinedable.Undefinedable[string]
+	Garply jsonfield.JsonField[string]
 }
 
 func main() {
@@ -31,11 +31,11 @@ func main() {
 		Embedded: Embedded{
 			Foo: "aaa",
 			Bar: nullable.Null[string](),
-			Baz: undefinedable.Undefined[string](),
+			Baz: jsonfield.Undefined[string](),
 		},
 		Corge:  "corge",
 		Grault: nullable.NonNull("grault"),
-		Garply: undefinedable.Undefined[string](),
+		Garply: jsonfield.Undefined[string](),
 	}
 
 	bin, _ := serde.MarshalJSON(v)

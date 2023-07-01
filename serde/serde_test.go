@@ -6,14 +6,25 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/ngicks/und/serde"
-	und "github.com/ngicks/und/undefinedable"
 )
+
+type undefinedableInt struct {
+	V int
+}
+
+func (u undefinedableInt) IsUndefined() bool {
+	return u.V == 0
+}
+
+func und(v int) undefinedableInt {
+	return undefinedableInt{V: v}
+}
 
 type skippable struct {
 	Foo string
-	Bar und.Undefinedable[string]
-	Baz und.Undefinedable[string] `json:",omitempty"`
-	Qux und.Undefinedable[string] `json:"qux,omitempty"`
+	Bar undefinedableInt
+	Baz undefinedableInt `json:",omitempty"`
+	Qux undefinedableInt `json:"qux,omitempty"`
 }
 
 func TestSerde(t *testing.T) {
@@ -26,19 +37,11 @@ func TestSerde(t *testing.T) {
 		{
 			parsed: skippable{
 				Foo: "foo",
-				Bar: und.Defined("bar"),
-				Baz: und.Defined("baz"),
-				Qux: und.Defined("qux"),
+				Bar: und(1),
+				Baz: und(2),
+				Qux: und(3),
 			},
-			serialized: `{"Foo":"foo","Bar":"bar","Baz":"baz","qux":"qux"}`,
-		},
-		{
-			parsed: skippable{
-				Bar: und.Null[string](),
-				Baz: und.Null[string](),
-				Qux: und.Null[string](),
-			},
-			serialized: `{"Foo":"","Bar":null,"Baz":null,"qux":null}`,
+			serialized: `{"Foo":"foo","Bar":{"V":1},"Baz":{"V":2},"qux":{"V":3}}`,
 		},
 		{
 			parsed:     skippable{},
@@ -96,13 +99,12 @@ func TestSerde(t *testing.T) {
 
 func TestSerde_nested(t *testing.T) {
 	type nested struct {
-		Bar und.Undefinedable[int] `json:"bar"`
-		Baz int                    `json:",omitempty"`
+		Bar undefinedableInt `json:"bar"`
+		Baz int              `json:",omitempty"`
 	}
 	type skippableNested struct {
-		Foo     und.Undefinedable[string]
-		Nested  nested
-		Nested2 und.Undefinedable[nested]
+		Foo    undefinedableInt
+		Nested nested
 	}
 	type testCase struct {
 		parsed     skippableNested
@@ -112,42 +114,20 @@ func TestSerde_nested(t *testing.T) {
 	for _, tc := range []testCase{
 		{
 			parsed: skippableNested{
-				Foo: und.Defined("foo"),
+				Foo: und(1),
 				Nested: nested{
-					Bar: und.Defined(0),
+					Bar: und(2),
 					Baz: 1,
 				},
-				Nested2: und.Defined(nested{
-					Bar: und.Defined(123),
-					Baz: 333,
-				}),
 			},
-			serialized: `{"Foo":"foo","Nested":{"bar":0,"Baz":1},"Nested2":{"bar":123,"Baz":333}}`,
+			serialized: `{"Foo":{"V":1},"Nested":{"bar":{"V":2},"Baz":1}}`,
 		},
 		{
 			parsed: skippableNested{
 				Nested: nested{
-					Bar: und.Null[int](),
-					Baz: 0,
+					Bar: und(0),
 				},
-				Nested2: und.Defined(nested{
-					Bar: und.Null[int](),
-					Baz: 0,
-				}),
 			},
-			serialized: `{"Nested":{"bar":null},"Nested2":{"bar":null}}`,
-		},
-		{
-			parsed: skippableNested{
-				Nested: nested{
-					Bar: und.Undefined[int](),
-				},
-				Nested2: und.Null[nested](),
-			},
-			serialized: `{"Nested":{},"Nested2":null}`,
-		},
-		{
-			parsed:     skippableNested{},
 			serialized: `{"Nested":{}}`,
 		},
 	} {
@@ -167,7 +147,7 @@ func TestSerde_nested(t *testing.T) {
 		}
 
 		if s != tc.parsed {
-			t.Errorf("not equal: expected = %+v, actual = %+v", tc.parsed, s)
+			t.Errorf("not equal: expected = %+v, actual = %+v, diff = %s", tc.parsed, s, cmp.Diff(tc.parsed, s))
 		}
 	}
 }

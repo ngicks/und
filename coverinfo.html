@@ -1,0 +1,939 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>elastic: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/ngicks/und/elastic/elastic.go (95.6%)</option>
+				
+				<option value="file1">github.com/ngicks/und/jsonfield/field.go (95.8%)</option>
+				
+				<option value="file2">github.com/ngicks/und/nullable/nullable.go (100.0%)</option>
+				
+				<option value="file3">github.com/ngicks/und/option/opt.go (98.4%)</option>
+				
+				<option value="file4">github.com/ngicks/und/serde/serde.go (100.0%)</option>
+				
+				<option value="file5">github.com/ngicks/und/serde/skipper_ext.go (88.9%)</option>
+				
+				<option value="file6">github.com/ngicks/und/serde/tag.go (93.4%)</option>
+				
+				<option value="file7">github.com/ngicks/und/undefinedable/undefinedable.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package elastic
+
+import (
+        "github.com/ngicks/und/jsonfield"
+        "github.com/ngicks/und/nullable"
+        "github.com/ngicks/und/serde"
+        "github.com/ngicks/und/undefinedable"
+)
+
+var _ serde.IsUndefineder = (*Elastic[any])(nil)
+
+// An overly elastic type where it can be `undefined | (null | T) | (null | T)[]`.
+type Elastic[T any] struct {
+        undefinedable.Undefinedable[[]nullable.Nullable[T]]
+}
+
+func Undefined[T any]() Elastic[T] <span class="cov8" title="1">{
+        return Elastic[T]{}
+}</span>
+
+func Null[T any]() Elastic[T] <span class="cov8" title="1">{
+        return Elastic[T]{
+                Undefinedable: undefinedable.Defined([]nullable.Nullable[T]{nullable.Null[T]()}),
+        }
+}</span>
+
+func Defined[T any](v []nullable.Nullable[T]) Elastic[T] <span class="cov8" title="1">{
+        return Elastic[T]{
+                Undefinedable: undefinedable.Defined(v),
+        }
+}</span>
+
+// Single returns Elastic[T] that contains a single T value.
+func Single[T any](v T) Elastic[T] <span class="cov8" title="1">{
+        return Elastic[T]{
+                Undefinedable: undefinedable.Defined([]nullable.Nullable[T]{nullable.NonNull[T](v)}),
+        }
+}</span>
+
+// Multiple returns Elastic[T] that contains multiple T values.
+func Multiple[T any](v []T) Elastic[T] <span class="cov8" title="1">{
+        values := make([]nullable.Nullable[T], len(v))
+        for i, vv := range v </span><span class="cov8" title="1">{
+                values[i] = nullable.NonNull(vv)
+        }</span>
+
+        <span class="cov8" title="1">return Elastic[T]{
+                Undefinedable: undefinedable.Defined(values),
+        }</span>
+}
+
+func (e Elastic[T]) Equal(other Elastic[T]) bool <span class="cov8" title="1">{
+        if e.IsUndefined() || other.IsUndefined() </span><span class="cov8" title="1">{
+                return e.IsUndefined() == other.IsUndefined()
+        }</span>
+        <span class="cov8" title="1">if len(e.Value()) != len(other.Value()) </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">v1, v2 := e.Value(), other.Value()
+        for idx := range v1 </span><span class="cov8" title="1">{
+                if !v1[idx].Equal(v2[idx]) </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+        }
+        <span class="cov8" title="1">return true</span>
+}
+
+func (e *Elastic[T]) IsSingle() bool <span class="cov8" title="1">{
+        if e.IsUndefined() </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return len(e.Value()) == 1</span>
+}
+
+func (e *Elastic[T]) IsMultiple() bool <span class="cov8" title="1">{
+        if e.IsUndefined() </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return len(e.Value()) &gt; 1</span>
+}
+
+// IsNull returns true when e is a single null value,
+// returns false otherwise.
+func (e *Elastic[T]) IsNull() bool <span class="cov8" title="1">{
+        if e.IsSingle() &amp;&amp; e.Value()[0].IsNull() </span><span class="cov8" title="1">{
+                return true
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// IsNullish returns true when it is considered empty,
+// namely `undefined | null | null[]` or empty `T[]`.
+// It returns false otherwise.
+func (e *Elastic[T]) IsNullish() bool <span class="cov8" title="1">{
+        for _, v := range e.Value() </span><span class="cov8" title="1">{
+                if v.IsNonNull() </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+        }
+        <span class="cov8" title="1">return true</span>
+}
+
+// ValueSingle returns a first value of e.
+// If e is nullish, namely `undefined | null | null[]` or empty `T[]`,
+// it returns zero value of T.
+func (e Elastic[T]) ValueSingle() T <span class="cov8" title="1">{
+        if len(e.Value()) &gt; 0 </span><span class="cov8" title="1">{
+                return e.Value()[0].Value()
+        }</span>
+        <span class="cov8" title="1">var zero T
+        return zero</span>
+}
+
+// PlainSingle returns a first value of e as *T,
+// the plain conventional Go representation of an optional value.
+// If e is undefined or has no value, then it returns nil.
+func (e Elastic[T]) PlainSingle() *T <span class="cov8" title="1">{
+        if len(e.Value()) &gt; 0 </span><span class="cov8" title="1">{
+                return e.Value()[0].Plain()
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// ValueMultiple returns []T, replacing null value with zero value of T.
+func (e Elastic[T]) ValueMultiple() []T <span class="cov8" title="1">{
+        out := make([]T, len(e.Value()))
+        for i, v := range e.Value() </span><span class="cov8" title="1">{
+                out[i] = v.Value()
+        }</span>
+        <span class="cov8" title="1">return out</span>
+}
+
+// PlainMultiple returns slice of []*T.
+// It returns always a non-nil even if e is undefined.
+func (e Elastic[T]) PlainMultiple() []*T <span class="cov8" title="1">{
+        out := make([]*T, len(e.Value()))
+        for i, v := range e.Value() </span><span class="cov8" title="1">{
+                out[i] = v.Plain()
+        }</span>
+        <span class="cov8" title="1">return out</span>
+}
+
+// First returns the first value as `undefined | null | T` type.
+func (e Elastic[T]) First() jsonfield.JsonField[T] <span class="cov8" title="1">{
+        if e.IsUndefined() || len(e.Value()) == 0 </span><span class="cov8" title="1">{
+                return jsonfield.Undefined[T]()
+        }</span>
+        <span class="cov8" title="1">if e.Value()[0].IsNull() </span><span class="cov8" title="1">{
+                return jsonfield.Null[T]()
+        }</span> else<span class="cov8" title="1"> {
+                return jsonfield.Defined(e.Value()[0].Value())
+        }</span>
+}
+
+// MarshalJSON implements json.Marshaler.
+//
+// MarshalJSON encodes f into a json format.
+// It always marshalls defined to be []T, undefined to be null.
+func (f Elastic[T]) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
+        // undefined should be skipped by serde.MarshalJSON.
+        return serde.MarshalJSON(f.Value())
+}</span>
+
+// UnmarshalJSON implements json.Unmarshaler.
+//
+// UnmarshalJSON accepts null, T and (null | T)[].
+func (b *Elastic[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
+        if string(data) == "null" </span><span class="cov8" title="1">{
+                *b = Null[T]()
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">var storedErr error
+        if data[0] == '[' </span><span class="cov8" title="1">{
+                err := b.Undefinedable.UnmarshalJSON(data)
+                if err == nil </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                // in case of T = []U.
+                <span class="cov8" title="1">storedErr = err</span>
+        }
+        <span class="cov8" title="1">var single T
+        err := serde.UnmarshalJSON(data, &amp;single)
+        if err != nil </span><span class="cov0" title="0">{
+                if storedErr != nil </span><span class="cov0" title="0">{
+                        return storedErr
+                }</span> else<span class="cov0" title="0"> {
+                        return err
+                }</span>
+        }
+        <span class="cov8" title="1">*b = Single[T](single)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package jsonfield
+
+import (
+        "github.com/ngicks/und/nullable"
+        "github.com/ngicks/und/undefinedable"
+)
+
+// A default-ish type for fields of JSON object.
+// It can be `undefined | null | T`
+type JsonField[T any] struct {
+        undefinedable.Undefinedable[nullable.Nullable[T]]
+}
+
+func Undefined[T any]() JsonField[T] <span class="cov8" title="1">{
+        return JsonField[T]{}
+}</span>
+
+func Null[T any]() JsonField[T] <span class="cov8" title="1">{
+        return JsonField[T]{
+                Undefinedable: undefinedable.Defined(nullable.Null[T]()),
+        }
+}</span>
+
+func Defined[T any](v T) JsonField[T] <span class="cov8" title="1">{
+        return JsonField[T]{
+                Undefinedable: undefinedable.Defined(nullable.NonNull[T](v)),
+        }
+}</span>
+
+func (u JsonField[T]) IsNull() bool <span class="cov8" title="1">{
+        if u.IsUndefined() </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return u.Undefinedable.Value().IsNull()</span>
+}
+
+func (u JsonField[T]) IsNonNull() bool <span class="cov8" title="1">{
+        if u.IsUndefined() </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return u.Undefinedable.Value().IsNonNull()</span>
+}
+
+// Value returns value as T.
+// If f is undefined or null, it returns zero value of T.
+func (f JsonField[T]) Value() T <span class="cov8" title="1">{
+        return f.Undefinedable.Value().Value()
+}</span>
+
+// Plain returns value as **T, the conventional representation of optional value.
+// nil means undefined. *nil is null.
+func (f JsonField[T]) Plain() **T <span class="cov8" title="1">{
+        if f.IsUndefined() </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">v := f.Undefinedable.Value().Plain()
+        return &amp;v</span>
+}
+
+func (f JsonField[T]) Equal(other JsonField[T]) bool <span class="cov8" title="1">{
+        if f.IsUndefined() || other.IsUndefined() </span><span class="cov8" title="1">{
+                return f.IsUndefined() == other.IsUndefined()
+        }</span>
+
+        <span class="cov8" title="1">return f.Undefinedable.Value().Equal(other.Undefinedable.Value())</span>
+}
+
+func (f JsonField[T]) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
+        return f.Undefinedable.Value().MarshalJSON()
+}</span>
+
+func (f *JsonField[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
+        // json.Unmarshal would not call this if input json does not have the corresponding field.
+        // f is a defined field at the moment this line is reached.
+        err := f.Undefinedable.UnmarshalJSON(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">if string(data) == "null" </span><span class="cov8" title="1">{
+                // In case input data == "null", at this line f is undefined state.
+                // revert that change.
+                f.Undefinedable = undefinedable.Defined[nullable.Nullable[T]](f.Undefinedable.Value())
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package nullable
+
+import "github.com/ngicks/und/option"
+
+// A type represents `null | T`.
+type Nullable[T any] struct {
+        option.Option[T]
+}
+
+func Null[T any]() Nullable[T] <span class="cov8" title="1">{
+        return Nullable[T]{}
+}</span>
+
+func NonNull[T any](v T) Nullable[T] <span class="cov8" title="1">{
+        return Nullable[T]{
+                Option: option.Some(v),
+        }
+}</span>
+
+func (n Nullable[T]) Equal(other Nullable[T]) bool <span class="cov8" title="1">{
+        return n.Option.Equal(other.Option)
+}</span>
+
+func (n Nullable[T]) IsNull() bool <span class="cov8" title="1">{
+        return !n.IsNonNull()
+}</span>
+
+func (n Nullable[T]) IsNonNull() bool <span class="cov8" title="1">{
+        return n.IsSome()
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package option
+
+import (
+        "reflect"
+
+        "github.com/ngicks/und/serde"
+)
+
+type Equality[T any] interface {
+        Equal(T) bool
+}
+
+// Option represents an optional value.
+type Option[T any] struct {
+        some bool
+        v    T
+}
+
+func Some[T any](v T) Option[T] <span class="cov8" title="1">{
+        return Option[T]{
+                some: true,
+                v:    v,
+        }
+}</span>
+
+func None[T any]() Option[T] <span class="cov8" title="1">{
+        return Option[T]{}
+}</span>
+
+func (o Option[T]) IsSome() bool <span class="cov8" title="1">{
+        return o.some
+}</span>
+
+func (o Option[T]) IsNone() bool <span class="cov8" title="1">{
+        return !o.IsSome()
+}</span>
+
+// Value returns its internal as T.
+// T would be zero value if o is None.
+func (o Option[T]) Value() T <span class="cov8" title="1">{
+        return o.v
+}</span>
+
+// Plain transforms o to *T, the plain conventional Go representation of an optional value.
+// The value is copied by assignment before returned from Plain.
+func (o Option[T]) Plain() *T <span class="cov8" title="1">{
+        if o.IsNone() </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">t := o.v
+        return &amp;t</span>
+}
+
+// Equal implements Equality[Option[T]].
+//
+// Equal tests if both o and other are Some or both are None.
+// If both have value, it tests equality of their values.
+//
+// Option is hashable if T is hashable, so is the comparable.
+// Equal only exists for cases where T needs a special Equal method (e.g. time.Time.)
+//
+// To test value equality correctly,
+// T must implement Equality[T]
+// or must be any of comparable, slice of comparable type or map of comparable value type.
+// Other then Equal always returns false.
+//
+// Equal first checks if T implements Equality[T], then also for *T.
+// If it does not, then Equal compares values through the `reflect` package.
+//
+// Be cautious that the comparison of comparable types may still panic at runtime.
+// See doc comments for reflect.Type#Comparable or other related documents.
+func (o Option[T]) Equal(other Option[T]) bool <span class="cov8" title="1">{
+        if !o.some || !other.some </span><span class="cov8" title="1">{
+                return o.some == other.some
+        }</span>
+
+        <span class="cov8" title="1">return equal[T](o.v, other.v)</span>
+}
+
+func equal[T any](t, u T) bool <span class="cov8" title="1">{
+        // Try type assertion first.
+        // The implemented interface has the precedence.
+        //
+        // Uses of reflect.ValueOf incur overhead of escaping values into the heap (at least currently).
+        // Of course converting the value into any (interface{}) might also cause the overhead.
+        // However considering the fact that it is used anywhere,
+        // the chance of the compiler optimization is higher.
+
+        // Check for T. Below *T is also checked but in case T is already a pointer type, when T = *U, *(*U) might not implement Equality.
+        eq, ok := any(t).(Equality[T])
+        if ok </span><span class="cov8" title="1">{
+                return eq.Equal(u)
+        }</span>
+        // check for *T so that we can find method implemented for *T not only ones for T.
+        <span class="cov8" title="1">eq, ok = any(&amp;t).(Equality[T])
+        if ok </span><span class="cov8" title="1">{
+                return eq.Equal(u)
+        }</span>
+
+        <span class="cov8" title="1">rt, ru := reflect.ValueOf(t), reflect.ValueOf(u)
+
+        k := rt.Type().Kind()
+        switch k </span>{
+        case reflect.Slice, reflect.Map:<span class="cov8" title="1">
+                if !rt.Type().Elem().Comparable() </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+                <span class="cov8" title="1">pt, pu := rt.UnsafePointer(), ru.UnsafePointer()
+                if pt == pu </span><span class="cov8" title="1">{
+                        // might be both are nil.
+                        return true
+                }</span>
+                <span class="cov8" title="1">if rt.Len() != ru.Len() </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+        }
+
+        <span class="cov8" title="1">switch k </span>{
+        case reflect.Slice:<span class="cov8" title="1">
+                for i := 0; i &lt; rt.Len(); i++ </span><span class="cov8" title="1">{
+                        rti, rui := rt.Index(i), ru.Index(i)
+                        if rti.Interface() != rui.Interface() </span><span class="cov8" title="1">{
+                                return false
+                        }</span>
+                }
+                <span class="cov8" title="1">return true</span>
+
+        case reflect.Map:<span class="cov8" title="1">
+                iter := rt.MapRange()
+                for iter.Next() </span><span class="cov8" title="1">{
+                        key := iter.Key()
+                        rti, rui := rt.MapIndex(key), ru.MapIndex(key)
+                        var zeroValue reflect.Value
+                        if rui == zeroValue </span><span class="cov8" title="1">{
+                                // The key does not exist in ru.
+                                return false
+                        }</span>
+                        <span class="cov8" title="1">if rti.Interface() != rui.Interface() </span><span class="cov8" title="1">{
+                                return false
+                        }</span>
+                }
+                <span class="cov8" title="1">return true</span>
+        }
+
+        <span class="cov8" title="1">if !rt.Type().Comparable() </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">return rt.Interface() == ru.Interface()</span>
+}
+
+const nullStr = `null`
+
+var nullByte = []byte(nullStr)
+
+func (o Option[T]) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
+        if !o.some </span><span class="cov8" title="1">{
+                // same as bytes.Clone.
+                return append([]byte{}, nullByte...), nil
+        }</span>
+        <span class="cov8" title="1">return serde.MarshalJSON(o.v)</span>
+}
+
+func (o *Option[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
+        if string(data) == nullStr </span><span class="cov8" title="1">{
+                o.some = false
+                var zero T
+                o.v = zero
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">err := serde.UnmarshalJSON(data, &amp;o.v)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">o.some = true
+        return nil</span>
+}
+
+func (o Option[T]) Map(f func(v T) T) Option[T] <span class="cov8" title="1">{
+        if o.some </span><span class="cov8" title="1">{
+                return Option[T]{
+                        some: true,
+                        v:    f(o.v),
+                }
+        }</span>
+        <span class="cov8" title="1">return Option[T]{}</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package serde
+
+import (
+        "io"
+
+        jsoniter "github.com/json-iterator/go"
+)
+
+var config = jsoniter.Config{
+        EscapeHTML:             true,
+        SortMapKeys:            true,
+        ValidateJsonRawMessage: true,
+}.Froze()
+
+func init() <span class="cov8" title="1">{
+        config.RegisterExtension(&amp;UndefinedSkipperExtension{})
+}</span>
+
+// MarshalJSON encodes v into JSON.
+// It skips fields if those are undefined Undefinedable[T].
+//
+// v can be any type.
+func MarshalJSON(v any) ([]byte, error) <span class="cov8" title="1">{
+        return config.Marshal(v)
+}</span>
+
+func NewEncoder(w io.Writer) *jsoniter.Encoder <span class="cov8" title="1">{
+        return config.NewEncoder(w)
+}</span>
+
+// UnmarshalJSON decodes data into v.
+// v must be pointer type, return error otherwise.
+//
+// Currently this is almost same as json.Unmarshal.
+// Future releases may change behavior of this function.
+// It is safe to unmarshal data through this if v has at least an Undefinedable[T] field.
+func UnmarshalJSON(data []byte, v any) error <span class="cov8" title="1">{
+        return config.Unmarshal(data, v)
+}</span>
+
+func NewDecoder(r io.Reader) *jsoniter.Decoder <span class="cov8" title="1">{
+        return config.NewDecoder(r)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package serde
+
+import (
+        "reflect"
+        "unsafe"
+
+        jsoniter "github.com/json-iterator/go"
+        "github.com/modern-go/reflect2"
+)
+
+type IsUndefineder interface {
+        IsUndefined() bool
+}
+
+var undefinedableTy = reflect2.TypeOfPtr((*IsUndefineder)(nil)).Elem()
+
+// UndefinedSkipperExtension is the extension for jsoniter.API.
+// When marshaling, this extension forces jsoniter.API to skip undefined struct fields.
+// A field is considered undefined if its type implements interface{ IsUndefined() bool }
+// and if it returns true.
+type UndefinedSkipperExtension struct {
+}
+
+func (extension *UndefinedSkipperExtension) UpdateStructDescriptor(structDescriptor *jsoniter.StructDescriptor) <span class="cov8" title="1">{
+        if structDescriptor.Type.Implements(undefinedableTy) </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">for _, binding := range structDescriptor.Fields </span><span class="cov8" title="1">{
+                if binding.Field.Type().Implements(undefinedableTy) </span><span class="cov8" title="1">{
+                        enc := binding.Encoder
+                        binding.Field = NewFakedOmitemptyField(binding.Field)
+                        binding.Encoder = UndefinedableEncoder{ty: binding.Field.Type(), org: enc}
+                }</span>
+        }
+}
+
+func (extension *UndefinedSkipperExtension) CreateMapKeyDecoder(typ reflect2.Type) jsoniter.ValDecoder <span class="cov0" title="0">{
+        return nil
+}</span>
+
+func (extension *UndefinedSkipperExtension) CreateMapKeyEncoder(typ reflect2.Type) jsoniter.ValEncoder <span class="cov0" title="0">{
+        return nil
+}</span>
+
+func (extension *UndefinedSkipperExtension) CreateDecoder(typ reflect2.Type) jsoniter.ValDecoder <span class="cov8" title="1">{
+        return nil
+}</span>
+
+func (extension *UndefinedSkipperExtension) CreateEncoder(typ reflect2.Type) jsoniter.ValEncoder <span class="cov8" title="1">{
+        return nil
+}</span>
+
+func (extension *UndefinedSkipperExtension) DecorateDecoder(typ reflect2.Type, decoder jsoniter.ValDecoder) jsoniter.ValDecoder <span class="cov8" title="1">{
+        return decoder
+}</span>
+
+func (extension *UndefinedSkipperExtension) DecorateEncoder(typ reflect2.Type, encoder jsoniter.ValEncoder) jsoniter.ValEncoder <span class="cov8" title="1">{
+        return encoder
+}</span>
+
+// UndefinedableEncoder fakes the Encoder so that
+// undefined Undefinedable[T] fields are skipped.
+type UndefinedableEncoder struct {
+        ty  reflect2.Type
+        org jsoniter.ValEncoder
+}
+
+func (e UndefinedableEncoder) IsEmpty(ptr unsafe.Pointer) bool <span class="cov8" title="1">{
+        val := e.ty.UnsafeIndirect(ptr)
+        return val.(IsUndefineder).IsUndefined()
+}</span>
+
+func (e UndefinedableEncoder) Encode(ptr unsafe.Pointer, stream *jsoniter.Stream) <span class="cov8" title="1">{
+        e.org.Encode(ptr, stream)
+}</span>
+
+// FakedOmitemptyField implements reflect2.StructField interface,
+// faking the struct tag to pretend it is always tagged with ,omitempty option.
+//
+// The Zero value is not ready for use. Make it with NewFakedOmitemptyField.
+type FakedOmitemptyField struct {
+        reflect2.StructField
+        fakedTag reflect.StructTag
+}
+
+func NewFakedOmitemptyField(f reflect2.StructField) FakedOmitemptyField <span class="cov8" title="1">{
+        return FakedOmitemptyField{
+                StructField: f,
+                fakedTag:    FakeOmitempty(f.Tag()),
+        }
+}</span>
+
+func (f FakedOmitemptyField) Tag() reflect.StructTag <span class="cov8" title="1">{
+        return f.fakedTag
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package serde
+
+// This package uses modified Go programming language standard library.
+// So keep it credited.
+//
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Modified parts are governed by a license that is described in ../LICENSE.
+
+import (
+        "errors"
+        "fmt"
+        "reflect"
+        "strconv"
+        "strings"
+)
+
+var (
+        ErrUnpairedKey = errors.New("unpaired key")
+)
+
+type Tag struct {
+        Key   string
+        Value string
+}
+
+func (t Tag) Flatten() string <span class="cov8" title="1">{
+        return t.Key + ":" + strconv.Quote(t.Value)
+}</span>
+
+func ParseStructTag(tag reflect.StructTag) ([]Tag, error) <span class="cov8" title="1">{
+        var out []Tag
+
+        for tag != "" </span><span class="cov8" title="1">{
+                // Skip leading space.
+                i := 0
+                for i &lt; len(tag) &amp;&amp; tag[i] == ' ' </span><span class="cov8" title="1">{
+                        i++
+                }</span>
+                <span class="cov8" title="1">tag = tag[i:]
+                if tag == "" </span><span class="cov0" title="0">{
+                        break</span>
+                }
+
+                // Scan to colon. A space, a quote or a control character is a syntax error.
+                // Strictly speaking, control chars include the range [0x7f, 0x9f], not just
+                // [0x00, 0x1f], but in practice, we ignore the multi-byte control characters
+                // as it is simpler to inspect the tag's bytes than the tag's runes.
+                <span class="cov8" title="1">i = 0
+                for i &lt; len(tag) &amp;&amp; tag[i] &gt; ' ' &amp;&amp; tag[i] != ':' &amp;&amp; tag[i] != '"' &amp;&amp; tag[i] != 0x7f </span><span class="cov8" title="1">{
+                        i++
+                }</span>
+                <span class="cov8" title="1">if i == 0 || i+1 &gt;= len(tag) || tag[i] != ':' || tag[i+1] != '"' </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("%w: input has no paired value, rest = %s", ErrUnpairedKey, string(tag))
+                }</span>
+                <span class="cov8" title="1">name := string(tag[:i])
+                tag = tag[i+1:]
+
+                // Scan quoted string to find value.
+                i = 1
+                for i &lt; len(tag) &amp;&amp; tag[i] != '"' </span><span class="cov8" title="1">{
+                        if tag[i] == '\\' </span><span class="cov0" title="0">{
+                                i++
+                        }</span>
+                        <span class="cov8" title="1">i++</span>
+                }
+                <span class="cov8" title="1">if i &gt;= len(tag) </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("%w: name = %s has no paired value, rest = %s", ErrUnpairedKey, name, string(tag))
+                }</span>
+                <span class="cov8" title="1">quotedValue := string(tag[:i+1])
+                tag = tag[i+1:]
+
+                value, err := strconv.Unquote(quotedValue)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+                <span class="cov8" title="1">out = append(out, Tag{Key: name, Value: value})</span>
+        }
+
+        <span class="cov8" title="1">return out, nil</span>
+}
+
+func FlattenStructTag(tags []Tag) reflect.StructTag <span class="cov8" title="1">{
+        var buf strings.Builder
+        for _, tag := range tags </span><span class="cov8" title="1">{
+                buf.Write([]byte(tag.Flatten()))
+                buf.WriteByte(' ')
+        }</span>
+
+        <span class="cov8" title="1">out := buf.String()
+        if len(out) &gt; 0 </span><span class="cov8" title="1">{
+                out = out[:len(out)-1]
+        }</span>
+        <span class="cov8" title="1">return reflect.StructTag(out)</span>
+}
+
+func FakeOmitempty(t reflect.StructTag) reflect.StructTag <span class="cov8" title="1">{
+        tags, err := ParseStructTag(t)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov8" title="1">hasTag := false
+        for i := 0; i &lt; len(tags); i++ </span><span class="cov8" title="1">{
+                if tags[i].Key != "json" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">hasTag = true
+
+                hasOmitempty := false
+
+                // skip first opt since it is field name.
+                _, rest, found := strings.Cut(tags[i].Value, ",")
+                if found </span><span class="cov8" title="1">{
+                        var opt string
+                        for len(rest) &gt; 0 </span><span class="cov8" title="1">{
+                                opt, rest, _ = strings.Cut(rest, ",")
+                                if opt == "omitempty" </span><span class="cov8" title="1">{
+                                        hasOmitempty = true
+                                        break</span>
+                                }
+                        }
+                }
+
+                <span class="cov8" title="1">if !hasOmitempty </span><span class="cov8" title="1">{
+                        tags[i].Value += ",omitempty"
+                }</span>
+                <span class="cov8" title="1">break</span>
+        }
+
+        <span class="cov8" title="1">if !hasTag </span><span class="cov8" title="1">{
+                tags = append(tags, Tag{Key: "json", Value: ",omitempty"})
+        }</span>
+
+        <span class="cov8" title="1">return FlattenStructTag(tags)</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package undefinedable
+
+import (
+        "github.com/ngicks/und/option"
+        "github.com/ngicks/und/serde"
+)
+
+var _ serde.IsUndefineder = (*Undefinedable[any])(nil)
+
+type Undefinedable[T any] struct {
+        option.Option[T]
+}
+
+func Undefined[T any]() Undefinedable[T] <span class="cov8" title="1">{
+        return Undefinedable[T]{}
+}</span>
+
+func Defined[T any](v T) Undefinedable[T] <span class="cov8" title="1">{
+        return Undefinedable[T]{
+                Option: option.Some(v),
+        }
+}</span>
+
+func (u Undefinedable[T]) IsUndefined() bool <span class="cov8" title="1">{
+        return !u.IsDefined()
+}</span>
+
+func (u Undefinedable[T]) IsDefined() bool <span class="cov8" title="1">{
+        return u.IsSome()
+}</span>
+
+func (f Undefinedable[T]) Equal(other Undefinedable[T]) bool <span class="cov8" title="1">{
+        return f.Option.Equal(other.Option)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

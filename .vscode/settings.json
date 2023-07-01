@@ -1,28 +1,16 @@
 {
   "cSpell.words": [
-    "buger",
-    "Corge",
-    "easyjson",
-    "Garply",
-    "Grault",
-    "hashable",
+    "Hashable",
+    "jsonfield",
     "jsoniter",
-    "jsonparser",
-    "jwriter",
-    "mailru",
     "ngicks",
-    "Quux",
+    "omitempty",
     "serde",
-    "splitted",
-    "stretchr",
     "struct",
-    "syncparam",
+    "structs",
+    "testhelper",
     "Undefinedable",
-    "undefinedablejson",
     "Undefineder",
-    "unexported",
-    "Unmarshal",
-    "unmarshaling",
-    "unmarshalled"
+    "unmarshaler"
   ]
 }

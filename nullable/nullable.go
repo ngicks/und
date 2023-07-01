@@ -2,6 +2,7 @@ package nullable
 
 import "github.com/ngicks/und/option"
 
+// A type represents `null | T`.
 type Nullable[T any] struct {
 	option.Option[T]
 }
@@ -12,7 +13,7 @@ func Null[T any]() Nullable[T] {
 
 func NonNull[T any](v T) Nullable[T] {
 	return Nullable[T]{
-		Option: option.SomeOpt(v),
+		Option: option.Some(v),
 	}
 }
 
@@ -25,5 +26,5 @@ func (n Nullable[T]) IsNull() bool {
 }
 
 func (n Nullable[T]) IsNonNull() bool {
-	return n.Option.Some
+	return n.IsSome()
 }

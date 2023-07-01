@@ -1,6 +1,23 @@
 # und - option, nullable and undefinedable types for JSON field.
 
-Types that can be `undefined` or `null` or `T`. And a marshaller implementation for struct types containing them which skips undefined `Undefinable[T]`.
+Types to interoperate with applications that make full use of JSON. And a
+specialized marshaler / unmarshaler for those types which skips `undefined`
+fields in an input struct.
+
+Currently it has 4 types.
+
+- Nullable: `null` or `T`
+- Undefinedable: `undefined` or `T`
+  - A field that can be absent (undefined) but not a null.
+  - Nullable and Undefinedable is 95% identical to each other. The only
+    difference is that Undefinedable implements `IsUndefined` method which is
+    used to determine the field should be skipped or not.
+- JsonField: `null`, `undefined` or `T`
+  - A default-ish type for fields of a JSON object.
+- Elastic: `undefined | (null | T) | (null | T)[]`
+  - An overly elastic type where it can be anything.
+  - This can be used with the Elasticsearch JSON objects.
+  - Or configuration files.
 
 ## Usage
 
@@ -11,9 +28,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/ngicks/und/jsonfield"
 	"github.com/ngicks/und/nullable"
 	"github.com/ngicks/und/serde"
-	"github.com/ngicks/und/undefinedable"
 )
 
 // define struct with UndefinedableField[T]
@@ -21,8 +38,8 @@ type Emm string
 
 type Embedded struct {
 	Foo string
-	Bar nullable.Nullable[string]           `json:"bar"`
-	Baz undefinedable.Undefinedable[string] `json:"baz"`
+	Bar nullable.Nullable[string]   `json:"bar"`
+	Baz jsonfield.JsonField[string] `json:"baz"`
 }
 
 type sample struct {
@@ -30,7 +47,7 @@ type sample struct {
 	Embedded
 	Corge  string
 	Grault nullable.Nullable[string]
-	Garply undefinedable.Undefinedable[string]
+	Garply jsonfield.JsonField[string]
 }
 
 func main() {
@@ -39,11 +56,11 @@ func main() {
 		Embedded: Embedded{
 			Foo: "aaa",
 			Bar: nullable.Null[string](),
-			Baz: undefinedable.Undefined[string](),
+			Baz: jsonfield.Undefined[string](),
 		},
 		Corge:  "corge",
 		Grault: nullable.NonNull("grault"),
-		Garply: undefinedable.Undefined[string](),
+		Garply: jsonfield.Undefined[string](),
 	}
 
 	bin, _ := serde.MarshalJSON(v)
@@ -56,27 +73,50 @@ func main() {
 
 ## Background
 
-- Some APIs are aware of `undefined | null | T`.
-  - For example, Elasticsearch's update API can use [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document) Setting `null` for fields overwrites that field to `null`.
-- AFAIK most of programming languages do not natively have 2 types to express `being empty`.
-  - Namely `undefined` and `null`
-  - That's the JavaScript's good or odd point.
-- Go also does not have 2 types to state `being empty`.
-  - User code usually uses `*T` for `being empty`. `nil` is empty of course.
-- If you need to determine, what field and whether you should skip or set `null` to, at runtime, you need an additional data structure for that.
-  - As far as I observed, user codes can use `map[string]any`.
+- Some applications / APIs uses full potential of JSON.
+  - For example, Elasticsearch's update API uses
+    [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document)
+    Setting `null` for fields overwrites that field to `null`.
+- For Go, the programming language offers no comfortable way to achieve this.
+  - Users can encode any structs into `map[string]any` and then can remove
+    fields if those should be skipped / not updated.
+  - This introduces cluttering to the codebase in some cases.
 
-## How it is implemented
+With help of generics which is
+[introduced in Go 1.18](https://tip.golang.org/doc/go1.18#generics), we can do
+this more effortlessly.
 
-With help of generics which is added in Go 1.18, we can define `Null[T]`, `Option[T]` or whatever.
+## Under the hood.
 
-`Undefinedable[T]` simply is `Option[Nullable[T]]`.
+All those types -- `Nullable[T]`, `Undefinedable[T]`, `JsonField[T]`,
+`Elastic[T]` -- are based on `Option[T]`.
 
-Now we only need to skip undefined fields when marshalling struct types.
+The `Option[T]` is similar to the Rust's `Option<T>` but less methods (because
+the Go has GC runtime and thus does not need to exposes no such concepts like
+ownership to users).
 
-As you already know, json has `,omitempty` option. However unfortunately, [it won't skip struct type fields](https://cs.opensource.google/go/go/+/refs/tags/go1.20.0:src/encoding/json/encode.go;drc=d5de62df152baf4de6e9fe81933319b86fd95ae4;l=339).
+It's just a comparable version of `*T`.
 
-While std does not allow us to determine emptiness of fields by their value, [github.com/json-iterator/go](https://github.com/json-iterator/go), an excellent json serializer/deserializer library that is almost 100% compatible with std interface, exposes IsEmpty function.
-It also allow us to fake struct tags set to fields.
+```go
+type Option[T any] struct {
+	some bool
+	v    T
+}
+```
 
-`serde.MarshalJSON` uses `UndefinedableExtension` to swap IsEmpty to IsUndefined, and fake struct tag so that those fields look like always tagged with `,omitmepty`.
+`Undefinedable[T]` and `Nullable[T]` is just wrapper around `Option`, just
+adding named methods on it.
+
+`JsonField[T]` and `Elastic[T]` combine them to represent 3 or 4 distinct states
+with a single type.
+
+To skip undefined fields when marshaling, All those type can be marshaled
+through `serde` package, which is just an extension of
+`github.com/json-iterator/go` and a config to which the extension is
+pre-applied.
+
+The extension, which is named `UndefinedSkipperExtension`, bypasses the
+emptiness evaluation to `IsUndefined` method implemented on each field type, and
+also fakes struct tags so that `IsUndefined` implementors always considered
+tagged with `,omitempty`. This achieves mimicking the behavior where undefined
+fields are skipped.
