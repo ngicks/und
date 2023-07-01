@@ -104,19 +104,19 @@ type Option[T any] struct {
 }
 ```
 
-`Undefinedable[T]` and `Nullable[T]` is just wrapper around `Option`, just
+`Undefinedable[T]` and `Nullable[T]` is just wrappers around `Option`, just
 adding named methods on it.
 
 `JsonField[T]` and `Elastic[T]` combine them to represent 3 or 4 distinct states
 with a single type.
 
-To skip undefined fields when marshaling, All those type can be marshaled
+To skip undefined fields when marshaling, all those type can be processed
 through `serde` package, which is just an extension of
 `github.com/json-iterator/go` and a config to which the extension is
 pre-applied.
 
-The extension, which is named `UndefinedSkipperExtension`, bypasses the
-emptiness evaluation to `IsUndefined` method implemented on each field type, and
-also fakes struct tags so that `IsUndefined` implementors always considered
+The extension, which is named `UndefinedSkipperExtension`, redirects the
+emptiness evaluation to `IsUndefined` method implemented on each field type. And
+it also fakes struct tags so that `IsUndefined` implementors always considered
 tagged with `,omitempty`. This achieves mimicking the behavior where undefined
 fields are skipped.
