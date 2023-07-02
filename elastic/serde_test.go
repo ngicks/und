@@ -9,30 +9,49 @@ import (
 	"github.com/ngicks/und/nullable"
 )
 
-func TestElasticSerde(t *testing.T) {
-	testhelper.TestSerde[elasticDecodeTy[float64]](
+func TestSerdeError(t *testing.T) {
+	testhelper.TestSerdeError[elastic.Elastic[float64]](
 		t,
-		[]testhelper.SerdeTestSet[elasticDecodeTy[float64]]{
+		[]string{
+			``,
+			`false`,
+			`[true,false]`,
+		},
+	)
+	testhelper.TestSerdeError[elastic.Elastic[elasticSerdeTestTy[float64]]](
+		t,
+		[]string{
+			``,
+			`{"F1":false}`,
+			`{"F1":[true,false]}`,
+		},
+	)
+}
+
+func TestSerde(t *testing.T) {
+	testhelper.TestSerde[elasticSerdeTestTy[float64]](
+		t,
+		[]testhelper.SerdeTestSet[elasticSerdeTestTy[float64]]{
 			{
-				Intern:      elasticDecodeTy[float64]{F1: elastic.Undefined[float64]()},
+				Intern:      elasticSerdeTestTy[float64]{F1: elastic.Undefined[float64]()},
 				EncodedInto: `{}`,
 			},
 			{
-				Intern:      elasticDecodeTy[float64]{F1: elastic.Null[float64]()},
+				Intern:      elasticSerdeTestTy[float64]{F1: elastic.Null[float64]()},
 				Possible:    []string{`{"F1":null}`, `{"F1":[null]}`},
 				EncodedInto: `{"F1":[null]}`,
 			},
 			{
-				Intern:      elasticDecodeTy[float64]{F1: elastic.Single[float64](123)},
+				Intern:      elasticSerdeTestTy[float64]{F1: elastic.Single[float64](123)},
 				Possible:    []string{`{"F1":123}`, `{"F1":[123]}`},
 				EncodedInto: `{"F1":[123]}`,
 			},
 			{
-				Intern:      elasticDecodeTy[float64]{F1: elastic.Multiple[float64]([]float64{123, 456})},
+				Intern:      elasticSerdeTestTy[float64]{F1: elastic.Multiple[float64]([]float64{123, 456})},
 				EncodedInto: `{"F1":[123,456]}`,
 			},
 			{
-				Intern: elasticDecodeTy[float64]{
+				Intern: elasticSerdeTestTy[float64]{
 					F1: elastic.Defined[float64](
 						[]nullable.Nullable[float64]{
 							nullable.NonNull[float64](123),
@@ -43,7 +62,7 @@ func TestElasticSerde(t *testing.T) {
 				EncodedInto: `{"F1":[123,null]}`,
 			},
 			{
-				Intern: elasticDecodeTy[float64]{
+				Intern: elasticSerdeTestTy[float64]{
 					F1: elastic.Defined[float64](
 						[]nullable.Nullable[float64]{
 							nullable.Null[float64](),
@@ -59,29 +78,29 @@ func TestElasticSerde(t *testing.T) {
 	// T is []U
 	testhelper.TestSerde(
 		t,
-		[]testhelper.SerdeTestSet[elasticDecodeTy[[]float64]]{
+		[]testhelper.SerdeTestSet[elasticSerdeTestTy[[]float64]]{
 			{
-				Intern:      elasticDecodeTy[[]float64]{F1: elastic.Undefined[[]float64]()},
+				Intern:      elasticSerdeTestTy[[]float64]{F1: elastic.Undefined[[]float64]()},
 				EncodedInto: `{}`,
 			},
 			{
-				Intern:      elasticDecodeTy[[]float64]{F1: elastic.Null[[]float64]()},
+				Intern:      elasticSerdeTestTy[[]float64]{F1: elastic.Null[[]float64]()},
 				Possible:    []string{`{"F1":null}`, `{"F1":[null]}`},
 				EncodedInto: `{"F1":[null]}`,
 			},
 			{
-				Intern:      elasticDecodeTy[[]float64]{F1: elastic.Single[[]float64]([]float64{123})},
+				Intern:      elasticSerdeTestTy[[]float64]{F1: elastic.Single[[]float64]([]float64{123})},
 				Possible:    []string{`{"F1":[123]}`, `{"F1":[[123]]}`},
 				EncodedInto: `{"F1":[[123]]}`,
 			},
 			{
-				Intern: elasticDecodeTy[[]float64]{
+				Intern: elasticSerdeTestTy[[]float64]{
 					F1: elastic.Multiple[[]float64]([][]float64{{123, 456}, {789}}),
 				},
 				EncodedInto: `{"F1":[[123,456],[789]]}`,
 			},
 			{
-				Intern: elasticDecodeTy[[]float64]{
+				Intern: elasticSerdeTestTy[[]float64]{
 					F1: elastic.Defined[[]float64](
 						[]nullable.Nullable[[]float64]{
 							nullable.NonNull[[]float64]([]float64{123}),
@@ -92,7 +111,7 @@ func TestElasticSerde(t *testing.T) {
 				EncodedInto: `{"F1":[[123],null]}`,
 			},
 			{
-				Intern: elasticDecodeTy[[]float64]{
+				Intern: elasticSerdeTestTy[[]float64]{
 					F1: elastic.Defined[[]float64](
 						[]nullable.Nullable[[]float64]{
 							nullable.Null[[]float64](),
@@ -108,9 +127,9 @@ func TestElasticSerde(t *testing.T) {
 	// types with a custom json.Marshal implementation.
 	testhelper.TestSerde(
 		t,
-		[]testhelper.SerdeTestSet[elasticDecodeTy[time.Time]]{
+		[]testhelper.SerdeTestSet[elasticSerdeTestTy[time.Time]]{
 			{
-				Intern: elasticDecodeTy[time.Time]{
+				Intern: elasticSerdeTestTy[time.Time]{
 					F1: elastic.Defined[time.Time](
 						[]nullable.Nullable[time.Time]{
 							nullable.Null[time.Time](),
@@ -127,22 +146,22 @@ func TestElasticSerde(t *testing.T) {
 	// recursive
 	testhelper.TestSerde(
 		t,
-		[]testhelper.SerdeTestSet[elasticDecodeTy[elasticDecodeTy[string]]]{
+		[]testhelper.SerdeTestSet[elasticSerdeTestTy[elasticSerdeTestTy[string]]]{
 			{
-				Intern:      elasticDecodeTy[elasticDecodeTy[string]]{},
+				Intern:      elasticSerdeTestTy[elasticSerdeTestTy[string]]{},
 				EncodedInto: `{}`,
 			},
 			{
-				Intern:      elasticDecodeTy[elasticDecodeTy[string]]{F1: elastic.Null[elasticDecodeTy[string]]()},
+				Intern:      elasticSerdeTestTy[elasticSerdeTestTy[string]]{F1: elastic.Null[elasticSerdeTestTy[string]]()},
 				Possible:    []string{`{"F1":null}`, `{"F1":[null]}`},
 				EncodedInto: `{"F1":[null]}`,
 			},
 			{
-				Intern: elasticDecodeTy[elasticDecodeTy[string]]{
-					F1: elastic.Defined[elasticDecodeTy[string]](
-						[]nullable.Nullable[elasticDecodeTy[string]]{
-							nullable.NonNull[elasticDecodeTy[string]](
-								elasticDecodeTy[string]{
+				Intern: elasticSerdeTestTy[elasticSerdeTestTy[string]]{
+					F1: elastic.Defined[elasticSerdeTestTy[string]](
+						[]nullable.Nullable[elasticSerdeTestTy[string]]{
+							nullable.NonNull[elasticSerdeTestTy[string]](
+								elasticSerdeTestTy[string]{
 									F1: elastic.Undefined[string](),
 								},
 							),
@@ -153,11 +172,11 @@ func TestElasticSerde(t *testing.T) {
 				EncodedInto: `{"F1":[{}]}`,
 			},
 			{
-				Intern: elasticDecodeTy[elasticDecodeTy[string]]{
-					F1: elastic.Defined[elasticDecodeTy[string]](
-						[]nullable.Nullable[elasticDecodeTy[string]]{
-							nullable.NonNull[elasticDecodeTy[string]](
-								elasticDecodeTy[string]{
+				Intern: elasticSerdeTestTy[elasticSerdeTestTy[string]]{
+					F1: elastic.Defined[elasticSerdeTestTy[string]](
+						[]nullable.Nullable[elasticSerdeTestTy[string]]{
+							nullable.NonNull[elasticSerdeTestTy[string]](
+								elasticSerdeTestTy[string]{
 									F1: elastic.Single[string]("barrr"),
 								},
 							),
@@ -177,10 +196,10 @@ func TestElasticSerde(t *testing.T) {
 }
 
 // special type for this test.
-type elasticDecodeTy[T any] struct {
+type elasticSerdeTestTy[T any] struct {
 	F1 elastic.Elastic[T]
 }
 
-func (t elasticDecodeTy[T]) Equal(u elasticDecodeTy[T]) bool {
+func (t elasticSerdeTestTy[T]) Equal(u elasticSerdeTestTy[T]) bool {
 	return t.F1.Equal(u.F1)
 }

@@ -55,19 +55,19 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/ngicks/und/elastic/elastic.go (95.6%)</option>
+				<option value="file0">github.com/ngicks/und/elastic/elastic.go (100.0%)</option>
 				
-				<option value="file1">github.com/ngicks/und/jsonfield/field.go (95.8%)</option>
+				<option value="file1">github.com/ngicks/und/jsonfield/field.go (100.0%)</option>
 				
 				<option value="file2">github.com/ngicks/und/nullable/nullable.go (100.0%)</option>
 				
-				<option value="file3">github.com/ngicks/und/option/opt.go (98.4%)</option>
+				<option value="file3">github.com/ngicks/und/option/opt.go (100.0%)</option>
 				
 				<option value="file4">github.com/ngicks/und/serde/serde.go (100.0%)</option>
 				
 				<option value="file5">github.com/ngicks/und/serde/skipper_ext.go (88.9%)</option>
 				
-				<option value="file6">github.com/ngicks/und/serde/tag.go (93.4%)</option>
+				<option value="file6">github.com/ngicks/und/serde/tag.go (95.1%)</option>
 				
 				<option value="file7">github.com/ngicks/und/undefinedable/undefinedable.go (100.0%)</option>
 				
@@ -249,6 +249,8 @@ func (f Elastic[T]) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
 // UnmarshalJSON implements json.Unmarshaler.
 //
 // UnmarshalJSON accepts null, T and (null | T)[].
+//
+// Caveats: Do not hold references to any underlying data. UnmarshalJSON might swaps internal value.
 func (b *Elastic[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
         if string(data) == "null" </span><span class="cov8" title="1">{
                 *b = Null[T]()
@@ -256,20 +258,22 @@ func (b *Elastic[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="
         }</span>
 
         <span class="cov8" title="1">var storedErr error
-        if data[0] == '[' </span><span class="cov8" title="1">{
+        if len(data) &gt; 0 &amp;&amp; data[0] == '[' </span><span class="cov8" title="1">{
                 err := b.Undefinedable.UnmarshalJSON(data)
                 if err == nil </span><span class="cov8" title="1">{
                         return nil
                 }</span>
+                // reset to initial state.
+                <span class="cov8" title="1">b.Undefinedable = undefinedable.Undefined[[]nullable.Nullable[T]]()
                 // in case of T = []U.
-                <span class="cov8" title="1">storedErr = err</span>
+                storedErr = err</span>
         }
         <span class="cov8" title="1">var single T
         err := serde.UnmarshalJSON(data, &amp;single)
-        if err != nil </span><span class="cov0" title="0">{
-                if storedErr != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
+                if storedErr != nil </span><span class="cov8" title="1">{
                         return storedErr
-                }</span> else<span class="cov0" title="0"> {
+                }</span> else<span class="cov8" title="1"> {
                         return err
                 }</span>
         }
@@ -353,7 +357,7 @@ func (f *JsonField[T]) UnmarshalJSON(data []byte) error <span class="cov8" title
         // json.Unmarshal would not call this if input json does not have the corresponding field.
         // f is a defined field at the moment this line is reached.
         err := f.Undefinedable.UnmarshalJSON(data)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
         <span class="cov8" title="1">if string(data) == "null" </span><span class="cov8" title="1">{
@@ -569,7 +573,7 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1
         }</span>
 
         <span class="cov8" title="1">err := serde.UnmarshalJSON(data, &amp;o.v)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 return err
         }</span>
         <span class="cov8" title="1">o.some = true
@@ -830,7 +834,7 @@ func FlattenStructTag(tags []Tag) reflect.StructTag <span class="cov8" title="1"
 
 func FakeOmitempty(t reflect.StructTag) reflect.StructTag <span class="cov8" title="1">{
         tags, err := ParseStructTag(t)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 panic(err)</span>
         }
 

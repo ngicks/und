@@ -54,6 +54,16 @@ func TestTag_error(t *testing.T) {
 		if err == nil {
 			t.Fatalf("must return error for incorrectly formatted struct tag. input = %s", tags)
 		}
+
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("must panic")
+				}
+			}()
+
+			_ = serde.FakeOmitempty(tags)
+		}()
 	}
 }
 

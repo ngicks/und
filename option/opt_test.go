@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ngicks/und/internal/testhelper"
 	"github.com/ngicks/und/option"
 	"github.com/stretchr/testify/assert"
 )
@@ -77,4 +78,15 @@ func TestSerde(t *testing.T) {
 	assert.NoError(err)
 	assert.True(opt.IsSome())
 	assert.Equal(int(8993), opt.Value())
+}
+
+func TestSerdeError(t *testing.T) {
+	testhelper.TestSerdeError[option.Option[float64]](
+		t,
+		[]string{
+			``,
+			`false`,
+			`[true,false]`,
+		},
+	)
 }

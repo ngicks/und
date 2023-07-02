@@ -2,11 +2,13 @@
 package testhelper
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/serde"
+	"github.com/stretchr/testify/assert"
 )
 
 // A set of internal, possible input and encode output representations.
@@ -73,4 +75,23 @@ func TestEncode[T any](t *testing.T, intern T, expected string) bool {
 	}
 
 	return true
+}
+
+func TestSerdeError[T any](t *testing.T, inputs []string) bool {
+	assert := assert.New(t)
+
+	var firstError bool
+
+	for _, erroneousInput := range inputs {
+		var v T
+		err := serde.UnmarshalJSON([]byte(erroneousInput), &v)
+		if !assert.Error(err) {
+			firstError = true
+		}
+		if !assert.True(reflect.ValueOf(v).IsZero(), "must be zero but is %+#v", v) {
+			firstError = true
+		}
+	}
+
+	return !firstError
 }

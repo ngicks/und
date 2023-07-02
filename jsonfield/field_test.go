@@ -58,20 +58,39 @@ func TestEqual(t *testing.T) {
 	}
 }
 
-func TestSerde(t *testing.T) {
-	testhelper.TestSerde[jsonfieldDecodeTy[float64]](
+func TestSerdeError(t *testing.T) {
+	testhelper.TestSerdeError[jsonfield.JsonField[float64]](
 		t,
-		[]testhelper.SerdeTestSet[jsonfieldDecodeTy[float64]]{
+		[]string{
+			``,
+			`false`,
+			`[true,false]`,
+		},
+	)
+	testhelper.TestSerdeError[jsonfieldSerdeTestTy[jsonfield.JsonField[float64]]](
+		t,
+		[]string{
+			``,
+			`{"F1":false}`,
+			`{"F1":[true,false]}`,
+		},
+	)
+}
+
+func TestSerde(t *testing.T) {
+	testhelper.TestSerde[jsonfieldSerdeTestTy[float64]](
+		t,
+		[]testhelper.SerdeTestSet[jsonfieldSerdeTestTy[float64]]{
 			{
-				Intern:      jsonfieldDecodeTy[float64]{F1: jsonfield.Undefined[float64]()},
+				Intern:      jsonfieldSerdeTestTy[float64]{F1: jsonfield.Undefined[float64]()},
 				EncodedInto: `{}`,
 			},
 			{
-				Intern:      jsonfieldDecodeTy[float64]{F1: jsonfield.Null[float64]()},
+				Intern:      jsonfieldSerdeTestTy[float64]{F1: jsonfield.Null[float64]()},
 				EncodedInto: `{"F1":null}`,
 			},
 			{
-				Intern:      jsonfieldDecodeTy[float64]{F1: jsonfield.Defined[float64](64905.790)},
+				Intern:      jsonfieldSerdeTestTy[float64]{F1: jsonfield.Defined[float64](64905.790)},
 				EncodedInto: `{"F1":64905.79}`,
 			},
 		},
@@ -80,17 +99,17 @@ func TestSerde(t *testing.T) {
 	// T is []U
 	testhelper.TestSerde(
 		t,
-		[]testhelper.SerdeTestSet[jsonfieldDecodeTy[[]float64]]{
+		[]testhelper.SerdeTestSet[jsonfieldSerdeTestTy[[]float64]]{
 			{
-				Intern:      jsonfieldDecodeTy[[]float64]{F1: jsonfield.Undefined[[]float64]()},
+				Intern:      jsonfieldSerdeTestTy[[]float64]{F1: jsonfield.Undefined[[]float64]()},
 				EncodedInto: `{}`,
 			},
 			{
-				Intern:      jsonfieldDecodeTy[[]float64]{F1: jsonfield.Defined[[]float64]([]float64{123})},
+				Intern:      jsonfieldSerdeTestTy[[]float64]{F1: jsonfield.Defined[[]float64]([]float64{123})},
 				EncodedInto: `{"F1":[123]}`,
 			},
 			{
-				Intern:      jsonfieldDecodeTy[[]float64]{F1: jsonfield.Defined[[]float64]([]float64{123, 456, 789})},
+				Intern:      jsonfieldSerdeTestTy[[]float64]{F1: jsonfield.Defined[[]float64]([]float64{123, 456, 789})},
 				EncodedInto: `{"F1":[123,456,789]}`,
 			},
 		},
@@ -99,9 +118,9 @@ func TestSerde(t *testing.T) {
 	// types with a custom json.Marshal implementation.
 	testhelper.TestSerde(
 		t,
-		[]testhelper.SerdeTestSet[jsonfieldDecodeTy[time.Time]]{
+		[]testhelper.SerdeTestSet[jsonfieldSerdeTestTy[time.Time]]{
 			{
-				Intern: jsonfieldDecodeTy[time.Time]{
+				Intern: jsonfieldSerdeTestTy[time.Time]{
 					F1: jsonfield.Defined[time.Time](time.Date(2022, 03, 04, 2, 12, 54, 0, time.UTC)),
 				},
 				Possible:    []string{`{"F1":"2022-03-04T02:12:54.000Z"}`, `{"F1":"2022-03-04T02:12:54Z"}`},
@@ -113,34 +132,34 @@ func TestSerde(t *testing.T) {
 	// recursive
 	testhelper.TestSerde(
 		t,
-		[]testhelper.SerdeTestSet[jsonfieldDecodeTy[jsonfieldDecodeTy[string]]]{
+		[]testhelper.SerdeTestSet[jsonfieldSerdeTestTy[jsonfieldSerdeTestTy[string]]]{
 			{
-				Intern:      jsonfieldDecodeTy[jsonfieldDecodeTy[string]]{},
+				Intern:      jsonfieldSerdeTestTy[jsonfieldSerdeTestTy[string]]{},
 				EncodedInto: `{}`,
 			},
 			{
-				Intern:      jsonfieldDecodeTy[jsonfieldDecodeTy[string]]{F1: jsonfield.Null[jsonfieldDecodeTy[string]]()},
+				Intern:      jsonfieldSerdeTestTy[jsonfieldSerdeTestTy[string]]{F1: jsonfield.Null[jsonfieldSerdeTestTy[string]]()},
 				EncodedInto: `{"F1":null}`,
 			},
 			{
-				Intern: jsonfieldDecodeTy[jsonfieldDecodeTy[string]]{
-					F1: jsonfield.Defined[jsonfieldDecodeTy[string]](jsonfieldDecodeTy[string]{
+				Intern: jsonfieldSerdeTestTy[jsonfieldSerdeTestTy[string]]{
+					F1: jsonfield.Defined[jsonfieldSerdeTestTy[string]](jsonfieldSerdeTestTy[string]{
 						F1: jsonfield.Undefined[string](),
 					}),
 				},
 				EncodedInto: `{"F1":{}}`,
 			},
 			{
-				Intern: jsonfieldDecodeTy[jsonfieldDecodeTy[string]]{
-					F1: jsonfield.Defined[jsonfieldDecodeTy[string]](jsonfieldDecodeTy[string]{
+				Intern: jsonfieldSerdeTestTy[jsonfieldSerdeTestTy[string]]{
+					F1: jsonfield.Defined[jsonfieldSerdeTestTy[string]](jsonfieldSerdeTestTy[string]{
 						F1: jsonfield.Null[string](),
 					}),
 				},
 				EncodedInto: `{"F1":{"F1":null}}`,
 			},
 			{
-				Intern: jsonfieldDecodeTy[jsonfieldDecodeTy[string]]{
-					F1: jsonfield.Defined[jsonfieldDecodeTy[string]](jsonfieldDecodeTy[string]{
+				Intern: jsonfieldSerdeTestTy[jsonfieldSerdeTestTy[string]]{
+					F1: jsonfield.Defined[jsonfieldSerdeTestTy[string]](jsonfieldSerdeTestTy[string]{
 						F1: jsonfield.Defined[string]("foobar"),
 					}),
 				},
@@ -151,10 +170,10 @@ func TestSerde(t *testing.T) {
 }
 
 // special type for this test.
-type jsonfieldDecodeTy[T any] struct {
+type jsonfieldSerdeTestTy[T any] struct {
 	F1 jsonfield.JsonField[T]
 }
 
-func (t jsonfieldDecodeTy[T]) Equal(u jsonfieldDecodeTy[T]) bool {
+func (t jsonfieldSerdeTestTy[T]) Equal(u jsonfieldSerdeTestTy[T]) bool {
 	return t.F1.Equal(u.F1)
 }
