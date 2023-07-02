@@ -171,7 +171,7 @@ func (b *Elastic[T]) UnmarshalJSON(data []byte) error {
 	}
 
 	var storedErr error
-	if data[0] == '[' {
+	if len(data) > 0 && data[0] == '[' {
 		err := b.Undefinedable.UnmarshalJSON(data)
 		if err == nil {
 			return nil
