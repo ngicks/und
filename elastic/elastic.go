@@ -164,6 +164,9 @@ func (f Elastic[T]) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler.
 //
 // UnmarshalJSON accepts null, T and (null | T)[].
+//
+// Caveats: Do not hold references to any underlying data.
+// UnmarshalJSON may swap its internal value.
 func (b *Elastic[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		*b = Null[T]()
@@ -176,6 +179,8 @@ func (b *Elastic[T]) UnmarshalJSON(data []byte) error {
 		if err == nil {
 			return nil
 		}
+		// reset to initial state.
+		b.Undefinedable = undefinedable.Undefined[[]nullable.Nullable[T]]()
 		// in case of T = []U.
 		storedErr = err
 	}
