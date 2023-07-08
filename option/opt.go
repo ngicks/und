@@ -79,7 +79,7 @@ func (o Option[T]) Equal(other Option[T]) bool {
 
 func equal[T any](t, u T) bool {
 	// Try type assertion first.
-	// The implemented interface has the precedence.
+	// The implemented interface has precedence.
 	//
 	// Uses of reflect.ValueOf incur overhead of escaping values into the heap (at least currently).
 	// Of course converting the value into any (interface{}) might also cause the overhead.
@@ -175,6 +175,38 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 	}
 	o.some = true
 	return nil
+}
+
+func (o Option[T]) And(u Option[T]) Option[T] {
+	if o.IsSome() {
+		return u
+	} else {
+		return None[T]()
+	}
+}
+
+func (o Option[T]) AndThen(f func(x T) Option[T]) Option[T] {
+	if o.IsSome() {
+		return f(o.Value())
+	} else {
+		return None[T]()
+	}
+}
+
+func (o Option[T]) Or(u Option[T]) Option[T] {
+	if o.IsSome() {
+		return o
+	} else {
+		return u
+	}
+}
+
+func (o Option[T]) OrElse(f func() Option[T]) Option[T] {
+	if o.IsSome() {
+		return o
+	} else {
+		return f()
+	}
 }
 
 func (o Option[T]) Map(f func(v T) T) Option[T] {

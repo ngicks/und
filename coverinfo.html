@@ -250,7 +250,8 @@ func (f Elastic[T]) MarshalJSON() ([]byte, error) <span class="cov8" title="1">{
 //
 // UnmarshalJSON accepts null, T and (null | T)[].
 //
-// Caveats: Do not hold references to any underlying data. UnmarshalJSON might swaps internal value.
+// Caveats: Do not hold references to any underlying data.
+// UnmarshalJSON may swap its internal value.
 func (b *Elastic[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1">{
         if string(data) == "null" </span><span class="cov8" title="1">{
                 *b = Null[T]()
@@ -482,7 +483,7 @@ func (o Option[T]) Equal(other Option[T]) bool <span class="cov8" title="1">{
 
 func equal[T any](t, u T) bool <span class="cov8" title="1">{
         // Try type assertion first.
-        // The implemented interface has the precedence.
+        // The implemented interface has precedence.
         //
         // Uses of reflect.ValueOf incur overhead of escaping values into the heap (at least currently).
         // Of course converting the value into any (interface{}) might also cause the overhead.
@@ -580,14 +581,36 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error <span class="cov8" title="1
         return nil</span>
 }
 
-func (o Option[T]) Map(f func(v T) T) Option[T] <span class="cov8" title="1">{
-        if o.some </span><span class="cov8" title="1">{
-                return Option[T]{
-                        some: true,
-                        v:    f(o.v),
-                }
+func (o Option[T]) And(u Option[T]) Option[T] <span class="cov8" title="1">{
+        if o.IsSome() </span><span class="cov8" title="1">{
+                return u
+        }</span> else<span class="cov8" title="1"> {
+                return None[T]()
         }</span>
-        <span class="cov8" title="1">return Option[T]{}</span>
+}
+
+func (o Option[T]) AndThen(f func(x T) Option[T]) Option[T] <span class="cov8" title="1">{
+        if o.IsSome() </span><span class="cov8" title="1">{
+                return f(o.Value())
+        }</span> else<span class="cov8" title="1"> {
+                return None[T]()
+        }</span>
+}
+
+func (o Option[T]) Or(u Option[T]) Option[T] <span class="cov8" title="1">{
+        if o.IsSome() </span><span class="cov8" title="1">{
+                return o
+        }</span> else<span class="cov8" title="1"> {
+                return u
+        }</span>
+}
+
+func (o Option[T]) OrElse(f func() Option[T]) Option[T] <span class="cov8" title="1">{
+        if o.IsSome() </span><span class="cov8" title="1">{
+                return o
+        }</span> else<span class="cov8" title="1"> {
+                return f()
+        }</span>
 }
 </pre>
 		

@@ -90,3 +90,57 @@ func TestSerdeError(t *testing.T) {
 		},
 	)
 }
+
+func TestOptionAndOr(t *testing.T) {
+	assert := assert.New(t)
+
+	x := option.Some(2)
+	y := option.None[int]()
+	assert.Equal(option.None[int](), x.And(y))
+	assert.Equal(option.None[int](), y.And(x))
+	assert.Equal(
+		option.None[int](),
+		x.AndThen(func(x int) option.Option[int] { return option.None[int]() }),
+	)
+	assert.Equal(
+		option.None[int](),
+		y.AndThen(func(x int) option.Option[int] { return option.Some[int](19) }),
+	)
+	assert.Equal(option.Some[int](2), x.Or(y))
+	assert.Equal(option.Some[int](2), y.Or(x))
+	assert.Equal(option.Some[int](2), x.OrElse(func() option.Option[int] { return option.Some(709) }))
+	assert.Equal(option.Some[int](737), y.OrElse(func() option.Option[int] { return option.Some(737) }))
+
+	x = option.Some(2)
+	y = option.Some(16)
+	assert.Equal(option.Some[int](16), x.And(y))
+	assert.Equal(option.Some[int](2), y.And(x))
+	assert.Equal(
+		option.Some[int](888),
+		x.AndThen(func(x int) option.Option[int] { return option.Some(888) }),
+	)
+	assert.Equal(
+		option.Some[int](888),
+		y.AndThen(func(x int) option.Option[int] { return option.Some(888) }),
+	)
+	assert.Equal(option.Some[int](2), x.Or(y))
+	assert.Equal(option.Some[int](16), y.Or(x))
+	assert.Equal(option.Some[int](2), x.OrElse(func() option.Option[int] { return option.Some(709) }))
+	assert.Equal(option.Some[int](16), y.OrElse(func() option.Option[int] { return option.Some(737) }))
+
+	x = option.None[int]()
+	y = option.None[int]()
+	assert.Equal(option.None[int](), x.And(y))
+	assert.Equal(
+		option.None[int](),
+		x.AndThen(func(x int) option.Option[int] { return option.Some(888) }),
+	)
+	assert.Equal(
+		option.None[int](),
+		y.AndThen(func(x int) option.Option[int] { return option.Some(888) }),
+	)
+	assert.Equal(option.None[int](), x.Or(y))
+	assert.Equal(option.None[int](), y.Or(x))
+	assert.Equal(option.Some[int](709), x.OrElse(func() option.Option[int] { return option.Some(709) }))
+	assert.Equal(option.Some[int](737), y.OrElse(func() option.Option[int] { return option.Some(737) }))
+}
