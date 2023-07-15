@@ -41,7 +41,7 @@ func TestElastic_basic(t *testing.T) {
 		assert.Equal(jsonfield.Null[int](), v.First())
 	}
 	{
-		v := elastic.Single[int](123)
+		v := elastic.FromSingle[int](123)
 		assert.True(v.IsSingle())
 		assert.False(v.IsMultiple())
 		assert.False(v.IsNull())
@@ -75,10 +75,10 @@ func TestEq(t *testing.T) {
 	pattern := []elastic.Elastic[int]{
 		elastic.Undefined[int](),
 		elastic.Null[int](),
-		elastic.Single[int](0),
-		elastic.Single[int](5),
-		elastic.Single[int](123),
-		elastic.Multiple[int]([]int{123, 555}),
+		elastic.FromSingle[int](0),
+		elastic.FromSingle[int](5),
+		elastic.FromSingle[int](123),
+		elastic.FromMultiple[int]([]int{123, 555}),
 		elastic.Defined[int]([]nullable.Nullable[int]{
 			nullable.Null[int](),
 			nullable.NonNull[int](555),

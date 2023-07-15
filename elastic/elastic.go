@@ -30,15 +30,23 @@ func Defined[T any](v []nullable.Nullable[T]) Elastic[T] {
 	}
 }
 
-// Single returns Elastic[T] that contains a single T value.
-func Single[T any](v T) Elastic[T] {
+// FromSingle returns Elastic[T] that contains a single T value.
+func FromSingle[T any](v T) Elastic[T] {
 	return Elastic[T]{
 		Undefinedable: undefinedable.Defined([]nullable.Nullable[T]{nullable.NonNull[T](v)}),
 	}
 }
 
-// Multiple returns Elastic[T] that contains multiple T values.
-func Multiple[T any](v []T) Elastic[T] {
+func FromSinglePointer[T any](v *T) Elastic[T] {
+	if v == nil {
+		return Null[T]()
+	} else {
+		return FromSingle[T](*v)
+	}
+}
+
+// FromMultiple returns Elastic[T] that contains multiple T values.
+func FromMultiple[T any](v []T) Elastic[T] {
 	values := make([]nullable.Nullable[T], len(v))
 	for i, vv := range v {
 		values[i] = nullable.NonNull(vv)
@@ -46,6 +54,14 @@ func Multiple[T any](v []T) Elastic[T] {
 
 	return Elastic[T]{
 		Undefinedable: undefinedable.Defined(values),
+	}
+}
+
+func FromMultiplePointer[T any](v *[]T) Elastic[T] {
+	if v == nil {
+		return Null[T]()
+	} else {
+		return FromMultiple[T](*v)
 	}
 }
 
@@ -193,6 +209,6 @@ func (b *Elastic[T]) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	*b = Single[T](single)
+	*b = FromSingle[T](single)
 	return nil
 }

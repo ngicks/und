@@ -42,12 +42,12 @@ func TestSerde(t *testing.T) {
 				EncodedInto: `{"F1":[null]}`,
 			},
 			{
-				Intern:      elasticSerdeTestTy[float64]{F1: elastic.Single[float64](123)},
+				Intern:      elasticSerdeTestTy[float64]{F1: elastic.FromSingle[float64](123)},
 				Possible:    []string{`{"F1":123}`, `{"F1":[123]}`},
 				EncodedInto: `{"F1":[123]}`,
 			},
 			{
-				Intern:      elasticSerdeTestTy[float64]{F1: elastic.Multiple[float64]([]float64{123, 456})},
+				Intern:      elasticSerdeTestTy[float64]{F1: elastic.FromMultiple[float64]([]float64{123, 456})},
 				EncodedInto: `{"F1":[123,456]}`,
 			},
 			{
@@ -89,13 +89,13 @@ func TestSerde(t *testing.T) {
 				EncodedInto: `{"F1":[null]}`,
 			},
 			{
-				Intern:      elasticSerdeTestTy[[]float64]{F1: elastic.Single[[]float64]([]float64{123})},
+				Intern:      elasticSerdeTestTy[[]float64]{F1: elastic.FromSingle[[]float64]([]float64{123})},
 				Possible:    []string{`{"F1":[123]}`, `{"F1":[[123]]}`},
 				EncodedInto: `{"F1":[[123]]}`,
 			},
 			{
 				Intern: elasticSerdeTestTy[[]float64]{
-					F1: elastic.Multiple[[]float64]([][]float64{{123, 456}, {789}}),
+					F1: elastic.FromMultiple[[]float64]([][]float64{{123, 456}, {789}}),
 				},
 				EncodedInto: `{"F1":[[123,456],[789]]}`,
 			},
@@ -177,7 +177,7 @@ func TestSerde(t *testing.T) {
 						[]nullable.Nullable[elasticSerdeTestTy[string]]{
 							nullable.NonNull[elasticSerdeTestTy[string]](
 								elasticSerdeTestTy[string]{
-									F1: elastic.Single[string]("barrr"),
+									F1: elastic.FromSingle[string]("barrr"),
 								},
 							),
 						},
