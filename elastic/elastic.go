@@ -174,7 +174,7 @@ func (e Elastic[T]) First() jsonfield.JsonField[T] {
 // It always marshalls defined to be []T, undefined to be null.
 func (f Elastic[T]) MarshalJSON() ([]byte, error) {
 	// undefined should be skipped by serde.MarshalJSON.
-	return serde.MarshalJSON(f.Value())
+	return serde.Marshal(f.Value())
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -201,7 +201,7 @@ func (b *Elastic[T]) UnmarshalJSON(data []byte) error {
 		storedErr = err
 	}
 	var single T
-	err := serde.UnmarshalJSON(data, &single)
+	err := serde.Unmarshal(data, &single)
 	if err != nil {
 		if storedErr != nil {
 			return storedErr

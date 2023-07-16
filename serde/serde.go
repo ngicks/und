@@ -16,11 +16,11 @@ func init() {
 	config.RegisterExtension(&UndefinedSkipperExtension{})
 }
 
-// MarshalJSON encodes v into JSON.
+// Marshal encodes v into JSON.
 // It skips fields if those are undefined Undefinedable[T].
 //
 // v can be any type.
-func MarshalJSON(v any) ([]byte, error) {
+func Marshal(v any) ([]byte, error) {
 	return config.Marshal(v)
 }
 
@@ -28,13 +28,13 @@ func NewEncoder(w io.Writer) *jsoniter.Encoder {
 	return config.NewEncoder(w)
 }
 
-// UnmarshalJSON decodes data into v.
+// Unmarshal decodes data into v.
 // v must be pointer type, return error otherwise.
 //
 // Currently this is almost same as json.Unmarshal.
 // Future releases may change behavior of this function.
 // It is safe to unmarshal data through this if v has at least an Undefinedable[T] field.
-func UnmarshalJSON(data []byte, v any) error {
+func Unmarshal(data []byte, v any) error {
 	return config.Unmarshal(data, v)
 }
 

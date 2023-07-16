@@ -158,7 +158,7 @@ func (o Option[T]) MarshalJSON() ([]byte, error) {
 		// same as bytes.Clone.
 		return append([]byte{}, nullByte...), nil
 	}
-	return serde.MarshalJSON(o.v)
+	return serde.Marshal(o.v)
 }
 
 func (o *Option[T]) UnmarshalJSON(data []byte) error {
@@ -169,7 +169,7 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	err := serde.UnmarshalJSON(data, &o.v)
+	err := serde.Unmarshal(data, &o.v)
 	if err != nil {
 		return err
 	}

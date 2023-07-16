@@ -43,7 +43,7 @@ func TestDecode[T option.Equality[T]](t *testing.T, input string, expected T) bo
 	t.Helper()
 
 	var v T
-	err := serde.UnmarshalJSON([]byte(input), &v)
+	err := serde.Unmarshal([]byte(input), &v)
 	if err != nil {
 		t.Errorf("must not cause an error but is %+#v", err)
 		return false
@@ -64,7 +64,7 @@ func TestDecode[T option.Equality[T]](t *testing.T, input string, expected T) bo
 func TestEncode[T any](t *testing.T, intern T, expected string) bool {
 	t.Helper()
 
-	bin, err := serde.MarshalJSON(intern)
+	bin, err := serde.Marshal(intern)
 	if err != nil {
 		t.Errorf("must not cause an error but is %+#v", err)
 		return false
@@ -84,7 +84,7 @@ func TestSerdeError[T any](t *testing.T, inputs []string) bool {
 
 	for _, erroneousInput := range inputs {
 		var v T
-		err := serde.UnmarshalJSON([]byte(erroneousInput), &v)
+		err := serde.Unmarshal([]byte(erroneousInput), &v)
 		if !assert.Error(err) {
 			firstError = true
 		}

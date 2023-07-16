@@ -38,7 +38,7 @@ func main() {
 		Garply: jsonfield.Undefined[string](),
 	}
 
-	bin, _ := serde.MarshalJSON(v)
+	bin, _ := serde.Marshal(v)
 	fmt.Println(string(bin))
 	// This prints
 	// {"Emm":"emm","Foo":"aaa","bar":null,"Corge":"corge","Grault":"grault"}

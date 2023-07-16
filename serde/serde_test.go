@@ -50,7 +50,7 @@ func TestSerde(t *testing.T) {
 	} {
 		// MarshalJSON
 		{
-			bin, err := serde.MarshalJSON(tc.parsed)
+			bin, err := serde.Marshal(tc.parsed)
 			if err != nil {
 				t.Errorf("must not error: %+v", err)
 			}
@@ -60,7 +60,7 @@ func TestSerde(t *testing.T) {
 			}
 
 			var s skippable
-			err = serde.UnmarshalJSON([]byte(tc.serialized), &s)
+			err = serde.Unmarshal([]byte(tc.serialized), &s)
 			if err != nil {
 				t.Errorf("must not error: %+v", err)
 			}
@@ -131,7 +131,7 @@ func TestSerde_nested(t *testing.T) {
 			serialized: `{"Nested":{}}`,
 		},
 	} {
-		bin, err := serde.MarshalJSON(tc.parsed)
+		bin, err := serde.Marshal(tc.parsed)
 		if err != nil {
 			t.Errorf("must not error: %+v", err)
 		}
@@ -141,7 +141,7 @@ func TestSerde_nested(t *testing.T) {
 		}
 
 		var s skippableNested
-		err = serde.UnmarshalJSON([]byte(tc.serialized), &s)
+		err = serde.Unmarshal([]byte(tc.serialized), &s)
 		if err != nil {
 			t.Errorf("must not error: %+v", err)
 		}
