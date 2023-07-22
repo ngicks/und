@@ -21,6 +21,16 @@ func Defined[T any](v T) Undefinedable[T] {
 	}
 }
 
+// FromPointer converts *T into Undefinedable[T].
+// If v is nil, it returns an undefined Undefinedable.
+// Otherwise, v is copied by assignment.
+func FromPointer[T any](v *T) Undefinedable[T] {
+	if v == nil {
+		return Undefined[T]()
+	}
+	return Defined[T](*v)
+}
+
 func (u Undefinedable[T]) IsUndefined() bool {
 	return !u.IsDefined()
 }

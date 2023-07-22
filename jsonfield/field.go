@@ -27,6 +27,16 @@ func Defined[T any](v T) JsonField[T] {
 	}
 }
 
+// FromPointer converts *T into JsonField[T].
+// If v is nil, it returns a null JsonField.
+// Otherwise, v is copied by assignment.
+func FromPointer[T any](v *T) JsonField[T] {
+	if v == nil {
+		return Null[T]()
+	}
+	return Defined[T](*v)
+}
+
 func (u JsonField[T]) IsNull() bool {
 	if u.IsUndefined() {
 		return false
