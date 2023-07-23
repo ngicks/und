@@ -37,9 +37,11 @@ func FromSingle[T any](v T) Elastic[T] {
 	}
 }
 
+// FromSinglePointer converts *T to Elastic[T].
+// If v is nil, returns a defined but empty Elastic[T].
 func FromSinglePointer[T any](v *T) Elastic[T] {
 	if v == nil {
-		return Null[T]()
+		return Defined[T]([]nullable.Nullable[T]{})
 	} else {
 		return FromSingle[T](*v)
 	}
@@ -57,9 +59,11 @@ func FromMultiple[T any](v []T) Elastic[T] {
 	}
 }
 
+// FromMultiplePointer converts *[]T to Elastic[T].
+// If v is nil, returns a defined but empty Elastic[T].
 func FromMultiplePointer[T any](v *[]T) Elastic[T] {
 	if v == nil {
-		return Null[T]()
+		return Defined[T]([]nullable.Nullable[T]{})
 	} else {
 		return FromMultiple[T](*v)
 	}
