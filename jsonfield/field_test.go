@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ngicks/und/internal/testhelper"
-	"github.com/ngicks/und/jsonfield"
+	"github.com/ngicks/und/v2/internal/testhelper"
+	"github.com/ngicks/und/v2/jsonfield"
 	"github.com/stretchr/testify/assert"
 )
 

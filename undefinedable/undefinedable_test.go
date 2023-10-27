@@ -3,7 +3,7 @@ package undefinedable_test
 import (
 	"testing"
 
-	"github.com/ngicks/und/undefinedable"
+	"github.com/ngicks/und/v2/undefinedable"
 	"github.com/stretchr/testify/assert"
 )
 

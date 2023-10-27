@@ -1,8 +1,8 @@
 package jsonfield
 
 import (
-	"github.com/ngicks/und/nullable"
-	"github.com/ngicks/und/undefinedable"
+	"github.com/ngicks/und/v2/nullable"
+	"github.com/ngicks/und/v2/undefinedable"
 )
 
 // A default-ish type for fields of JSON object.

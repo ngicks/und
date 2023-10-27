@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/ngicks/und/option"
-	"github.com/ngicks/und/serde"
+	"github.com/ngicks/und/v2/option"
+	"github.com/ngicks/und/v2/serde"
 	"github.com/stretchr/testify/assert"
 )
 

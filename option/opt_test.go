@@ -4,8 +4,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ngicks/und/internal/testhelper"
-	"github.com/ngicks/und/option"
+	"github.com/ngicks/und/v2/internal/testhelper"
+	"github.com/ngicks/und/v2/option"
 	"github.com/stretchr/testify/assert"
 )
 

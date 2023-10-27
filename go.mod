@@ -1,6 +1,8 @@
-module github.com/ngicks/und
+module github.com/ngicks/und/v2
 
-go 1.19
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/google/go-cmp v0.5.9
@@ -12,6 +14,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-json-experiment/json v0.0.0-20231013223334-54c864be5b8d // indirect
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -1,8 +1,8 @@
 package undefinedable
 
 import (
-	"github.com/ngicks/und/option"
-	"github.com/ngicks/und/serde"
+	"github.com/ngicks/und/v2/option"
+	"github.com/ngicks/und/v2/serde"
 )
 
 var _ serde.IsUndefineder = (*Undefinedable[any])(nil)

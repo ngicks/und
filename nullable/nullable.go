@@ -1,6 +1,6 @@
 package nullable
 
-import "github.com/ngicks/und/option"
+import "github.com/ngicks/und/v2/option"
 
 // A type represents `null | T`.
 type Nullable[T any] struct {

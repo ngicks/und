@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ngicks/und/elastic"
-	"github.com/ngicks/und/internal/testhelper"
-	"github.com/ngicks/und/nullable"
+	"github.com/ngicks/und/v2/elastic"
+	"github.com/ngicks/und/v2/internal/testhelper"
+	"github.com/ngicks/und/v2/nullable"
 )
 
 func TestSerdeError(t *testing.T) {

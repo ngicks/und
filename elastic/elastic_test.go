@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/ngicks/generic"
-	"github.com/ngicks/und/elastic"
-	"github.com/ngicks/und/jsonfield"
-	"github.com/ngicks/und/nullable"
+	"github.com/ngicks/und/v2/elastic"
+	"github.com/ngicks/und/v2/jsonfield"
+	"github.com/ngicks/und/v2/nullable"
 	"github.com/stretchr/testify/assert"
 )
 

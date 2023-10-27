@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/ngicks/und/serde"
+	"github.com/ngicks/und/v2/serde"
 )
 
 type undefinedableInt struct {

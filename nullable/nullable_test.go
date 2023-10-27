@@ -3,7 +3,7 @@ package nullable_test
 import (
 	"testing"
 
-	"github.com/ngicks/und/nullable"
+	"github.com/ngicks/und/v2/nullable"
 	"github.com/stretchr/testify/assert"
 )
 

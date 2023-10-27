@@ -28,9 +28,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/ngicks/und/jsonfield"
-	"github.com/ngicks/und/nullable"
-	"github.com/ngicks/und/serde"
+	"github.com/ngicks/und/v2/jsonfield"
+	"github.com/ngicks/und/v2/nullable"
+	"github.com/ngicks/und/v2/serde"
 )
 
 // define struct with UndefinedableField[T]

@@ -1,10 +1,10 @@
 package elastic
 
 import (
-	"github.com/ngicks/und/jsonfield"
-	"github.com/ngicks/und/nullable"
-	"github.com/ngicks/und/serde"
-	"github.com/ngicks/und/undefinedable"
+	"github.com/ngicks/und/v2/jsonfield"
+	"github.com/ngicks/und/v2/nullable"
+	"github.com/ngicks/und/v2/serde"
+	"github.com/ngicks/und/v2/undefinedable"
 )
 
 var _ serde.IsUndefineder = (*Elastic[any])(nil)

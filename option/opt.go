@@ -3,7 +3,7 @@ package option
 import (
 	"reflect"
 
-	"github.com/ngicks/und/serde"
+	"github.com/ngicks/und/v2/serde"
 )
 
 type Equality[T any] interface {
