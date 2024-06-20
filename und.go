@@ -7,6 +7,14 @@ import (
 	"github.com/go-json-experiment/json/jsontext"
 )
 
+var (
+	_ Equality[Und[any]]   = Und[any]{}
+	_ json.Marshaler       = Und[any]{}
+	_ json.Unmarshaler     = (*Und[any])(nil)
+	_ jsonv2.MarshalerV2   = Und[any]{}
+	_ jsonv2.UnmarshalerV2 = (*Und[any])(nil)
+)
+
 type Und[T any] struct {
 	opt Option[Option[T]]
 }
@@ -34,7 +42,11 @@ func FromPointer[T any](v *T) Und[T] {
 	if v == nil {
 		return Undefined[T]()
 	}
-	return Defined[T](*v)
+	return Defined(*v)
+}
+
+func FromOption[T any](opt Option[Option[T]]) Und[T] {
+	return Und[T]{opt: opt}
 }
 
 func (u Und[T]) IsZero() bool {
@@ -90,7 +102,9 @@ func (u Und[T]) Unwrap() Option[Option[T]] {
 	return u.opt
 }
 
-var _ json.Marshaler = Und[any]{}
+func (u Und[T]) Map(f func(Option[T]) Option[T]) Und[T] {
+	return Und[T]{opt: u.opt.Map(f)}
+}
 
 func (u Und[T]) MarshalJSON() ([]byte, error) {
 	if u.IsUndefined() || u.IsNull() {
@@ -98,8 +112,6 @@ func (u Und[T]) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(u.opt.Value().Value())
 }
-
-var _ json.Unmarshaler = (*Und[any])(nil)
 
 func (u *Und[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
@@ -117,16 +129,12 @@ func (u *Und[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-var _ jsonv2.MarshalerV2 = Und[any]{}
-
 func (u Und[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
 	if !u.IsDefined() {
 		return enc.WriteToken(jsontext.Null)
 	}
 	return jsonv2.MarshalEncode(enc, u.opt.Value().Value(), opts)
 }
-
-var _ jsonv2.UnmarshalerV2 = (*Und[any])(nil)
 
 func (u *Und[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) error {
 	if dec.PeekKind() == 'n' {

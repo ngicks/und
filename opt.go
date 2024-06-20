@@ -66,7 +66,7 @@ func (o Option[T]) Plain() *T {
 
 // Equal implements Equality[Option[T]].
 //
-// Equal tests if both o and other are Some or both are None.
+// Equal tests o and other if both are Some or None.
 // If both have value, it tests equality of their values.
 //
 // Equal panics If T or dynamic type of T is not comparable.
@@ -165,11 +165,11 @@ func FlattenOption[T any](o Option[Option[T]]) Option[T] {
 	return v
 }
 
-// MapOption returns Some[U] whose inner value is o's value mapped by f if o is some.
+// MapOption returns Some[U] whose inner value is o's value mapped by f if o is Some.
 // Otherwise it returns None[U].
 func MapOption[T, U any](o Option[T], f func(T) U) Option[U] {
 	if o.IsSome() {
-		return Some[U](f(o.Value()))
+		return Some(f(o.Value()))
 	}
 	return None[U]()
 }
