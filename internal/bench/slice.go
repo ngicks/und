@@ -5,7 +5,7 @@ import (
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
-	"github.com/ngicks/und/v2"
+	"github.com/ngicks/und"
 )
 
 type undSlice[T any] []und.Option[T]

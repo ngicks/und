@@ -1,4 +1,4 @@
-module github.com/ngicks/und/v2
+module github.com/ngicks/und
 
 go 1.22
 
