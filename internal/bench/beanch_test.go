@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	jsonv2 "github.com/go-json-experiment/json"
+	"github.com/ngicks/und/sliceund"
 )
 
 var inputs = []string{
@@ -32,15 +33,15 @@ type sampleMapV2 struct {
 }
 
 type sampleSliceV1 struct {
-	Pad1 int           `json:",omitempty"`
-	U    undSlice[int] `json:",omitempty"`
-	Pad2 int           `json:",omitempty"`
+	Pad1 int               `json:",omitempty"`
+	U    sliceund.Und[int] `json:",omitempty"`
+	Pad2 int               `json:",omitempty"`
 }
 
 type sampleSliceV2 struct {
-	Pad1 int           `json:",omitzero"`
-	U    undSlice[int] `json:",omitzero"`
-	Pad2 int           `json:",omitzero"`
+	Pad1 int               `json:",omitzero"`
+	U    sliceund.Und[int] `json:",omitzero"`
+	Pad2 int               `json:",omitzero"`
 }
 
 func BenchmarkSerdeMapV1(b *testing.B) {
