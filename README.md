@@ -1,122 +1,54 @@
-# und - option, nullable and undefinedable types for JSON field.
+# und - option and undefined-able types, mainly for JSON fields.
 
-Types to interoperate with applications that make full use of JSON. And a
-specialized marshaler / unmarshaler for those types which skips `undefined`
-fields in an input struct.
+Types to interoperate with applications that make full use of JSON.
 
-Currently it has 4 types.
+## Before v1
 
-- Nullable: `null` or `T`
-- Undefinedable: `undefined` or `T`
-  - A field that can be absent (undefined) but not a null.
-  - Nullable and Undefinedable is 95% identical to each other. The only
-    difference is that Undefinedable implements `IsUndefined` method which is
-    used to determine the field should be skipped or not.
-- JsonField: `null`, `undefined` or `T`
-  - A default-ish type for fields of a JSON object.
-- Elastic: `undefined | (null | T) | (null | T)[]`
-  - An overly elastic type where it can be anything.
-  - This can be used with the Elasticsearch JSON objects.
-  - Or configuration files.
+- und waits for release of `encoding/json/v2`
+  - und depends on `github.com/go-json-experiment/json` which is an experimental `encoding/json/v2` implementation.
+  - Types defined in this module implement `json.MarshalerV2` and `json.UnmarshalerV2`. The API dependency is relatively thin and narrow. I suspects they will not break the interface the part where we are relaying.
+- It'll eventually have a breaking change when `encoding/json/v2` is released.
+  - However that should not need change of your code, just bump version.
 
-## Usage
+## being undefined is harder to express in Go.
 
-```go
-// or run this by calling go run ./example/main.go
-package main
+- JSON, JavaScript Object Notation, includes concept of being absence(undefined), nil(null) or value(`T`).
+- When unmarshaling incoming JSON bytes slice, you can use `*T` to decode value matching `T` and additionally converts undefined **OR** null to nil.
+  - `nil` indicates the JSON field was `null` and thus nil was assigned to the field.
+  - Or the field was nil and `json.Unmarshal` skipped modifying the field since no matching JSON field was present in the input.
+- That's hard to express in Go, since:
+  - You can always do that by encoding struct into `map[string]any` then remove fields that are supposed to be absent in an output JSON value.
+  - Or define custom JSON marshaler that skips if fields are in some specific state.
+  - If you do not want to do those,
+    - You'll need a type that has 3 states.
+    - You can do it by various ways, which include `**T`, `[]T`, `map[bool]T` and `struct {state int; value T}`.
+      - `**T` is definitely not a choice since it is not allowed to be a method receiver as per specification.
+      - `struct {state int; value T}` can not be skipped by v1 `encoding/json` since it does not check emptiness of struct.
 
-import (
-	"fmt"
+As a conclusion, this package implements `struct {state int; value T}` and `[]T` kind types.
 
-	"github.com/ngicks/und/v2/jsonfield"
-	"github.com/ngicks/und/v2/nullable"
-	"github.com/ngicks/und/v2/serde"
-)
+## types and variants
 
-// define struct with UndefinedableField[T]
-type Emm string
+- `Option[T]`: Rust-like optional value.
+  - can be Some or None.
+  - is comparable if `T` is comparable.
+  - have `Equal` method in case `T` is not comparable or comparable but needs custom equality tests(e.g. `time.Time`)
+  - has convenient methods stolen from rust's `option<T>`
+  - can be used in place of `*T`
+  - is copied by assign.
 
-type Embedded struct {
-	Foo string
-	Bar nullable.Nullable[string]   `json:"bar"`
-	Baz jsonfield.JsonField[string] `json:"baz"`
-}
+Other types are based on `Option[T]`.
 
-type sample struct {
-	Emm // embedded non struct.
-	Embedded
-	Corge  string
-	Grault nullable.Nullable[string]
-	Garply jsonfield.JsonField[string]
-}
+- `Und[T]`: undefined, null or `T`
+- `Elastic[T]`: undefined, null, `T` or [](`T` | null)
+  - mainly for consuming elasticsearch JSON documents.
+  - or configuration files.
 
-func main() {
-	v := sample{
-		Emm: Emm("emm"),
-		Embedded: Embedded{
-			Foo: "aaa",
-			Bar: nullable.Null[string](),
-			Baz: jsonfield.Undefined[string](),
-		},
-		Corge:  "corge",
-		Grault: nullable.NonNull("grault"),
-		Garply: jsonfield.Undefined[string](),
-	}
+There are 2 variants
 
-	bin, _ := serde.MarshalJSON(v)
-	fmt.Println(string(bin))
-	// This prints
-	// {"Emm":"emm","Foo":"aaa","bar":null,"Corge":"corge","Grault":"grault"}
-	// See Baz and Garply fields are skipped.
-}
-```
-
-## Background
-
-- Some applications / APIs uses full potential of JSON.
-  - For example, Elasticsearch's update API uses
-    [partial documents to update the documents partially.](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document)
-    Setting `null` for fields overwrites that field to `null`.
-- For Go, the programming language offers no comfortable way to achieve this.
-  - Users can encode any structs into `map[string]any` and then can remove
-    fields if those should be skipped / not updated.
-  - This introduces cluttering to the codebase in some cases.
-
-With help of generics which is
-[introduced in Go 1.18](https://tip.golang.org/doc/go1.18#generics), we can do
-this more effortlessly.
-
-## Under the hood.
-
-All those types -- `Nullable[T]`, `Undefinedable[T]`, `JsonField[T]`,
-`Elastic[T]` -- are based on `Option[T]`.
-
-The `Option[T]` is similar to the Rust's `Option<T>` but less methods (because
-the Go has GC runtime and thus does not need to exposes no such concepts like
-ownership to users).
-
-It's just a comparable version of `*T`.
-
-```go
-type Option[T any] struct {
-	some bool
-	v    T
-}
-```
-
-`Undefinedable[T]` and `Nullable[T]` is just wrappers around `Option`, just
-adding named methods on it.
-
-`JsonField[T]` and `Elastic[T]` combine them to represent 3 or 4 distinct states
-with a single type.
-
-To skip undefined fields when marshaling, all those type can be processed
-through `serde` package, which is just an extension of
-`github.com/json-iterator/go` and a config to which the extension is
-pre-applied.
-
-The extension, which is named `UndefinedSkipperExtension`, redirects the
-emptiness evaluation to `IsUndefined` method implemented on each field type. And
-it also fakes struct tags so that `IsUndefined` implementors always considered
-tagged with `,omitempty`. This achieves mimicking the behavior where undefined
-fields are skipped.
+- `github.com/ngicks/und`: `Option[Option[T]]` based types.
+  - skippable only if encoding through
+    - `github.com/go-json-experiment/json`(possibly a future `encoding/json/v2`) with the `,omitzero` options
+    - [jsoniter](https://github.com/json-iterator/go) with `,omitempty` and custom encoder.
+- `github.com/ngicks/und/sliceund`: `[]Option[T]` based types.
+  - skippable with `,omitempty`.
