@@ -195,9 +195,6 @@ func (u Und[T]) Unwrap() und.Option[und.Option[T]] {
 	return und.Some(opt)
 }
 
-func (u Und[T]) Map(f func(und.Option[T]) und.Option[T]) Und[T] {
-	if u.IsUndefined() {
-		return Undefined[T]()
-	}
-	return Und[T]{f(u[0])}
+func (u Und[T]) Map(f func(und.Option[und.Option[T]]) und.Option[und.Option[T]]) Und[T] {
+	return FromOption(f(u.Unwrap()))
 }

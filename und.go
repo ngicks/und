@@ -103,8 +103,8 @@ func (u Und[T]) Unwrap() Option[Option[T]] {
 	return u.opt
 }
 
-func (u Und[T]) Map(f func(Option[T]) Option[T]) Und[T] {
-	return Und[T]{opt: u.opt.Map(f)}
+func (u Und[T]) Map(f func(Option[Option[T]]) Option[Option[T]]) Und[T] {
+	return Und[T]{opt: f(u.opt)}
 }
 
 func (u Und[T]) MarshalJSON() ([]byte, error) {
