@@ -76,15 +76,16 @@ func (u Und[T]) Value() T {
 	var zero T
 	return zero
 }
-func (u Und[T]) Plain() *T {
-	if u.IsUndefined() || u.IsNull() {
+
+func (u Und[T]) Pointer() *T {
+	if !u.IsDefined() {
 		return nil
 	}
 	t := u.opt.v.v
 	return &t
 }
 
-func (u Und[T]) Pointer() **T {
+func (u Und[T]) DoublePointer() **T {
 	switch {
 	case u.IsUndefined():
 		return nil

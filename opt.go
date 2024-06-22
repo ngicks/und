@@ -54,9 +54,9 @@ func (o Option[T]) Value() T {
 	return o.v
 }
 
-// Plain transforms o to *T, the plain conventional Go representation of an optional value.
-// The value is copied by assignment before returned from Plain.
-func (o Option[T]) Plain() *T {
+// Pointer transforms o to *T, the plain conventional Go representation of an optional value.
+// The value is copied by assignment before returned from Pointer.
+func (o Option[T]) Pointer() *T {
 	if o.IsNone() {
 		return nil
 	}

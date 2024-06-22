@@ -165,7 +165,7 @@ func (u Und[T]) Equal(other Und[T]) bool {
 	return u[0].Equal(other[0])
 }
 
-func (u Und[T]) Plain() *T {
+func (u Und[T]) Pointer() *T {
 	if !u.IsDefined() {
 		return nil
 	}
@@ -173,7 +173,7 @@ func (u Und[T]) Plain() *T {
 	return &v
 }
 
-func (u Und[T]) Pointer() **T {
+func (u Und[T]) DoublePointer() **T {
 	switch {
 	case u.IsUndefined():
 		return nil
