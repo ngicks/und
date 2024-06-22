@@ -64,6 +64,10 @@ func FromOption[T any](opt und.Option[und.Option[T]]) Und[T] {
 	return Und[T]{opt.Value()}
 }
 
+func FromUnd[T any](u und.Und[T]) Und[T] {
+	return FromOption(u.Unwrap())
+}
+
 // IsZero is an alias for IsUndefined.
 // Using `json:",omitzero"` option with "github.com/go-json-experiment/json"
 // skips this field while encoding if IsZero returns true.
