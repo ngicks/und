@@ -14,5 +14,10 @@ func (o Options[T]) Equal(opts Options[T]) bool {
 }
 
 func (o Options[T]) Clone() Options[T] {
-	return slices.Clone(o)
+	if o == nil {
+		return nil
+	}
+	opts := make(Options[T], len(o))
+	copy(opts, o)
+	return opts
 }
