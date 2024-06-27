@@ -16,6 +16,17 @@ var (
 	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
 )
 
+// Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
+// Und[T] is comparable if T is comparable. And it can be copied by assign.
+//
+// When using Und[T] as a struct field,
+// it can be skipped while marshaling if
+//   - the field is `undefined`
+//   - marshaler is "github.com/go-json-experiment/json/jsontext"
+//   - omitzero options is set.
+//
+// If you need to stick with encoding/json v1, you can use github.com/ngicks/und/sliceund,
+// a slice based version of Und[T] whish is already skppable by v1.
 type Und[T any] struct {
 	opt option.Option[option.Option[T]]
 }

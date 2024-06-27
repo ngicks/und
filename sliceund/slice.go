@@ -18,7 +18,7 @@ var (
 )
 
 // Und[T] is an uncomparable version of und.Und[T].
-// It can already be skipped by v1 encoding/json when len(u) == 0.
+// It can be skipped by v1 encoding/json when when marshaling if len(u) == 0.
 //
 // Although it exposes its internal data structure,
 // you should not mutate internal data.
