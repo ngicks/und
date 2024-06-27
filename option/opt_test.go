@@ -73,8 +73,8 @@ func TestOption_methods(t *testing.T) {
 	})
 
 	t.Run("Value", func(t *testing.T) {
-		assert.Equal(t, n.Value(), "")
-		assert.Equal(t, s.Value(), "aaa")
+		assert.Equal(t, n.Get(), "")
+		assert.Equal(t, s.Get(), "aaa")
 	})
 
 	t.Run("Pointer", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestOption_methods(t *testing.T) {
 		p := s.Pointer()
 		assert.Equal(t, *p, "aaa")
 		*p = "bbb"
-		assert.Equal(t, s.Value(), "aaa")
+		assert.Equal(t, s.Get(), "aaa")
 	})
 
 	t.Run("MarshalJSON", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestOption_methods(t *testing.T) {
 		var o Option[int]
 		assert.NilError(t, json.Unmarshal([]byte(`123456`), &o))
 		assert.Assert(t, o.IsSome())
-		assert.Equal(t, o.Value(), 123456)
+		assert.Equal(t, o.Get(), 123456)
 		var o2 Option[string]
 		assert.Error(t, json.Unmarshal([]byte(`123456`), &o2), "json: cannot unmarshal number into Go value of type string")
 		assert.Assert(t, o2.IsNone())

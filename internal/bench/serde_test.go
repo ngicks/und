@@ -8,10 +8,10 @@ import (
 )
 
 type iund[T any] interface {
+	Get() T
 	IsUndefined() bool
 	IsNull() bool
 	IsDefined() bool
-	Value() T
 }
 
 func assertUnd[T iund[int]](t *testing.T, ex int, und T) {
@@ -26,8 +26,8 @@ func assertUnd[T iund[int]](t *testing.T, ex int, und T) {
 			t.Fatalf("not null")
 		}
 	default:
-		if und.Value() != x {
-			t.Fatalf("not equal, want = %d, got = %d", x, und.Value())
+		if und.Get() != x {
+			t.Fatalf("not equal, want = %d, got = %d", x, und.Get())
 		}
 	}
 }
