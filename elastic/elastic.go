@@ -6,27 +6,28 @@ import (
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und"
+	"github.com/ngicks/und/option"
 )
 
 type Elastic[T any] struct {
-	v und.Und[und.Options[T]]
+	v und.Und[option.Options[T]]
 }
 
 func Null[T any]() Elastic[T] {
 	return Elastic[T]{
-		v: und.Null[und.Options[T]](),
+		v: und.Null[option.Options[T]](),
 	}
 }
 
 func Undefined[T any]() Elastic[T] {
 	return Elastic[T]{
-		v: und.Undefined[und.Options[T]](),
+		v: und.Undefined[option.Options[T]](),
 	}
 }
 
-func FromOptions[T any, Opts ~[]und.Option[T]](options Opts) Elastic[T] {
+func FromOptions[T any, Opts ~[]option.Option[T]](options Opts) Elastic[T] {
 	return Elastic[T]{
-		v: und.Defined(und.Options[T](options)),
+		v: und.Defined(option.Options[T](options)),
 	}
 }
 
@@ -38,30 +39,30 @@ func FromPointer[T any](t *T) Elastic[T] {
 }
 
 func FromPointers[T any](ps []*T) Elastic[T] {
-	opts := make(und.Options[T], len(ps))
+	opts := make(option.Options[T], len(ps))
 	for _, p := range ps {
 		if p == nil {
-			opts = append(opts, und.None[T]())
+			opts = append(opts, option.None[T]())
 		} else {
-			opts = append(opts, und.Some(*p))
+			opts = append(opts, option.Some(*p))
 		}
 	}
 	return FromOptions(opts)
 }
 
 func FromValue[T any](t T) Elastic[T] {
-	return FromOptions(und.Options[T]{und.Some(t)})
+	return FromOptions(option.Options[T]{option.Some(t)})
 }
 
 func FromValues[T any](ts []T) Elastic[T] {
-	opts := make(und.Options[T], len(ts))
+	opts := make(option.Options[T], len(ts))
 	for i, value := range ts {
-		opts[i] = und.Some(value)
+		opts[i] = option.Some(value)
 	}
 	return FromOptions(opts)
 }
 
-func (e Elastic[T]) inner() und.Und[und.Options[T]] {
+func (e Elastic[T]) inner() und.Und[option.Options[T]] {
 	return e.v
 }
 
@@ -131,11 +132,11 @@ func (e Elastic[T]) Pointers() []*T {
 	return ptrs
 }
 
-func (u Elastic[T]) Unwrap() und.Und[und.Options[T]] {
+func (u Elastic[T]) Unwrap() und.Und[option.Options[T]] {
 	return u.v
 }
 
-func (e Elastic[T]) Map(f func(und.Und[und.Options[T]]) und.Und[und.Options[T]]) Elastic[T] {
+func (e Elastic[T]) Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T] {
 	return Elastic[T]{v: f(e.v)}
 }
 
@@ -149,14 +150,21 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var t und.Options[T]
+	if len(data) > 2 && data[0] == '[' {
+		var t option.Options[T]
+		err := json.Unmarshal(data, &t)
+		if err == nil {
+			*e = FromOptions(t)
+			return nil
+		}
+	}
+
+	var t option.Option[T]
 	err := json.Unmarshal(data, &t)
 	if err != nil {
 		return err
 	}
-
-	*e = FromOptions(t)
-
+	*e = FromOptions(option.Options[T]{t})
 	return nil
 }
 
@@ -174,7 +182,7 @@ func (u *Elastic[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options)
 		return nil
 	}
 
-	var t und.Options[T]
+	var t option.Options[T]
 	err := jsonv2.UnmarshalDecode(dec, &t, opts)
 	if err != nil {
 		return err

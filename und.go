@@ -5,29 +5,30 @@ import (
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
+	"github.com/ngicks/und/option"
 )
 
 var (
-	_ Equality[Und[any]]   = Und[any]{}
-	_ json.Marshaler       = Und[any]{}
-	_ json.Unmarshaler     = (*Und[any])(nil)
-	_ jsonv2.MarshalerV2   = Und[any]{}
-	_ jsonv2.UnmarshalerV2 = (*Und[any])(nil)
+	_ option.Equality[Und[any]] = Und[any]{}
+	_ json.Marshaler            = Und[any]{}
+	_ json.Unmarshaler          = (*Und[any])(nil)
+	_ jsonv2.MarshalerV2        = Und[any]{}
+	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
 )
 
 type Und[T any] struct {
-	opt Option[Option[T]]
+	opt option.Option[option.Option[T]]
 }
 
 func Defined[T any](t T) Und[T] {
 	return Und[T]{
-		opt: Some(Some(t)),
+		opt: option.Some(option.Some(t)),
 	}
 }
 
 func Null[T any]() Und[T] {
 	return Und[T]{
-		opt: Some(None[T]()),
+		opt: option.Some(option.None[T]()),
 	}
 }
 
@@ -45,7 +46,7 @@ func FromPointer[T any](v *T) Und[T] {
 	return Defined(*v)
 }
 
-func FromOption[T any](opt Option[Option[T]]) Und[T] {
+func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 	return Und[T]{opt: opt}
 }
 
@@ -71,7 +72,7 @@ func (u Und[T]) Equal(other Und[T]) bool {
 
 func (u Und[T]) Value() T {
 	if u.IsDefined() {
-		return u.opt.v.v
+		return u.opt.Value().Value()
 	}
 	var zero T
 	return zero
@@ -81,8 +82,7 @@ func (u Und[T]) Pointer() *T {
 	if !u.IsDefined() {
 		return nil
 	}
-	t := u.opt.v.v
-	return &t
+	return u.opt.Value().Pointer()
 }
 
 func (u Und[T]) DoublePointer() **T {
@@ -93,17 +93,17 @@ func (u Und[T]) DoublePointer() **T {
 		var t *T
 		return &t
 	default:
-		t := u.opt.v.v
+		t := u.opt.Value().Value()
 		tt := &t
 		return &tt
 	}
 }
 
-func (u Und[T]) Unwrap() Option[Option[T]] {
+func (u Und[T]) Unwrap() option.Option[option.Option[T]] {
 	return u.opt
 }
 
-func (u Und[T]) Map(f func(Option[Option[T]]) Option[Option[T]]) Und[T] {
+func (u Und[T]) Map(f func(option.Option[option.Option[T]]) option.Option[option.Option[T]]) Und[T] {
 	return Und[T]{opt: f(u.opt)}
 }
 

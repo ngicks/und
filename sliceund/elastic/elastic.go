@@ -6,21 +6,22 @@ import (
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und"
+	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/sliceund"
 )
 
-type Elastic[T any] sliceund.Und[und.Options[T]]
+type Elastic[T any] sliceund.Und[option.Options[T]]
 
 func Null[T any]() Elastic[T] {
-	return Elastic[T](sliceund.Null[und.Options[T]]())
+	return Elastic[T](sliceund.Null[option.Options[T]]())
 }
 
 func Undefined[T any]() Elastic[T] {
-	return Elastic[T](sliceund.Undefined[und.Options[T]]())
+	return Elastic[T](sliceund.Undefined[option.Options[T]]())
 }
 
-func FromOptions[T any, Opts ~[]und.Option[T]](options Opts) Elastic[T] {
-	return Elastic[T](sliceund.Defined(und.Options[T](options)))
+func FromOptions[T any, Opts ~[]option.Option[T]](options Opts) Elastic[T] {
+	return Elastic[T](sliceund.Defined(option.Options[T](options)))
 }
 
 func FromPointer[T any](t *T) Elastic[T] {
@@ -31,31 +32,31 @@ func FromPointer[T any](t *T) Elastic[T] {
 }
 
 func FromPointers[T any](ps []*T) Elastic[T] {
-	opts := make(und.Options[T], len(ps))
+	opts := make(option.Options[T], 0, len(ps))
 	for _, p := range ps {
 		if p == nil {
-			opts = append(opts, und.None[T]())
+			opts = append(opts, option.None[T]())
 		} else {
-			opts = append(opts, und.Some(*p))
+			opts = append(opts, option.Some(*p))
 		}
 	}
 	return FromOptions(opts)
 }
 
 func FromValue[T any](t T) Elastic[T] {
-	return FromOptions(und.Options[T]{und.Some(t)})
+	return FromOptions(option.Options[T]{option.Some(t)})
 }
 
 func FromValues[T any](ts []T) Elastic[T] {
-	opts := make(und.Options[T], len(ts))
+	opts := make(option.Options[T], len(ts))
 	for i, value := range ts {
-		opts[i] = und.Some(value)
+		opts[i] = option.Some(value)
 	}
 	return FromOptions(opts)
 }
 
-func (e Elastic[T]) inner() sliceund.Und[und.Options[T]] {
-	return sliceund.Und[und.Options[T]](e)
+func (e Elastic[T]) inner() sliceund.Und[option.Options[T]] {
+	return sliceund.Und[option.Options[T]](e)
 }
 
 func (e Elastic[T]) IsZero() bool {
@@ -124,11 +125,11 @@ func (e Elastic[T]) Pointers() []*T {
 	return ptrs
 }
 
-func (u Elastic[T]) Unwrap() und.Und[und.Options[T]] {
+func (u Elastic[T]) Unwrap() und.Und[option.Options[T]] {
 	return und.FromOption(u.inner().Unwrap())
 }
 
-func (e Elastic[T]) Map(f func(sliceund.Und[und.Options[T]]) sliceund.Und[und.Options[T]]) Elastic[T] {
+func (e Elastic[T]) Map(f func(sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]]) Elastic[T] {
 	return Elastic[T](f(e.inner()))
 }
 
@@ -142,7 +143,7 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	var t und.Options[T]
+	var t option.Options[T]
 	err := json.Unmarshal(data, &t)
 	if err != nil {
 		return err
@@ -167,7 +168,7 @@ func (u *Elastic[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options)
 		return nil
 	}
 
-	var t und.Options[T]
+	var t option.Options[T]
 	err := jsonv2.UnmarshalDecode(dec, &t, opts)
 	if err != nil {
 		return err
