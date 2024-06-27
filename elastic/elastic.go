@@ -9,6 +9,24 @@ import (
 	"github.com/ngicks/und/option"
 )
 
+var (
+	_ option.Equality[Elastic[any]] = Elastic[any]{}
+	_ json.Marshaler                = Elastic[any]{}
+	_ json.Unmarshaler              = (*Elastic[any])(nil)
+	_ jsonv2.MarshalerV2            = Elastic[any]{}
+	// We don't implement UnmarshalJSONV2 since there's variants that cannot be unmarshaled without
+	// calling unmarshal twice or so.
+	// there's 4 possible code paths
+	//
+	//   - input is T
+	//   - input is []T
+	//   - input starts with [ but T is []U
+	//   - input starts with [ but T implements UnmarshalJSON v1 or v2; it's ambiguous.
+	//
+	// That'll needs
+	// _ jsonv2.UnmarshalerV2          = (*Elastic[any])(nil)
+)
+
 type Elastic[T any] struct {
 	v und.Und[option.Options[T]]
 }
@@ -153,6 +171,8 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 	if len(data) > 2 && data[0] == '[' {
 		var t option.Options[T]
 		err := json.Unmarshal(data, &t)
+		// might be T is []U, and this fails
+		// since it should've been [[...data...],[...data...]]
 		if err == nil {
 			*e = FromOptions(t)
 			return nil
@@ -170,25 +190,4 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 
 func (e Elastic[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
 	return jsonv2.MarshalEncode(enc, e.inner(), opts)
-}
-
-func (u *Elastic[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) error {
-	if dec.PeekKind() == 'n' {
-		err := dec.SkipValue()
-		if err != nil {
-			return err
-		}
-		*u = Null[T]()
-		return nil
-	}
-
-	var t option.Options[T]
-	err := jsonv2.UnmarshalDecode(dec, &t, opts)
-	if err != nil {
-		return err
-	}
-
-	*u = FromOptions(t)
-
-	return nil
 }
