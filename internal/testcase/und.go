@@ -19,11 +19,11 @@ type Und[T any] interface {
 	MarshalJSON() ([]byte, error)
 	MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error
 	Pointer() *T
-	Value() T
 	Unwrap() option.Option[option.Option[T]]
+	Value() T
 }
 
-func TestUnd[T Und[U], U any](t *testing.T, defined, null, undefined T, value U, marshaled string) {
+func TestUnd_addressable[T Und[U], U any](t *testing.T, defined, null, undefined T, value U, marshaled string) {
 	t.Run("DoublePointer", func(t *testing.T) {
 		var pp **U
 
