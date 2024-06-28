@@ -8,18 +8,17 @@ import (
 )
 
 var (
-	_ json.Marshaler   = Option[any]{}
-	_ json.Unmarshaler = (*Option[any])(nil)
-	_ xml.Marshaler    = Option[any]{}
-	_ xml.Unmarshaler  = (*Option[any])(nil)
-	_ slog.LogValuer   = Option[any]{}
+	_ Equality[Option[int]] = (*Option[int])(nil)
+	_ json.Marshaler        = Option[any]{}
+	_ json.Unmarshaler      = (*Option[any])(nil)
+	_ xml.Marshaler         = Option[any]{}
+	_ xml.Unmarshaler       = (*Option[any])(nil)
+	_ slog.LogValuer        = Option[any]{}
 )
 
 type Equality[T any] interface {
 	Equal(T) bool
 }
-
-var _ Equality[Option[int]] = (*Option[int])(nil)
 
 // Option represents an optional value.
 type Option[T any] struct {
