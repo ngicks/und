@@ -9,7 +9,7 @@ import (
 )
 
 func TestUnd(t *testing.T) {
-	testcase.TestUnd_addressable(
+	testcase.TestUnd_non_addressable(
 		t,
 		Defined[int](155),
 		Null[int](),

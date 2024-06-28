@@ -23,7 +23,7 @@ type Und[T any] interface {
 	Value() T
 }
 
-func TestUnd_addressable[T Und[U], U any](t *testing.T, defined, null, undefined T, value U, marshaled string) {
+func TestUnd_non_addressable[T Und[U], U any](t *testing.T, defined, null, undefined T, value U, marshaled string) {
 	t.Run("DoublePointer", func(t *testing.T) {
 		var pp **U
 
