@@ -62,7 +62,7 @@ func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 	if opt.IsNone() {
 		return Undefined[T]()
 	}
-	return Und[T]{opt.Get()}
+	return Und[T]{opt.Value()}
 }
 
 func FromUnd[T any](u und.Und[T]) Und[T] {
@@ -90,9 +90,9 @@ func (u Und[T]) IsUndefined() bool {
 	return len(u) == 0
 }
 
-func (u Und[T]) Get() T {
+func (u Und[T]) Value() T {
 	if u.IsDefined() {
-		return u[0].Get()
+		return u[0].Value()
 	}
 	var zero T
 	return zero
@@ -102,7 +102,7 @@ func (u Und[T]) MarshalJSON() ([]byte, error) {
 	if !u.IsDefined() {
 		return []byte(`null`), nil
 	}
-	return json.Marshal(u[0].Get())
+	return json.Marshal(u[0].Value())
 }
 
 func (u *Und[T]) UnmarshalJSON(data []byte) error {
@@ -133,7 +133,7 @@ func (u Und[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error 
 	if !u.IsDefined() {
 		return enc.WriteToken(jsontext.Null)
 	}
-	return jsonv2.MarshalEncode(enc, u.Get(), opts)
+	return jsonv2.MarshalEncode(enc, u.Value(), opts)
 }
 
 func (u *Und[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) error {
@@ -174,7 +174,7 @@ func (u Und[T]) Pointer() *T {
 	if !u.IsDefined() {
 		return nil
 	}
-	v := u.Get()
+	v := u.Value()
 	return &v
 }
 
@@ -186,7 +186,7 @@ func (u Und[T]) DoublePointer() **T {
 		var t *T
 		return &t
 	default:
-		t := u.Get()
+		t := u.Value()
 		tt := &t
 		return &tt
 	}

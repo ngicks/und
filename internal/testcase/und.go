@@ -12,7 +12,6 @@ import (
 
 type Und[T any] interface {
 	DoublePointer() **T
-	Get() T
 	IsDefined() bool
 	IsNull() bool
 	IsUndefined() bool
@@ -20,6 +19,7 @@ type Und[T any] interface {
 	MarshalJSON() ([]byte, error)
 	MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error
 	Pointer() *T
+	Value() T
 	Unwrap() option.Option[option.Option[T]]
 }
 
@@ -35,13 +35,6 @@ func TestUnd[T Und[U], U any](t *testing.T, defined, null, undefined T, value U,
 
 		pp = undefined.DoublePointer()
 		assert.Equal(t, pp, (**U)(nil))
-	})
-
-	t.Run("Get", func(t *testing.T) {
-		assert.Equal(t, defined.Get(), value)
-		var zero U
-		assert.Equal(t, null.Get(), zero)
-		assert.Equal(t, undefined.Get(), zero)
 	})
 
 	t.Run("IsDefined", func(t *testing.T) {
@@ -115,9 +108,16 @@ func TestUnd[T Und[U], U any](t *testing.T, defined, null, undefined T, value U,
 	})
 
 	t.Run("Unwrap", func(t *testing.T) {
-		assert.Equal(t, defined.Unwrap().Get().Get(), value)
+		assert.Equal(t, defined.Unwrap().Value().Value(), value)
 		assert.Assert(t, null.Unwrap().IsSome())
-		assert.Assert(t, null.Unwrap().Get().IsNone())
+		assert.Assert(t, null.Unwrap().Value().IsNone())
 		assert.Assert(t, undefined.Unwrap().IsNone())
+	})
+
+	t.Run("Value", func(t *testing.T) {
+		assert.Equal(t, defined.Value(), value)
+		var zero U
+		assert.Equal(t, null.Value(), zero)
+		assert.Equal(t, undefined.Value(), zero)
 	})
 }

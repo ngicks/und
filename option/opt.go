@@ -2,7 +2,6 @@ package option
 
 import (
 	"database/sql"
-	"database/sql/driver"
 	"encoding/json"
 	"encoding/xml"
 	"log/slog"
@@ -13,8 +12,6 @@ var (
 	_ json.Unmarshaler = (*Option[any])(nil)
 	_ xml.Marshaler    = Option[any]{}
 	_ xml.Unmarshaler  = (*Option[any])(nil)
-	_ driver.Valuer    = Option[any]{}
-	_ sql.Scanner      = (*Option[any])(nil)
 	_ slog.LogValuer   = Option[any]{}
 )
 
@@ -41,6 +38,13 @@ func None[T any]() Option[T] {
 	return Option[T]{}
 }
 
+func FromSqlNull[T any](v sql.Null[T]) Option[T] {
+	if v.Valid {
+		return Some(v.V)
+	}
+	return None[T]()
+}
+
 func (o Option[T]) IsZero() bool {
 	return o.IsNone()
 }
@@ -53,7 +57,7 @@ func (o Option[T]) IsSome() bool {
 // Otherwise it returns false.
 func (o Option[T]) IsSomeAnd(f func(T) bool) bool {
 	if o.IsSome() {
-		return f(o.Get())
+		return f(o.Value())
 	}
 	return false
 }
@@ -62,9 +66,9 @@ func (o Option[T]) IsNone() bool {
 	return !o.IsSome()
 }
 
-// Get returns its internal as T.
+// Value returns its internal as T.
 // T would be zero value if o is None.
-func (o Option[T]) Get() T {
+func (o Option[T]) Value() T {
 	return o.v
 }
 
@@ -144,7 +148,7 @@ func (o Option[T]) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	if o.IsNone() {
 		return nil
 	}
-	return e.EncodeElement(o.Get(), start)
+	return e.EncodeElement(o.Value(), start)
 }
 
 func (o *Option[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
@@ -160,33 +164,22 @@ func (o *Option[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	return nil
 }
 
-// Value implements driver.Valuer
-func (o Option[T]) Value() (driver.Value, error) {
-	n := sql.Null[T]{
-		Valid: o.IsSome(),
-		V:     o.Get(),
-	}
-	return n.Value()
-}
-
-// Scan implements sql.Scanner
-func (o *Option[T]) Scan(src any) error {
-	var n sql.Null[T]
-	err := n.Scan(src)
-	if err != nil {
-		return err
-	}
-	o.some = n.Valid
-	o.v = n.V
-	return nil
-}
-
 // LogValue implements slog.LogValuer
 func (o Option[T]) LogValue() slog.Value {
 	if o.IsNone() {
 		return slog.AnyValue(nil)
 	}
-	return slog.AnyValue(o.Get())
+	return slog.AnyValue(o.Value())
+}
+
+func (o Option[T]) SqlNull() sql.Null[T] {
+	if o.IsSome() {
+		return sql.Null[T]{}
+	}
+	return sql.Null[T]{
+		Valid: true,
+		V:     o.Value(),
+	}
 }
 
 // And returns u if o is some, otherwise None[T].
@@ -201,7 +194,7 @@ func (o Option[T]) And(u Option[T]) Option[T] {
 // AndThen calls f with value of o if o is some, otherwise returns None[T].
 func (o Option[T]) AndThen(f func(x T) Option[T]) Option[T] {
 	if o.IsSome() {
-		return f(o.Get())
+		return f(o.Value())
 	} else {
 		return None[T]()
 	}
@@ -210,7 +203,7 @@ func (o Option[T]) AndThen(f func(x T) Option[T]) Option[T] {
 // Filter returns o if o is some and calling pred against o's value returns true.
 // Otherwise it returns None[T].
 func (o Option[T]) Filter(pred func(t T) bool) Option[T] {
-	if o.IsSome() && pred(o.Get()) {
+	if o.IsSome() && pred(o.Value()) {
 		return o
 	}
 	return None[T]()
@@ -221,7 +214,7 @@ func FlattenOption[T any](o Option[Option[T]]) Option[T] {
 	if o.IsNone() {
 		return None[T]()
 	}
-	v := o.Get()
+	v := o.Value()
 	if v.IsNone() {
 		return None[T]()
 	}
@@ -232,7 +225,7 @@ func FlattenOption[T any](o Option[Option[T]]) Option[T] {
 // Otherwise it returns None[U].
 func MapOption[T, U any](o Option[T], f func(T) U) Option[U] {
 	if o.IsSome() {
-		return Some(f(o.Get()))
+		return Some(f(o.Value()))
 	}
 	return None[U]()
 }
@@ -249,7 +242,7 @@ func MapOrOption[T, U any](o Option[T], defaultValue U, f func(T) U) U {
 	if o.IsNone() {
 		return defaultValue
 	}
-	return f(o.Get())
+	return f(o.Value())
 }
 
 // MapOr returns value o's value applied by f if o is some.
@@ -264,7 +257,7 @@ func MapOrElseOption[T, U any](o Option[T], defaultFn func() U, f func(T) U) U {
 	if o.IsNone() {
 		return defaultFn()
 	}
-	return f(o.Get())
+	return f(o.Value())
 }
 
 // MapOrElse returns value o's value applied by f if o is some.

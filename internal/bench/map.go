@@ -33,7 +33,7 @@ func (u undMap[T]) IsUndefined() bool {
 	return len(u) == 0
 }
 
-func (u undMap[T]) Get() T {
+func (u undMap[T]) Value() T {
 	if u.IsDefined() {
 		return u[true]
 	}
@@ -85,7 +85,7 @@ func (u undMap[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) err
 	if !u.IsDefined() {
 		return enc.WriteToken(jsontext.Null)
 	}
-	return jsonv2.MarshalEncode(enc, u.Get(), opts)
+	return jsonv2.MarshalEncode(enc, u.Value(), opts)
 }
 
 var _ jsonv2.UnmarshalerV2 = (*undMap[any])(nil)

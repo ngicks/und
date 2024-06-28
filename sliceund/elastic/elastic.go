@@ -40,11 +40,11 @@ func (e Elastic[T]) Equal(other Elastic[T]) bool {
 	return e.inner().Equal(other.inner())
 }
 
-func (e Elastic[T]) Get() T {
+func (e Elastic[T]) Value() T {
 	if e.IsDefined() {
-		vs := e.inner().Get()
+		vs := e.inner().Value()
 		if len(vs) > 0 {
-			return vs[0].Get()
+			return vs[0].Value()
 		}
 	}
 	var zero T
@@ -55,19 +55,19 @@ func (e Elastic[T]) Values() []T {
 	if !e.IsDefined() {
 		return []T(nil)
 	}
-	opts := e.inner().Get()
+	opts := e.inner().Value()
 	vs := make([]T, len(opts))
 	for i, opt := range opts {
-		vs[i] = opt.Get()
+		vs[i] = opt.Value()
 	}
 	return vs
 }
 
 func (e Elastic[T]) Pointer() *T {
 	if e.IsDefined() {
-		vs := e.inner().Get()
+		vs := e.inner().Value()
 		if len(vs) > 0 {
-			v := vs[0].Get()
+			v := vs[0].Value()
 			return &v
 		}
 	}
@@ -78,7 +78,7 @@ func (e Elastic[T]) Pointers() []*T {
 	if !e.IsDefined() {
 		return []*T(nil)
 	}
-	opts := e.inner().Get()
+	opts := e.inner().Value()
 	ptrs := make([]*T, len(opts))
 	for i, opt := range opts {
 		ptrs[i] = opt.Pointer()
