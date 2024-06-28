@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/sliceund"
 )
@@ -107,8 +106,8 @@ func (e Elastic[T]) Pointers() []*T {
 	return ptrs
 }
 
-func (u Elastic[T]) Unwrap() und.Und[option.Options[T]] {
-	return und.FromOption(u.inner().Unwrap())
+func (u Elastic[T]) Unwrap() sliceund.Und[option.Options[T]] {
+	return sliceund.FromOption(u.inner().Unwrap())
 }
 
 func (e Elastic[T]) Map(f func(sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]]) Elastic[T] {
