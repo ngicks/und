@@ -4,9 +4,16 @@ import (
 	"encoding/json"
 	"slices"
 	"testing"
+	"time"
+	_ "time/tzdata"
 
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/assert/cmp"
+)
+
+var (
+	america, _ = time.LoadLocation("America/Anguilla")
+	japan, _   = time.LoadLocation("Asia/Tokyo")
 )
 
 func TestOption_Equal(t *testing.T) {
@@ -19,6 +26,24 @@ func TestOption_Equal(t *testing.T) {
 		assert.Assert(t, !n.Equal(s1))
 		assert.Assert(t, s1.Equal(s1))
 		assert.Assert(t, !s1.Equal(s2))
+	})
+
+	t.Run("comparable_but_Equaler", func(t *testing.T) {
+		n := None[time.Time]()
+		cur := time.Now()
+		s1 := Some(cur)
+		s2 := Some(cur)
+		s3 := Some(cur.In(japan))
+		s4 := Some(cur.In(america))
+
+		assert.Equal(t, n, n)
+		assert.Equal(t, s1, s2)
+		assert.Assert(t, s3 != s4)
+
+		assert.Assert(t, n.Equal(n))
+		assert.Assert(t, !s1.Equal(n))
+		assert.Assert(t, s1.Equal(s2))
+		assert.Assert(t, s3.Equal(s4))
 	})
 
 	t.Run("uncomparable", func(t *testing.T) {
