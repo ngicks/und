@@ -8,7 +8,7 @@ import (
 	"github.com/ngicks/und/option"
 )
 
-// portable methods that can be copied into github.com/ngicks/und into github.com/ngicks/und/sliceund/elastic
+// portable methods that can be copied from github.com/ngicks/und/elastic into github.com/ngicks/und/sliceund/elastic
 
 func FromValue[T any](t T) Elastic[T] {
 	return FromOptions(option.Options[T]{option.Some(t)})
