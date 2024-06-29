@@ -3,6 +3,7 @@ package testcase_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und/elastic"
@@ -116,4 +117,46 @@ func assertStateElastic[T ielastic[U], U any](t *testing.T, u T, state int, v []
 		assert.Assert(t, u.IsDefined())
 	}
 	assert.Assert(t, cmp.DeepEqual(u.Pointers(), v))
+}
+
+type serdeMarshalerElastic struct {
+	bin             string
+	marshaled       string
+	unmarshalTarget json.Unmarshaler
+}
+
+func TestSerdeMarshalerElastic(t *testing.T) {
+	for _, tc := range []serdeMarshalerElastic{
+		{`["2004-01-05T12:48:11.123456789Z","2004-01-05T12:48:11.123456789Z"]`, "", ptr(elastic.Undefined[time.Time]())},
+		{`[1,2,3]`, `[[1,2,3]]`, ptr(elastic.Undefined[point]())},
+		{`[[1,2,3]]`, "", ptr(elastic.Undefined[point]())},
+	} {
+		err := json.Unmarshal([]byte(tc.bin), tc.unmarshalTarget)
+		assert.NilError(t, err)
+		bin, err := json.Marshal(tc.unmarshalTarget)
+		assert.NilError(t, err)
+		marshaled := tc.marshaled
+		if marshaled == "" {
+			marshaled = tc.bin
+		}
+		assert.Equal(t, string(bin), marshaled)
+	}
+}
+
+type point struct {
+	X, Y, Z float64
+}
+
+func (p point) MarshalJSON() ([]byte, error) {
+	return json.Marshal([3]float64{p.X, p.Y, p.Z})
+}
+
+func (p *point) UnmarshalJSON(data []byte) error {
+	var pp [3]float64
+	err := json.Unmarshal(data, &pp)
+	if err != nil {
+		return err
+	}
+	p.X, p.Y, p.Z = pp[0], pp[1], pp[2]
+	return nil
 }
