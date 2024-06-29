@@ -1,4 +1,4 @@
-package testcase
+package testcase_test
 
 import (
 	"encoding/json"
@@ -12,39 +12,42 @@ import (
 
 type undV2 struct {
 	Padding1 int             `json:",omitzero"`
-	Und      und.Und[string] `json:",omitzero"`
+	V        und.Und[string] `json:",omitzero"`
 	Padding2 int             `json:",omitzero"`
 }
 
 type slicesUndV1 struct {
 	Padding1 int                  `json:",omitempty"`
-	Und      sliceund.Und[string] `json:",omitempty"`
+	V        sliceund.Und[string] `json:",omitempty"`
 	Padding2 int                  `json:",omitempty"`
 }
 
 type slicesUndV2 struct {
 	Padding1 int                  `json:",omitzero"`
-	Und      sliceund.Und[string] `json:",omitzero"`
+	V        sliceund.Und[string] `json:",omitzero"`
 	Padding2 int                  `json:",omitzero"`
 }
 
+type serdeTestCase struct {
+	bin   string
+	state int
+	value string
+}
+
+var undefinedTestCases = []serdeTestCase{
+	{`{"Padding1":10,"Padding2":20}`, 0, ""},
+	{`{"Padding1":10,"V":null,"Padding2":20}`, 1, ""},
+	{`{"Padding1":10,"V":"foo","Padding2":20}`, 2, "foo"},
+	{`{"Padding2":20}`, 0, ""},
+	{`{"V":null,"Padding2":20}`, 1, ""},
+	{`{"V":"bar","Padding2":20}`, 2, "bar"},
+	{`{"Padding1":10}`, 0, ""},
+	{`{"Padding1":10,"V":null}`, 1, ""},
+	{`{"Padding1":10,"V":"baz"}`, 2, "baz"},
+}
+
 func TestUnd_serde(t *testing.T) {
-	type testCase struct {
-		bin   string
-		state int
-		value string
-	}
-	for _, tc := range []testCase{
-		{`{"Padding1":10,"Padding2":20}`, 0, ""},
-		{`{"Padding1":10,"Und":null,"Padding2":20}`, 1, ""},
-		{`{"Padding1":10,"Und":"foo","Padding2":20}`, 2, "foo"},
-		{`{"Padding2":20}`, 0, ""},
-		{`{"Und":null,"Padding2":20}`, 1, ""},
-		{`{"Und":"bar","Padding2":20}`, 2, "bar"},
-		{`{"Padding1":10}`, 0, ""},
-		{`{"Padding1":10,"Und":null}`, 1, ""},
-		{`{"Padding1":10,"Und":"baz"}`, 2, "baz"},
-	} {
+	for _, tc := range undefinedTestCases {
 		var (
 			u2 undV2
 			s1 slicesUndV1
@@ -55,9 +58,9 @@ func TestUnd_serde(t *testing.T) {
 		assert.NilError(t, jsonv2.Unmarshal([]byte(tc.bin), &u2))
 		assert.NilError(t, jsonv2.Unmarshal([]byte(tc.bin), &s2))
 
-		assertState(t, u2.Und, tc.state, tc.value)
-		assertState(t, s1.Und, tc.state, tc.value)
-		assertState(t, s2.Und, tc.state, tc.value)
+		assertState(t, u2.V, tc.state, tc.value)
+		assertState(t, s1.V, tc.state, tc.value)
+		assertState(t, s2.V, tc.state, tc.value)
 
 		var (
 			bin []byte
