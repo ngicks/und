@@ -135,11 +135,13 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	err := json.Unmarshal(data, &o.v)
+	var v T
+	err := json.Unmarshal(data, &v)
 	if err != nil {
 		return err
 	}
 	o.some = true
+	o.v = v
 	return nil
 }
 
