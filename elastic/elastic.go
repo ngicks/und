@@ -104,7 +104,7 @@ func (e Elastic[T]) Pointer() *T {
 
 func (e Elastic[T]) Pointers() []*T {
 	if !e.IsDefined() {
-		return []*T(nil)
+		return nil
 	}
 	opts := e.v.Value()
 	ptrs := make([]*T, len(opts))
