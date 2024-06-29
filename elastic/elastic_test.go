@@ -18,6 +18,7 @@ func TestElastic(t *testing.T) {
 	}
 	testcase.TestElastic_non_addressable(
 		t,
+		FromOptions(option.Options[string]{option.None[string]()}),
 		FromOptions(opts),
 		Null[string](),
 		Undefined[string](),

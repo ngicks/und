@@ -29,7 +29,7 @@ type Ela[T any] interface {
 
 func TestElastic_non_addressable[T Ela[U], U comparable](
 	t *testing.T,
-	defined, null, undefined T,
+	firstNull, defined, null, undefined T,
 	values []option.Option[U], marshaled string,
 ) {
 	t.Run("IsDefined", func(t *testing.T) {
@@ -94,6 +94,8 @@ func TestElastic_non_addressable[T Ela[U], U comparable](
 
 	t.Run("Pointer", func(t *testing.T) {
 		var p *U
+		p = firstNull.Pointer()
+		assert.Assert(t, p == nil)
 		p = defined.Pointer()
 		assert.Equal(t, *p, values[0].Value())
 		p = null.Pointer()
@@ -118,8 +120,9 @@ func TestElastic_non_addressable[T Ela[U], U comparable](
 	})
 
 	t.Run("Value", func(t *testing.T) {
-		assert.Equal(t, defined.Value(), values[0].Value())
 		var zero U
+		assert.Equal(t, firstNull.Value(), zero)
+		assert.Equal(t, defined.Value(), values[0].Value())
 		assert.Equal(t, null.Value(), zero)
 		assert.Equal(t, undefined.Value(), zero)
 	})

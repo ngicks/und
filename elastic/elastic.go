@@ -94,7 +94,7 @@ func (e Elastic[T]) Values() []T {
 func (e Elastic[T]) Pointer() *T {
 	if e.IsDefined() {
 		vs := e.v.Value()
-		if len(vs) > 0 {
+		if len(vs) > 0 && vs[0].IsSome() {
 			v := vs[0].Value()
 			return &v
 		}
