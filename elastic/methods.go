@@ -55,7 +55,7 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	if len(data) > 2 && data[0] == '[' {
+	if len(data) >= 2 && data[0] == '[' {
 		var t option.Options[T]
 		err := json.Unmarshal(data, &t)
 		// might be T is []U, and this fails
