@@ -119,5 +119,17 @@ func (u Elastic[T]) Unwrap() und.Und[option.Options[T]] {
 }
 
 func (e Elastic[T]) Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T] {
-	return Elastic[T]{v: f(e.v)}
+	return Elastic[T]{
+		v: f(e.v.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
+			if !o.IsNone() {
+				return o
+			}
+			v := o.Value()
+			if v.IsNone() {
+				return o
+			}
+			vv := v.Value()
+			return option.Some(option.Some(vv[:len(vv):len(vv)]))
+		})),
+	}
 }
