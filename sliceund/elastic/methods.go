@@ -3,6 +3,7 @@ package elastic
 import (
 	"encoding/json"
 	"encoding/xml"
+	"log/slog"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -108,4 +109,9 @@ func (o *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error 
 		})
 	}
 	return nil
+}
+
+// LogValue implements slog.LogValuer.
+func (o Elastic[T]) LogValue() slog.Value {
+	return o.Unwrap().LogValue()
 }

@@ -3,6 +3,7 @@ package elastic
 import (
 	"encoding/json"
 	"encoding/xml"
+	"log/slog"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und/option"
@@ -28,6 +29,7 @@ var (
 	//
 	// That'll needs
 	// _ jsonv2.UnmarshalerV2          = (*Elastic[any])(nil)
+	_ slog.LogValuer = Elastic[any]{}
 )
 
 type Elastic[T any] sliceund.Und[option.Options[T]]

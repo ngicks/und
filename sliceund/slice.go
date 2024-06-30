@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
+	"log/slog"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -20,6 +21,7 @@ var (
 	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
 	_ xml.Marshaler             = Und[any]{}
 	_ xml.Unmarshaler           = (*Und[any])(nil)
+	_ slog.LogValuer            = Und[any]{}
 )
 
 // Und[T] is an uncomparable version of und.Und[T].
@@ -236,6 +238,11 @@ func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	*o = Defined(t)
 
 	return nil
+}
+
+// LogValue implements slog.LogValuer.
+func (o Und[T]) LogValue() slog.Value {
+	return o.Unwrap().Value().LogValue()
 }
 
 // SqlNull converts o into sql.Null[T].

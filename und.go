@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
+	"log/slog"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -19,6 +20,7 @@ var (
 	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
 	_ xml.Marshaler             = Und[any]{}
 	_ xml.Unmarshaler           = (*Und[any])(nil)
+	_ slog.LogValuer            = Und[any]{}
 )
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
@@ -198,6 +200,11 @@ func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	*o = Defined(t)
 
 	return nil
+}
+
+// LogValue implements slog.LogValuer.
+func (o Und[T]) LogValue() slog.Value {
+	return o.opt.Value().LogValue()
 }
 
 // SqlNull converts o into sql.Null[T].
