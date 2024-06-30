@@ -10,6 +10,7 @@ import (
 
 var (
 	_ option.Equality[Elastic[any]] = Elastic[any]{}
+	_ option.Cloner[Elastic[any]]   = Elastic[any]{}
 	_ json.Marshaler                = Elastic[any]{}
 	_ json.Unmarshaler              = (*Elastic[any])(nil)
 	_ jsonv2.MarshalerV2            = Elastic[any]{}
@@ -66,6 +67,10 @@ func (e Elastic[T]) IsUndefined() bool {
 
 func (e Elastic[T]) Equal(other Elastic[T]) bool {
 	return e.v.Equal(other.v)
+}
+
+func (e Elastic[T]) Clone() Elastic[T] {
+	return Elastic[T]{v: e.v.Clone()}
 }
 
 func (e Elastic[T]) Value() T {

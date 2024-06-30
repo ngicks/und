@@ -18,6 +18,13 @@ func (o Options[T]) Clone() Options[T] {
 		return nil
 	}
 	opts := make(Options[T], len(o))
-	copy(opts, o)
+	var zero T
+	if _, hasClone := any(zero).(Cloner[T]); hasClone {
+		for i, v := range o {
+			opts[i] = v.Map(func(v T) T { return any(v).(Cloner[T]).Clone() })
+		}
+	} else {
+		copy(opts, o)
+	}
 	return opts
 }

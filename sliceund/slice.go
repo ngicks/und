@@ -11,6 +11,7 @@ import (
 
 var (
 	_ option.Equality[Und[any]] = Und[any]{}
+	_ option.Cloner[Und[any]]   = Und[any]{}
 	_ json.Marshaler            = Und[any]{}
 	_ json.Unmarshaler          = (*Und[any])(nil)
 	_ jsonv2.MarshalerV2        = Und[any]{}
@@ -168,6 +169,10 @@ func (u Und[T]) Equal(other Und[T]) bool {
 		return u.IsUndefined() == other.IsUndefined()
 	}
 	return u[0].Equal(other[0])
+}
+
+func (u Und[T]) Clone() Und[T] {
+	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
 }
 
 func (u Und[T]) Pointer() *T {

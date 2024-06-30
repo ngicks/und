@@ -12,6 +12,7 @@ import (
 
 var (
 	_ Equality[Option[int]] = (*Option[int])(nil)
+	_ Cloner[Option[any]]   = Option[any]{}
 	_ json.Marshaler        = Option[any]{}
 	_ json.Unmarshaler      = (*Option[any])(nil)
 	_ jsonv2.MarshalerV2    = Option[any]{}
@@ -23,6 +24,10 @@ var (
 
 type Equality[T any] interface {
 	Equal(T) bool
+}
+
+type Cloner[T any] interface {
+	Clone() T
 }
 
 // Option represents an optional value.
@@ -84,6 +89,15 @@ func (o Option[T]) Pointer() *T {
 	}
 	t := o.v
 	return &t
+}
+
+func (o Option[T]) Clone() Option[T] {
+	return o.Map(func(v T) T {
+		if cloner, ok := any(v).(Cloner[T]); ok {
+			return cloner.Clone()
+		}
+		return v
+	})
 }
 
 // Equal implements Equality[Option[T]].
