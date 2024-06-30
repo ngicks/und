@@ -156,7 +156,7 @@ func (u Und[T]) Map(f func(option.Option[option.Option[T]]) option.Option[option
 
 // MarshalJSON implements json.Marshaler.
 func (u Und[T]) MarshalJSON() ([]byte, error) {
-	if u.IsUndefined() || u.IsNull() {
+	if !u.IsDefined() {
 		return []byte(`null`), nil
 	}
 	return json.Marshal(u.opt.Value().Value())

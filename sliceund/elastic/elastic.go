@@ -165,15 +165,11 @@ func (u Elastic[T]) Unwrap() sliceund.Und[option.Options[T]] {
 func (e Elastic[T]) Map(f func(sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]]) Elastic[T] {
 	return Elastic[T](
 		f(e.inner().Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
-			if !o.IsNone() {
-				return o
-			}
-			v := o.Value()
-			if v.IsNone() {
-				return o
-			}
-			vv := v.Value()
-			return option.Some(option.Some(vv[:len(vv):len(vv)]))
+			return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
+				return v.Map(func(v option.Options[T]) option.Options[T] {
+					return v[:len(v):len(v)]
+				})
+			})
 		})),
 	)
 }

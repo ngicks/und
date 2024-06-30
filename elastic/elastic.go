@@ -121,7 +121,7 @@ func (e Elastic[T]) Value() T {
 // to zero value of T.
 func (e Elastic[T]) Values() []T {
 	if !e.IsDefined() {
-		return []T(nil)
+		return nil
 	}
 	opts := e.v.Value()
 	vs := make([]T, len(opts))
@@ -172,15 +172,11 @@ func (e Elastic[T]) Unwrap() und.Und[option.Options[T]] {
 func (e Elastic[T]) Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T] {
 	return Elastic[T]{
 		v: f(e.v.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
-			if !o.IsNone() {
-				return o
-			}
-			v := o.Value()
-			if v.IsNone() {
-				return o
-			}
-			vv := v.Value()
-			return option.Some(option.Some(vv[:len(vv):len(vv)]))
+			return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
+				return v.Map(func(v option.Options[T]) option.Options[T] {
+					return v[:len(v):len(v)]
+				})
+			})
 		})),
 	}
 }
