@@ -8,15 +8,16 @@ import (
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und/option"
-	"github.com/ngicks/und/sliceund"
 )
 
-// portable methods that can be copied into github.com/ngicks/und into github.com/ngicks/und/sliceund/elastic
+// portable methods that can be copied from github.com/ngicks/und/elastic into github.com/ngicks/und/sliceund/elastic
 
 func FromValue[T any](t T) Elastic[T] {
 	return FromOptions(option.Options[T]{option.Some(t)})
 }
 
+// FromPointer converts nil to undefined Elastic[T],
+// or defined one whose internal value is dereferenced t.
 func FromPointer[T any](t *T) Elastic[T] {
 	if t == nil {
 		return Undefined[T]()
@@ -24,6 +25,7 @@ func FromPointer[T any](t *T) Elastic[T] {
 	return FromValue(*t)
 }
 
+// FromValues converts []T into an Elastic[T].
 func FromValues[T any](ts []T) Elastic[T] {
 	opts := make(option.Options[T], len(ts))
 	for i, value := range ts {
@@ -32,6 +34,8 @@ func FromValues[T any](ts []T) Elastic[T] {
 	return FromOptions(opts)
 }
 
+// FromPointers converts []*T into an Elastic[T],
+// treating nil as None[T], and non-nil as Some[T].
 func FromPointers[T any](ps []*T) Elastic[T] {
 	opts := make(option.Options[T], len(ps))
 	for _, p := range ps {
@@ -44,14 +48,17 @@ func FromPointers[T any](ps []*T) Elastic[T] {
 	return FromOptions(opts)
 }
 
+// IsZero is an alias for IsUndefined.
 func (e Elastic[T]) IsZero() bool {
 	return e.IsUndefined()
 }
 
+// MarshalJSON implements json.Marshaler.
 func (u Elastic[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(u.inner())
 }
 
+// UnmarshalJSON implements json.Unmarshaler.
 func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		*e = Null[T]()
@@ -78,6 +85,7 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSONV2 implements jsonv2.MarshalerV2.
 func (e Elastic[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
 	return jsonv2.MarshalEncode(enc, e.inner(), opts)
 }
@@ -85,30 +93,6 @@ func (e Elastic[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) er
 // MarshalXML implements xml.Marshaler.
 func (o Elastic[T]) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	return o.Unwrap().MarshalXML(e, start)
-}
-
-// UnmarshalXML implements xml.Unmarshaler.
-func (o *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	var t option.Options[T]
-	err := d.DecodeElement(&t, &start)
-	if err != nil {
-		return err
-	}
-
-	if len(o.inner().Value()) == 0 {
-		*o = FromOptions(t)
-	} else {
-		*o = o.Map(func(u sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]] {
-			return u.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
-				return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
-					return v.Map(func(v option.Options[T]) option.Options[T] {
-						return append(v, t...)
-					})
-				})
-			})
-		})
-	}
-	return nil
 }
 
 // LogValue implements slog.LogValuer.

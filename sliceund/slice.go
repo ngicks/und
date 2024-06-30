@@ -24,8 +24,9 @@ var (
 	_ slog.LogValuer            = Und[any]{}
 )
 
-// Und[T] is an uncomparable version of und.Und[T].
-// It can be skipped by v1 encoding/json when when marshaling if len(u) == 0.
+// Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
+//
+// Und[T] can be a skippable struct field with omitempty option of `encoding/json`.
 //
 // Although it exposes its internal data structure,
 // you should not mutate internal data.
@@ -58,6 +59,9 @@ func Undefined[T any]() Und[T] {
 	return nil
 }
 
+// FromPointer converts *T into Und[T].
+// If v is nil, it returns an undefined Und.
+// Otherwise, it returns Defined[T] whose value is the dereferenced v.
 func FromPointer[T any](v *T) Und[T] {
 	if v == nil {
 		return Undefined[T]()
@@ -65,6 +69,8 @@ func FromPointer[T any](v *T) Und[T] {
 	return Defined(*v)
 }
 
+// FromOptions converts opt into an Und[T].
+// opt is retained by the returned value.
 func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 	if opt.IsNone() {
 		return Undefined[T]()
@@ -72,10 +78,13 @@ func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 	return Und[T]{opt.Value()}
 }
 
+// FromUnd converts non-slice version of Und[T] into Und[T].
 func FromUnd[T any](u und.Und[T]) Und[T] {
 	return FromOption(u.Unwrap())
 }
 
+// FromSqlNull converts a valid sql.Null[T] to a defined Und[T]
+// and invalid one into a null Und[].
 func FromSqlNull[T any](v sql.Null[T]) Und[T] {
 	if !v.Valid {
 		return Null[T]()
@@ -96,14 +105,17 @@ func (u Und[T]) IsDefined() bool {
 	return len(u) > 0 && u[0].IsSome()
 }
 
+// IsNull returns true if u is a null value, otherwise false.
 func (u Und[T]) IsNull() bool {
 	return len(u) > 0 && u[0].IsNone()
 }
 
+// IsUndefined returns true if u is an undefined value, otherwise false.
 func (u Und[T]) IsUndefined() bool {
 	return len(u) == 0
 }
 
+// Value returns an internal value.
 func (u Und[T]) Value() T {
 	if u.IsDefined() {
 		return u[0].Value()
@@ -112,6 +124,7 @@ func (u Und[T]) Value() T {
 	return zero
 }
 
+// MarshalJSON implements json.Marshaler.
 func (u Und[T]) MarshalJSON() ([]byte, error) {
 	if !u.IsDefined() {
 		return []byte(`null`), nil
@@ -119,6 +132,7 @@ func (u Und[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(u[0].Value())
 }
 
+// UnmarshalJSON implements json.Unmarshaler.
 func (u *Und[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		if len(*u) == 0 {
@@ -143,6 +157,7 @@ func (u *Und[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSONV2 implements jsonv2.MarshalerV2.
 func (u Und[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
 	if !u.IsDefined() {
 		return enc.WriteToken(jsontext.Null)
@@ -150,6 +165,7 @@ func (u Und[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error 
 	return jsonv2.MarshalEncode(enc, u.Value(), opts)
 }
 
+// UnmarshalJSONV2 implements jsonv2.UnmarshalerV2.
 func (u *Und[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) error {
 	if dec.PeekKind() == 'n' {
 		err := dec.SkipValue()
@@ -177,6 +193,8 @@ func (u *Und[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) err
 	return nil
 }
 
+// Equal implements Equality[Und[T]].
+// Equal panics if T is uncomparable and does not implement Equality[T].
 func (u Und[T]) Equal(other Und[T]) bool {
 	if u.IsUndefined() || other.IsUndefined() {
 		return u.IsUndefined() == other.IsUndefined()
@@ -184,10 +202,13 @@ func (u Und[T]) Equal(other Und[T]) bool {
 	return u[0].Equal(other[0])
 }
 
+// Clone clones u.
+// This is only a copy-by-assign unless T implements Cloner[T].
 func (u Und[T]) Clone() Und[T] {
 	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
 }
 
+// Pointer returns u's internal value as a pointer.
 func (u Und[T]) Pointer() *T {
 	if !u.IsDefined() {
 		return nil
@@ -196,6 +217,7 @@ func (u Und[T]) Pointer() *T {
 	return &v
 }
 
+// DoublePointer returns nil if u is undefined, &(*T)(nil) if null, the internal value if defined.
 func (u Und[T]) DoublePointer() **T {
 	switch {
 	case u.IsUndefined():
@@ -210,6 +232,7 @@ func (u Und[T]) DoublePointer() **T {
 	}
 }
 
+// Unwrap converts u to a nested options.
 func (u Und[T]) Unwrap() option.Option[option.Option[T]] {
 	if u.IsUndefined() {
 		return option.None[option.Option[T]]()
@@ -218,6 +241,7 @@ func (u Und[T]) Unwrap() option.Option[option.Option[T]] {
 	return option.Some(opt)
 }
 
+// Map returns a new Und[T] whose internal value is u's mapped by f.
 func (u Und[T]) Map(f func(option.Option[option.Option[T]]) option.Option[option.Option[T]]) Und[T] {
 	return FromOption(f(u.Unwrap()))
 }

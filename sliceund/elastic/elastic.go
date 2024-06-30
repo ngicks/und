@@ -27,21 +27,34 @@ var (
 	//   - input starts with [ but T is []U
 	//   - input starts with [ but T implements UnmarshalJSON v1 or v2; it's ambiguous.
 	//
-	// That'll needs
+	// That'll needs unnecessary complexity to code base, e.g. teeing tokens and token stream decoder.
+	//
 	// _ jsonv2.UnmarshalerV2          = (*Elastic[any])(nil)
 	_ slog.LogValuer = Elastic[any]{}
 )
 
+// Elastic[T] is a type that can express undefined | null | T | [](null | T).
+//
+// Elastic[T] can be a skippable struct field with omitempty option of `encoding/json`.
+//
+// Although it exposes its internal data structure,
+// you should not mutate internal data.
+// For more detail,
+// See doc comment for github.com/ngicks/und/sliceund.Und[T].
 type Elastic[T any] sliceund.Und[option.Options[T]]
 
+// Null returns a null Elastic[T].
 func Null[T any]() Elastic[T] {
 	return Elastic[T](sliceund.Null[option.Options[T]]())
 }
 
+// Undefined returns an undefined Elastic[T].
 func Undefined[T any]() Elastic[T] {
 	return Elastic[T](sliceund.Undefined[option.Options[T]]())
 }
 
+// FromOptions converts slice of option.Option[T] into Elastic[T].
+// options is retained by the returned value.
 func FromOptions[T any, Opts ~[]option.Option[T]](options Opts) Elastic[T] {
 	return Elastic[T](sliceund.Defined(option.Options[T](options)))
 }
@@ -50,26 +63,39 @@ func (e Elastic[T]) inner() sliceund.Und[option.Options[T]] {
 	return sliceund.Und[option.Options[T]](e)
 }
 
+// IsDefined returns true if e is a defined Elastic[T],
+// which includes a slice with no element.
 func (e Elastic[T]) IsDefined() bool {
 	return e.inner().IsDefined()
 }
 
+// IsNull returns true if e is a null Elastic[T].
 func (e Elastic[T]) IsNull() bool {
 	return e.inner().IsNull()
 }
 
+// IsUndefined returns true if e is an undefined Elastic[T].
 func (e Elastic[T]) IsUndefined() bool {
 	return e.inner().IsUndefined()
 }
 
+// Equal implements option.Equality[Elastic[T]].
+//
+// Equal panics if T is uncomparable.
 func (e Elastic[T]) Equal(other Elastic[T]) bool {
 	return e.inner().Equal(other.inner())
 }
 
+// Clone implements option.Cloner[Elastic[T]].
+//
+// Clone clones its internal option.Option slice by copy.
+// Or if T implements Cloner[T], each element is cloned.
 func (e Elastic[T]) Clone() Elastic[T] {
 	return Elastic[T](e.inner().Clone())
 }
 
+// Value returns a first value of its internal option slice if e is defined.
+// Otherwise it returns zero value for T.
 func (e Elastic[T]) Value() T {
 	if e.IsDefined() {
 		vs := e.inner().Value()
@@ -81,6 +107,11 @@ func (e Elastic[T]) Value() T {
 	return zero
 }
 
+// Values returns internal option slice as plain []T.
+//
+// If e is not defined, it returns nil.
+// Any None value in its internal option slice will be converted
+// to zero value of T.
 func (e Elastic[T]) Values() []T {
 	if !e.IsDefined() {
 		return []T(nil)
@@ -93,6 +124,12 @@ func (e Elastic[T]) Values() []T {
 	return vs
 }
 
+// Pointer returns a first value of its internal option slice as *T if e is defined.
+//
+// Pointer returns nil if
+//   - e is not defined
+//   - e has no element
+//   - e's first element is None.
 func (e Elastic[T]) Pointer() *T {
 	if e.IsDefined() {
 		vs := e.inner().Value()
@@ -104,6 +141,7 @@ func (e Elastic[T]) Pointer() *T {
 	return nil
 }
 
+// Pointer returns its internal option slice as []*T if e is defined.
 func (e Elastic[T]) Pointers() []*T {
 	if !e.IsDefined() {
 		return nil
@@ -116,10 +154,14 @@ func (e Elastic[T]) Pointers() []*T {
 	return ptrs
 }
 
+// Unwrap unwraps e.
 func (u Elastic[T]) Unwrap() sliceund.Und[option.Options[T]] {
-	return sliceund.FromOption(u.inner().Unwrap())
+	return u.inner()
 }
 
+// Map returns a new Elastic[T] whose internal value is e's mapped by f.
+//
+// The internal slice of e is capped to its length before passed to f.
 func (e Elastic[T]) Map(f func(sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]]) Elastic[T] {
 	return Elastic[T](
 		f(e.inner().Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
@@ -134,4 +176,28 @@ func (e Elastic[T]) Map(f func(sliceund.Und[option.Options[T]]) sliceund.Und[opt
 			return option.Some(option.Some(vv[:len(vv):len(vv)]))
 		})),
 	)
+}
+
+// UnmarshalXML implements xml.Unmarshaler.
+func (o *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var t option.Options[T]
+	err := d.DecodeElement(&t, &start)
+	if err != nil {
+		return err
+	}
+
+	if len(o.inner().Value()) == 0 {
+		*o = FromOptions(t)
+	} else {
+		*o = o.Map(func(u sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]] {
+			return u.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
+				return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
+					return v.Map(func(v option.Options[T]) option.Options[T] {
+						return append(v, t...)
+					})
+				})
+			})
+		})
+	}
+	return nil
 }
