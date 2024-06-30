@@ -3,9 +3,9 @@ package elastic
 import (
 	"testing"
 
-	"github.com/ngicks/und"
 	"github.com/ngicks/und/internal/testcase"
 	"github.com/ngicks/und/option"
+	"github.com/ngicks/und/sliceund"
 	"gotest.tools/v3/assert"
 )
 
@@ -58,7 +58,7 @@ func TestElastic_Methods(t *testing.T) {
 	})
 
 	t.Run("Map", func(t *testing.T) {
-		mapper := func(u und.Und[option.Options[string]]) und.Und[option.Options[string]] {
+		mapper := func(u sliceund.Und[option.Options[string]]) sliceund.Und[option.Options[string]] {
 			if !u.IsDefined() {
 				return u
 			}
@@ -68,7 +68,7 @@ func TestElastic_Methods(t *testing.T) {
 					mapped[i] = option.Some(v.Value() + v.Value())
 				}
 			}
-			return und.Defined(option.Options[string](mapped))
+			return sliceund.Defined(option.Options[string](mapped))
 		}
 
 		assert.Assert(
@@ -88,8 +88,8 @@ func TestElastic_Methods(t *testing.T) {
 	})
 
 	t.Run("Unwrap", func(t *testing.T) {
-		assert.Assert(t, u2.Unwrap().Equal(und.Defined(option.Options[string]{option.None[string](), option.Some("bar")})))
-		assert.Assert(t, u3.Unwrap().Equal(und.Null[option.Options[string]]()))
-		assert.Assert(t, u4.Unwrap().Equal(und.Undefined[option.Options[string]]()))
+		assert.Assert(t, u2.Unwrap().Equal(sliceund.Defined(option.Options[string]{option.None[string](), option.Some("bar")})))
+		assert.Assert(t, u3.Unwrap().Equal(sliceund.Null[option.Options[string]]()))
+		assert.Assert(t, u4.Unwrap().Equal(sliceund.Undefined[option.Options[string]]()))
 	})
 }
