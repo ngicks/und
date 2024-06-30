@@ -1,6 +1,7 @@
 package und
 
 import (
+	"database/sql"
 	"encoding/json"
 	"encoding/xml"
 
@@ -63,6 +64,13 @@ func FromPointer[T any](v *T) Und[T] {
 
 func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 	return Und[T]{opt: opt}
+}
+
+func FromSqlNull[T any](v sql.Null[T]) Und[T] {
+	if !v.Valid {
+		return Null[T]()
+	}
+	return Defined(v.V)
 }
 
 func (u Und[T]) IsZero() bool {
@@ -190,4 +198,9 @@ func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	*o = Defined(t)
 
 	return nil
+}
+
+// SqlNull converts o into sql.Null[T].
+func (o Und[T]) SqlNull() sql.Null[T] {
+	return o.opt.Value().SqlNull()
 }

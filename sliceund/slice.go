@@ -1,6 +1,7 @@
 package sliceund
 
 import (
+	"database/sql"
 	"encoding/json"
 	"encoding/xml"
 
@@ -71,6 +72,13 @@ func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 
 func FromUnd[T any](u und.Und[T]) Und[T] {
 	return FromOption(u.Unwrap())
+}
+
+func FromSqlNull[T any](v sql.Null[T]) Und[T] {
+	if !v.Valid {
+		return Null[T]()
+	}
+	return Defined(v.V)
 }
 
 // IsZero is an alias for IsUndefined.
@@ -228,4 +236,9 @@ func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	*o = Defined(t)
 
 	return nil
+}
+
+// SqlNull converts o into sql.Null[T].
+func (o Und[T]) SqlNull() sql.Null[T] {
+	return o.Unwrap().Value().SqlNull()
 }
