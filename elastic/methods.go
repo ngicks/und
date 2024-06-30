@@ -38,11 +38,11 @@ func FromValues[T any](ts []T) Elastic[T] {
 // treating nil as None[T], and non-nil as Some[T].
 func FromPointers[T any](ps []*T) Elastic[T] {
 	opts := make(option.Options[T], len(ps))
-	for _, p := range ps {
+	for i, p := range ps {
 		if p == nil {
-			opts = append(opts, option.None[T]())
+			opts[i] = option.None[T]()
 		} else {
-			opts = append(opts, option.Some(*p))
+			opts[i] = option.Some(*p)
 		}
 	}
 	return FromOptions(opts)
