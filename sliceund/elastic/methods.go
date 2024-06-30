@@ -91,11 +91,11 @@ func (e Elastic[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) er
 }
 
 // MarshalXML implements xml.Marshaler.
-func (o Elastic[T]) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	return o.Unwrap().MarshalXML(e, start)
+func (e Elastic[T]) MarshalXML(enc *xml.Encoder, start xml.StartElement) error {
+	return e.Unwrap().MarshalXML(enc, start)
 }
 
 // LogValue implements slog.LogValuer.
-func (o Elastic[T]) LogValue() slog.Value {
-	return o.Unwrap().LogValue()
+func (e Elastic[T]) LogValue() slog.Value {
+	return e.Unwrap().LogValue()
 }

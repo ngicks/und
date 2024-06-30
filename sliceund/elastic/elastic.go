@@ -155,8 +155,8 @@ func (e Elastic[T]) Pointers() []*T {
 }
 
 // Unwrap unwraps e.
-func (u Elastic[T]) Unwrap() sliceund.Und[option.Options[T]] {
-	return u.inner()
+func (e Elastic[T]) Unwrap() sliceund.Und[option.Options[T]] {
+	return e.inner()
 }
 
 // Map returns a new Elastic[T] whose internal value is e's mapped by f.
@@ -175,17 +175,17 @@ func (e Elastic[T]) Map(f func(sliceund.Und[option.Options[T]]) sliceund.Und[opt
 }
 
 // UnmarshalXML implements xml.Unmarshaler.
-func (o *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+func (e *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var t option.Options[T]
 	err := d.DecodeElement(&t, &start)
 	if err != nil {
 		return err
 	}
 
-	if len(o.inner().Value()) == 0 {
-		*o = FromOptions(t)
+	if len(e.inner().Value()) == 0 {
+		*e = FromOptions(t)
 	} else {
-		*o = o.Map(func(u sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]] {
+		*e = e.Map(func(u sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]] {
 			return u.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
 				return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
 					return v.Map(func(v option.Options[T]) option.Options[T] {
