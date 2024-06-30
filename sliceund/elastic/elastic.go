@@ -2,6 +2,7 @@ package elastic
 
 import (
 	"encoding/json"
+	"encoding/xml"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und/option"
@@ -14,6 +15,8 @@ var (
 	_ json.Marshaler                = Elastic[any]{}
 	_ json.Unmarshaler              = (*Elastic[any])(nil)
 	_ jsonv2.MarshalerV2            = Elastic[any]{}
+	_ xml.Marshaler                 = Elastic[any]{}
+	_ xml.Unmarshaler               = (*Elastic[any])(nil)
 	// We don't implement UnmarshalJSONV2 since there's variants that cannot be unmarshaled without
 	// calling unmarshal twice or so.
 	// there's 4 possible code paths

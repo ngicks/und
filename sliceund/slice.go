@@ -2,6 +2,7 @@ package sliceund
 
 import (
 	"encoding/json"
+	"encoding/xml"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -16,6 +17,8 @@ var (
 	_ json.Unmarshaler          = (*Und[any])(nil)
 	_ jsonv2.MarshalerV2        = Und[any]{}
 	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
+	_ xml.Marshaler             = Und[any]{}
+	_ xml.Unmarshaler           = (*Und[any])(nil)
 )
 
 // Und[T] is an uncomparable version of und.Und[T].
@@ -207,4 +210,22 @@ func (u Und[T]) Unwrap() option.Option[option.Option[T]] {
 
 func (u Und[T]) Map(f func(option.Option[option.Option[T]]) option.Option[option.Option[T]]) Und[T] {
 	return FromOption(f(u.Unwrap()))
+}
+
+// MarshalXML implements xml.Marshaler.
+func (o Und[T]) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return o.Unwrap().Value().MarshalXML(e, start)
+}
+
+// UnmarshalXML implements xml.Unmarshaler.
+func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var t T
+	err := d.DecodeElement(&t, &start)
+	if err != nil {
+		return err
+	}
+
+	*o = Defined(t)
+
+	return nil
 }

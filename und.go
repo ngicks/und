@@ -2,6 +2,7 @@ package und
 
 import (
 	"encoding/json"
+	"encoding/xml"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -15,6 +16,8 @@ var (
 	_ json.Unmarshaler          = (*Und[any])(nil)
 	_ jsonv2.MarshalerV2        = Und[any]{}
 	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
+	_ xml.Marshaler             = Und[any]{}
+	_ xml.Unmarshaler           = (*Und[any])(nil)
 )
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
@@ -168,5 +171,23 @@ func (u *Und[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) err
 		return err
 	}
 	*u = Defined(t)
+	return nil
+}
+
+// MarshalXML implements xml.Marshaler.
+func (o Und[T]) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return o.opt.Value().MarshalXML(e, start)
+}
+
+// UnmarshalXML implements xml.Unmarshaler.
+func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var t T
+	err := d.DecodeElement(&t, &start)
+	if err != nil {
+		return err
+	}
+
+	*o = Defined(t)
+
 	return nil
 }

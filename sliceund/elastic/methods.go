@@ -2,10 +2,12 @@ package elastic
 
 import (
 	"encoding/json"
+	"encoding/xml"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und/option"
+	"github.com/ngicks/und/sliceund"
 )
 
 // portable methods that can be copied into github.com/ngicks/und into github.com/ngicks/und/sliceund/elastic
@@ -77,4 +79,33 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 
 func (e Elastic[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
 	return jsonv2.MarshalEncode(enc, e.inner(), opts)
+}
+
+// MarshalXML implements xml.Marshaler.
+func (o Elastic[T]) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return o.Unwrap().MarshalXML(e, start)
+}
+
+// UnmarshalXML implements xml.Unmarshaler.
+func (o *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var t option.Options[T]
+	err := d.DecodeElement(&t, &start)
+	if err != nil {
+		return err
+	}
+
+	if len(o.inner().Value()) == 0 {
+		*o = FromOptions(t)
+	} else {
+		*o = o.Map(func(u sliceund.Und[option.Options[T]]) sliceund.Und[option.Options[T]] {
+			return u.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
+				return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
+					return v.Map(func(v option.Options[T]) option.Options[T] {
+						return append(v, t...)
+					})
+				})
+			})
+		})
+	}
+	return nil
 }
