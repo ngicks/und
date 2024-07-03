@@ -48,10 +48,10 @@ func None[T any]() Option[T] {
 }
 
 func FromSqlNull[T any](v sql.Null[T]) Option[T] {
-	if v.Valid {
-		return Some(v.V)
+	if !v.Valid {
+		return None[T]()
 	}
-	return None[T]()
+	return Some(v.V)
 }
 
 func (o Option[T]) IsZero() bool {
@@ -221,7 +221,7 @@ func (o Option[T]) LogValue() slog.Value {
 }
 
 func (o Option[T]) SqlNull() sql.Null[T] {
-	if o.IsSome() {
+	if o.IsNone() {
 		return sql.Null[T]{}
 	}
 	return sql.Null[T]{
