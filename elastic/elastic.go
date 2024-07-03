@@ -66,6 +66,13 @@ func FromOptions[Opts ~[]option.Option[T], T any](options Opts) Elastic[T] {
 	}
 }
 
+// FromUnd converts und.Und[option.Options[T]] into Elastic[T].
+//
+// The internal value of u is retained by the returned value.
+func FromUnd[T any](u und.Und[option.Options[T]]) Elastic[T] {
+	return Elastic[T]{u}
+}
+
 func (e Elastic[T]) inner() und.Und[option.Options[T]] {
 	return e.v
 }

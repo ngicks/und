@@ -241,6 +241,11 @@ func (u Und[T]) Unwrap() option.Option[option.Option[T]] {
 	return option.Some(opt)
 }
 
+// Und converts u into non-slice version Und[T].
+func (u Und[T]) Und() und.Und[T] {
+	return und.FromOption(u.Unwrap())
+}
+
 // Map returns a new Und[T] whose internal value is u's mapped by f.
 func (u Und[T]) Map(f func(option.Option[option.Option[T]]) option.Option[option.Option[T]]) Und[T] {
 	return FromOption(f(u.Unwrap()))
