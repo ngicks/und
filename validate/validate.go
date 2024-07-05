@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var (
@@ -319,10 +320,11 @@ type CheckerUnd interface {
 }
 
 var (
-	elasticLike  = reflect.TypeFor[ElasticLike]()
-	undLikeTy    = reflect.TypeFor[UndLike]()
-	optionLikeTy = reflect.TypeFor[OptionLike]()
-	checkerOptTy = reflect.TypeFor[CheckerUnd]()
+	elasticLike    = reflect.TypeFor[ElasticLike]()
+	undLikeTy      = reflect.TypeFor[UndLike]()
+	optionLikeTy   = reflect.TypeFor[OptionLike]()
+	validatorUndTy = reflect.TypeFor[ValidatorUnd]()
+	checkerUndTy   = reflect.TypeFor[CheckerUnd]()
 )
 
 // ValidateUnd validates whether s is compliant to the constraint placed by `und` struct tag.
@@ -332,32 +334,75 @@ var (
 // Only fields whose struct tag contains `und`, and whose type is implementor of OptionLike, UndLike or ElasticLike, are validated.
 func ValidateUnd(s any) error {
 	rv := reflect.ValueOf(s)
-	return check(rv, rv.Type(), true)
+	return cacheValidator(rv.Type()).validate(rv)
 }
 
 // CheckUnd checks whether s is correctly configured with `und` struct tag option without validating it.
 func CheckUnd(s any) error {
-	rv := reflect.ValueOf(s)
-	return check(rv, rv.Type(), false)
+	return cacheValidator(reflect.TypeOf(s)).check()
 }
 
-func check(rv reflect.Value, rt reflect.Type, doValidate bool) error {
+var validatorCache sync.Map
+
+type cachedValidator struct {
+	rt  reflect.Type
+	err error
+	v   []fieldValidator
+}
+
+func (v cachedValidator) validate(rv reflect.Value) error {
+	if v.err != nil {
+		return v.err
+	}
+	for _, f := range v.v {
+		if err := f.validate(rv.Field(f.i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v cachedValidator) check() error {
+	if v.err != nil {
+		return v.err
+	}
+	for _, f := range v.v {
+		if f.check == nil {
+			continue
+		}
+		if err := f.check(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type fieldValidator struct {
+	i        int
+	rt       reflect.Type
+	validate func(fv reflect.Value) error
+	check    func() error
+}
+
+func cacheValidator(rt reflect.Type) cachedValidator {
+	v, ok := validatorCache.Load(rt)
+	if !ok {
+		v, _ = validatorCache.LoadOrStore(rt, makeValidator(rt))
+	}
+	return v.(cachedValidator)
+}
+
+func makeValidator(rt reflect.Type) cachedValidator {
 	if rt.Kind() == reflect.Pointer {
 		rt = rt.Elem()
-		if doValidate {
-			rv = rv.Elem()
-		}
 	}
 	//TODO: warn or return error if rv is non addressable value? Validate method might be implemented on pointer receiver.
 	if rt.Kind() != reflect.Struct {
-		return fmt.Errorf("%w: input is expected to be a struct type but is %s", ErrNotStruct, rv.Type())
+		return cachedValidator{rt: rt, err: fmt.Errorf("%w: input is expected to be a struct type but is %s", ErrNotStruct, rt.Kind())}
 	}
 
+	var fieldValidators []fieldValidator
 	for i := 0; i < rt.NumField(); i++ {
-		var fv reflect.Value
-		if doValidate {
-			fv = rv.Field(i)
-		}
 		ft := rt.Field(i)
 
 		if !ft.IsExported() {
@@ -377,15 +422,33 @@ func check(rv reflect.Value, rt reflect.Type, doValidate bool) error {
 				}
 			case reflect.Struct:
 			}
-			err := check(fv, ft.Type, doValidate)
-			if err != nil {
-				return fmt.Errorf("%s.%w", ft.Name, err)
+			subFieldValidator := makeValidator(ft.Type)
+			if subFieldValidator.err != nil {
+				return cachedValidator{
+					rt: rt,
+					v: []fieldValidator{{
+						i:        i,
+						validate: subFieldValidator.validate,
+					}},
+				}
 			}
+
+			fieldValidators = append(fieldValidators, fieldValidator{
+				i: i,
+				validate: func(rv reflect.Value) error {
+					err := subFieldValidator.validate(rv)
+					if err != nil {
+						return fmt.Errorf("%s.%w", ft.Name, err)
+					}
+					return nil
+				},
+			})
+
 			continue
 		}
 
 		if ft.Type.Kind() == reflect.Pointer {
-			return fmt.Errorf("%s: pointer implementor field", ft.Name)
+			return cachedValidator{rt: rt, err: fmt.Errorf("%s: pointer implementor field", ft.Name)}
 		}
 
 		tag := ft.Tag.Get(UndTag)
@@ -394,44 +457,69 @@ func check(rv reflect.Value, rt reflect.Type, doValidate bool) error {
 		}
 		opt, err := parseOption(tag)
 		if err != nil {
-			return fmt.Errorf("%s: %w", ft.Name, err)
+			return cachedValidator{rt: rt, err: fmt.Errorf("%s: %w", ft.Name, err)}
 		}
 
 		if !isElasticLike && opt.len.IsSome() {
-			return fmt.Errorf("%s: len on non elastic", ft.Name)
+			return cachedValidator{rt: rt, err: fmt.Errorf("%s: len on non elastic", ft.Name)}
 		}
 
-		if doValidate {
-			switch {
-			case isElasticLike:
+		var validateOpt func(fv reflect.Value) error
+		switch {
+		case isElasticLike:
+			validateOpt = func(fv reflect.Value) error {
 				if !opt.validElastic(fv.Interface().(ElasticLike)) {
-					return fmt.Errorf("%s: input %s", ft.Name, opt) //TODO
+					return fmt.Errorf("%s: input %s", ft.Name, opt)
 				}
-			case isUndLike:
-				if !opt.validUnd(fv.Interface().(UndLike)) {
-					return fmt.Errorf("%s: input %s", ft.Name, opt) //TODO
-				}
-			case isOptLike:
-				if !opt.validOpt(fv.Interface().(OptionLike)) {
-					return fmt.Errorf("%s: input %s", ft.Name, opt) //TODO
-				}
+				return nil
 			}
+		case isUndLike:
+			validateOpt = func(fv reflect.Value) error {
+				if !opt.validUnd(fv.Interface().(UndLike)) {
+					return fmt.Errorf("%s: input %s", ft.Name, opt)
+				}
+				return nil
+			}
+		case isOptLike:
+			validateOpt = func(fv reflect.Value) error {
+				if !opt.validOpt(fv.Interface().(OptionLike)) {
+					return fmt.Errorf("%s: input %s", ft.Name, opt)
+				}
+				return nil
+			}
+		}
 
-			if v, ok := fv.Interface().(ValidatorUnd); ok {
-				err := v.ValidateUnd()
+		validate := validateOpt
+		if ft.Type.Implements(validatorUndTy) {
+			validate = func(fv reflect.Value) error {
+				err := validateOpt(fv)
 				if err != nil {
 					return fmt.Errorf("%s.%w", ft.Name, err)
 				}
-			}
-		} else if ft.Type.Implements(checkerOptTy) {
-			// keep it addressable. The type might implement it on pointer type.
-			fv := reflect.New(ft.Type).Elem()
-			err := fv.Interface().(CheckerUnd).CheckUnd()
-			if err != nil {
-				return fmt.Errorf("%s.%w", ft.Name, err)
+				return fv.Interface().(ValidatorUnd).ValidateUnd()
 			}
 		}
+
+		var check func() error
+		if ft.Type.Implements(checkerUndTy) {
+			check = func() error {
+				// keep it addressable. The type might implement it on pointer type.
+				fv := reflect.New(ft.Type).Elem()
+				err := fv.Interface().(CheckerUnd).CheckUnd()
+				if err != nil {
+					return fmt.Errorf("%s.%w", ft.Name, err)
+				}
+				return nil
+			}
+		}
+
+		fieldValidators = append(fieldValidators, fieldValidator{
+			i:        i,
+			rt:       ft.Type,
+			validate: validate,
+			check:    check,
+		})
 	}
 
-	return nil
+	return cachedValidator{rt: rt, v: fieldValidators}
 }
