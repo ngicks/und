@@ -1,6 +1,12 @@
 package option
 
-import "slices"
+import (
+	"errors"
+	"fmt"
+	"slices"
+
+	"github.com/ngicks/und/validate"
+)
 
 type Options[T any] []Option[T]
 
@@ -27,4 +33,30 @@ func (o Options[T]) Clone() Options[T] {
 		copy(opts, o)
 	}
 	return opts
+}
+
+func (o Options[T]) ValidateUnd() error {
+	for i, oo := range o {
+		err := MapOrOption(oo, nil, func(t T) error {
+			return validate.ValidateUnd(t)
+		})
+		if err != nil {
+			if errors.Is(err, validate.ErrNotStruct) {
+				// no point further inspect.
+				// assumes T is not `any`.
+				return nil
+			}
+			return fmt.Errorf("index %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func (o Options[T]) CheckUnd() error {
+	var zero T
+	err := validate.CheckUnd(zero)
+	if errors.Is(err, validate.ErrNotStruct) {
+		return nil
+	}
+	return err
 }

@@ -16,6 +16,7 @@ type Ela[T any] interface {
 	IsNull() bool
 	IsUndefined() bool
 	IsZero() bool
+	Len() int
 	// Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T]
 	MarshalJSON() ([]byte, error)
 	MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error
@@ -54,6 +55,13 @@ func TestElastic_non_addressable[T Ela[U], U comparable](
 		assert.Assert(t, !defined.IsZero())
 		assert.Assert(t, !null.IsZero())
 		assert.Assert(t, undefined.IsZero())
+	})
+
+	t.Run("Len", func(t *testing.T) {
+		assert.Equal(t, firstNull.Len(), 1)
+		assert.Equal(t, defined.Len(), 4)
+		assert.Equal(t, null.Len(), 0)
+		assert.Equal(t, undefined.Len(), 0)
 	})
 
 	t.Run("MarshalJSON", func(t *testing.T) {

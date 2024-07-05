@@ -10,11 +10,14 @@ import (
 	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
+	"github.com/ngicks/und/validate"
 )
 
 var (
 	_ option.Equality[Und[any]] = Und[any]{}
 	_ option.Cloner[Und[any]]   = Und[any]{}
+	_ validate.ValidatorUnd     = Und[any]{}
+	_ validate.CheckerUnd       = Und[any]{}
 	_ json.Marshaler            = Und[any]{}
 	_ json.Unmarshaler          = (*Und[any])(nil)
 	_ jsonv2.MarshalerV2        = Und[any]{}
@@ -206,6 +209,14 @@ func (u Und[T]) Equal(other Und[T]) bool {
 // This is only a copy-by-assign unless T implements Cloner[T].
 func (u Und[T]) Clone() Und[T] {
 	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
+}
+
+func (u Und[T]) ValidateUnd() error {
+	return u.Unwrap().Value().ValidateUnd()
+}
+
+func (u Und[T]) CheckUnd() error {
+	return u.Unwrap().Value().CheckUnd()
 }
 
 // Pointer returns u's internal value as a pointer.

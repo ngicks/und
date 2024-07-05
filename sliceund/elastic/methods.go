@@ -53,6 +53,14 @@ func (e Elastic[T]) IsZero() bool {
 	return e.IsUndefined()
 }
 
+func (e Elastic[T]) ValidateUnd() error {
+	return e.inner().Value().ValidateUnd()
+}
+
+func (e Elastic[T]) CheckUnd() error {
+	return e.inner().Value().CheckUnd()
+}
+
 // MarshalJSON implements json.Marshaler.
 func (u Elastic[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(u.inner())

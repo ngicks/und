@@ -4,15 +4,19 @@ import (
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"log/slog"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
+	"github.com/ngicks/und/validate"
 )
 
 var (
 	_ Equality[Option[int]] = (*Option[int])(nil)
 	_ Cloner[Option[any]]   = Option[any]{}
+	_ validate.ValidatorUnd = Option[any]{}
+	_ validate.CheckerUnd   = Option[any]{}
 	_ json.Marshaler        = Option[any]{}
 	_ json.Unmarshaler      = (*Option[any])(nil)
 	_ jsonv2.MarshalerV2    = Option[any]{}
@@ -136,6 +140,25 @@ func equal[T any](t, u T) bool {
 	}
 
 	return any(t) == any(u) // may panic if T or dynamic type of T is uncomparable.
+}
+
+func (o Option[T]) ValidateUnd() error {
+	return MapOrOption(o, nil, func(t T) error {
+		err := validate.ValidateUnd(t)
+		if errors.Is(err, validate.ErrNotStruct) {
+			return nil
+		}
+		return err
+	})
+}
+
+func (o Option[T]) CheckUnd() error {
+	var zero T
+	err := validate.CheckUnd(zero)
+	if errors.Is(err, validate.ErrNotStruct) {
+		return nil
+	}
+	return err
 }
 
 func (o Option[T]) MarshalJSON() ([]byte, error) {

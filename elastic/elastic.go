@@ -8,11 +8,14 @@ import (
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
+	"github.com/ngicks/und/validate"
 )
 
 var (
 	_ option.Equality[Elastic[any]] = Elastic[any]{}
 	_ option.Cloner[Elastic[any]]   = Elastic[any]{}
+	_ validate.ValidatorUnd         = Elastic[any]{}
+	_ validate.CheckerUnd           = Elastic[any]{}
 	_ json.Marshaler                = Elastic[any]{}
 	_ json.Unmarshaler              = (*Elastic[any])(nil)
 	_ jsonv2.MarshalerV2            = Elastic[any]{}
@@ -106,6 +109,14 @@ func (e Elastic[T]) Equal(other Elastic[T]) bool {
 // Or if T implements Cloner[T], each element is cloned.
 func (e Elastic[T]) Clone() Elastic[T] {
 	return Elastic[T]{v: e.v.Clone()}
+}
+
+// Len returns length of values.
+func (e Elastic[T]) Len() int {
+	if !e.IsDefined() {
+		return 0
+	}
+	return len(e.v.Value())
 }
 
 // Value returns a first value of its internal option slice if e is defined.
