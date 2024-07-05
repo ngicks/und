@@ -46,7 +46,7 @@ func (o Options[T]) ValidateUnd() error {
 				// assumes T is not `any`.
 				return nil
 			}
-			return fmt.Errorf("index %d: %w", i, err)
+			return fmt.Errorf("[%d].%w", i, err)
 		}
 	}
 	return nil
