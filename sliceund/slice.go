@@ -270,11 +270,11 @@ func (o *Und[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 }
 
 // LogValue implements slog.LogValuer.
-func (o Und[T]) LogValue() slog.Value {
-	return o.Unwrap().Value().LogValue()
+func (u Und[T]) LogValue() slog.Value {
+	return u.Unwrap().Value().LogValue()
 }
 
 // SqlNull converts o into sql.Null[T].
-func (o Und[T]) SqlNull() sql.Null[T] {
-	return o.Unwrap().Value().SqlNull()
+func (u Und[T]) SqlNull() sql.Null[T] {
+	return u.Unwrap().Value().SqlNull()
 }
