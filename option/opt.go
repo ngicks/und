@@ -284,7 +284,7 @@ func (o Option[T]) Map(f func(v T) T) Option[T] {
 	return MapOption(o, f)
 }
 
-// MapOrOption returns value o's value applied by f if o is some.
+// MapOrOption returns o's value applied by f if o is some.
 // Otherwise it returns defaultValue.
 func MapOrOption[T, U any](o Option[T], defaultValue U, f func(T) U) U {
 	if o.IsNone() {
