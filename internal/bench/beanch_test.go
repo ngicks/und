@@ -6,6 +6,7 @@ import (
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und/sliceund"
+	"github.com/oapi-codegen/nullable"
 )
 
 var inputs = []string{
@@ -18,6 +19,18 @@ var expected = []int{
 	0,   // undefined
 	1,   // null
 	123, // value
+}
+
+type sampleNullableV1 struct {
+	Pad1 int                    `json:",omitempty"`
+	U    nullable.Nullable[int] `json:",omitempty"`
+	Pad2 int                    `json:",omitempty"`
+}
+
+type sampleNullableV2 struct {
+	Pad1 int                    `json:",omitzero"`
+	U    nullable.Nullable[int] `json:",omitzero"`
+	Pad2 int                    `json:",omitzero"`
 }
 
 type sampleMapV1 struct {
@@ -44,6 +57,22 @@ type sampleSliceV2 struct {
 	Pad2 int               `json:",omitzero"`
 }
 
+func BenchmarkSerdeNullableV1(b *testing.B) {
+	for range b.N {
+		for _, input := range inputs {
+			var s sampleNullableV1
+			err := json.Unmarshal([]byte(input), &s)
+			if err != nil {
+				panic(err)
+			}
+			_, err = json.Marshal(s)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
 func BenchmarkSerdeMapV1(b *testing.B) {
 	for range b.N {
 		for _, input := range inputs {
@@ -65,6 +94,22 @@ func BenchmarkSerdeSliceV1(b *testing.B) {
 		for _, input := range inputs {
 			var s sampleSliceV1
 			err := json.Unmarshal([]byte(input), &s)
+			if err != nil {
+				panic(err)
+			}
+			_, err = json.Marshal(s)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func BenchmarkSerdeNullableV2(b *testing.B) {
+	for range b.N {
+		for _, input := range inputs {
+			var s sampleNullableV2
+			err := jsonv2.Unmarshal([]byte(input), &s)
 			if err != nil {
 				panic(err)
 			}
