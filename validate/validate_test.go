@@ -52,6 +52,8 @@ type All struct {
 	ElaEqEquDef      elastic.Elastic[string] `und:"def,len==2"`
 	ElaEqEquNull     elastic.Elastic[string] `und:"null,len==2"`
 	ElaEqEquUnd      elastic.Elastic[string] `und:"und,len==2"`
+
+	ElaEqEqNonNull elastic.Elastic[string] `und:"values:nonnull,len==3"`
 }
 
 type (
@@ -115,6 +117,9 @@ type (
 	invalidMultiple11 struct {
 		A option.Option[string] `und:"len==1,len==2"`
 	}
+	invalidMultiple12 struct {
+		A option.Option[string] `und:"values:nonnull,values:nonnull"`
+	}
 )
 
 type (
@@ -123,6 +128,21 @@ type (
 	}
 	invalidMalformedLen2 struct {
 		A elastic.Elastic[string] `und:"len==-123"`
+	}
+)
+
+type (
+	invalidMalformedValues1 struct {
+		A elastic.Elastic[string] `und:"values:non-null"`
+	}
+)
+
+type (
+	invalidWrongOptionLenOnOpt struct {
+		A option.Option[string] `und:"len==1"`
+	}
+	invalidWrongOptionValuesOnOpt struct {
+		A option.Option[string] `und:"values:nonnull"`
 	}
 )
 
@@ -175,6 +195,8 @@ var (
 		ElaEqEquDef:      elastic.FromValues([]string{"foofoo", "barbar"}),
 		ElaEqEquNull:     elastic.FromValues([]string{"foofoo", "barbar"}),
 		ElaEqEquUnd:      elastic.FromValues([]string{"foofoo", "barbar"}),
+
+		ElaEqEqNonNull: elastic.FromValues([]string{"a", "b", "c"}),
 	}
 )
 
@@ -216,6 +238,10 @@ func TestValidate_all_invalid(t *testing.T) {
 		func(v All) All { v.ElaLe = fe; return v },
 		func(v All) All {
 			v.ElaLeEq = elastic.FromOptions([]option.Option[string]{option.None[string](), option.None[string]()})
+			return v
+		},
+		func(v All) All {
+			v.ElaEqEqNonNull = elastic.FromOptions([]option.Option[string]{option.Some("a"), option.None[string](), option.Some("c")})
 			return v
 		},
 	} {
@@ -286,6 +312,7 @@ func TestValidate_invalid_options(t *testing.T) {
 		invalidMultiple9{},
 		invalidMultiple10{},
 		invalidMultiple11{},
+		invalidMultiple12{},
 	} {
 		err := validate.CheckUnd(tt)
 		t.Logf("err = %v", err)
@@ -299,6 +326,23 @@ func TestValidate_invalid_options(t *testing.T) {
 		err := validate.CheckUnd(tt)
 		t.Logf("err = %v", err)
 		assert.ErrorIs(t, err, validate.ErrMalformedLen)
+	}
+
+	for _, tt := range []any{
+		invalidMalformedValues1{},
+	} {
+		err := validate.CheckUnd(tt)
+		t.Logf("err = %v", err)
+		assert.ErrorIs(t, err, validate.ErrMalformedValues)
+	}
+
+	for _, tt := range []any{
+		invalidWrongOptionLenOnOpt{},
+		invalidWrongOptionValuesOnOpt{},
+	} {
+		err := validate.CheckUnd(tt)
+		t.Logf("err = %v", err)
+		assert.Assert(t, err != nil)
 	}
 
 	err := validate.CheckUnd(invalidNested{})

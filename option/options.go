@@ -8,6 +8,13 @@ import (
 	"github.com/ngicks/und/validate"
 )
 
+var (
+	_ Equality[Options[any]] = Options[any]{}
+	_ Cloner[Options[any]]   = Options[any]{}
+	_ validate.ValidatorUnd  = Options[any]{}
+	_ validate.CheckerUnd    = Options[any]{}
+)
+
 type Options[T any] []Option[T]
 
 func (o Options[T]) Equal(opts Options[T]) bool {

@@ -41,3 +41,17 @@ func (o optionLite[T]) Or(u optionLite[T]) optionLite[T] {
 	}
 	return u
 }
+
+func or[T, U any](t optionLite[T], u optionLite[U]) optionLite[struct{}] {
+	if t.IsSome() || u.IsSome() {
+		return some(struct{}{})
+	}
+	return optionLite[struct{}]{}
+}
+
+func mapOption[T, U any](o optionLite[T], f func(t T) U) optionLite[U] {
+	if o.IsNone() {
+		return optionLite[U]{}
+	}
+	return some(f(o.Value()))
+}

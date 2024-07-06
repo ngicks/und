@@ -22,6 +22,9 @@ var (
 	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
 	// if an input has malformed len option in `und` struct tag.
 	ErrMalformedLen = errors.New("malformed len")
+	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
+	// if an input has malformed values option in `und` struct tag.
+	ErrMalformedValues = errors.New("malformed values")
 )
 
 const (
@@ -52,11 +55,18 @@ const (
 	//
 	// can be combined with other options.
 	UndTagValueLen = "len"
+	// Only for elastic types.
+	//
+	// The value must be formatted as values:nonnull.
+	//
+	// nonnull value means its internal value must not have null.
+	UndTagValueValues = "values"
 )
 
 type undOpt struct {
 	states optionLite[states]
 	len    optionLite[lenValidator]
+	values optionLite[valuesValidator]
 }
 
 type states struct {
@@ -64,6 +74,17 @@ type states struct {
 	def    bool
 	null   bool
 	und    bool
+}
+
+func (s states) valid(u UndLike) bool {
+	switch {
+	case u.IsDefined():
+		return s.def
+	case u.IsNull():
+		return s.null
+	default: // case u.IsUndefined():
+		return s.und
+	}
 }
 
 func (s states) String() string {
@@ -103,13 +124,25 @@ func parseOption(s string) (undOpt, error) {
 		opt, s, _ = strings.Cut(s, ",")
 		if strings.HasPrefix(opt, UndTagValueLen) {
 			if opts.len.IsSome() {
-				return undOpt{}, ErrMultipleOption
+				return undOpt{}, fmt.Errorf("%w: %s", ErrMultipleOption, org)
 			}
 			lenV, err := parseLen(opt)
 			if err != nil {
 				return undOpt{}, fmt.Errorf("%w: %w", ErrMalformedLen, err)
 			}
 			opts.len = some(lenV)
+			continue
+		}
+
+		if strings.HasPrefix(opt, UndTagValueValues) {
+			if opts.values.IsSome() {
+				return undOpt{}, fmt.Errorf("%w: %s", ErrMultipleOption, org)
+			}
+			valuesV, err := parseValues(opt)
+			if err != nil {
+				return undOpt{}, fmt.Errorf("%w: %w", ErrMalformedValues, err)
+			}
+			opts.values = some(valuesV)
 			continue
 		}
 
@@ -155,7 +188,17 @@ func (o undOpt) String() string {
 	if o.states.IsSome() {
 		return o.states.Value().String()
 	}
-	return o.len.Value().String()
+	var s string
+	if o.len.IsSome() {
+		s += o.len.Value().String()
+	}
+	if o.values.IsSome() {
+		if len(s) > 0 {
+			s += " and "
+		}
+		s += o.values.Value().String()
+	}
+	return s
 }
 
 func (o undOpt) validOpt(opt OptionLike) bool {
@@ -183,10 +226,12 @@ func (o undOpt) validUnd(u UndLike) bool {
 }
 
 func (o undOpt) validElastic(e ElasticLike) bool {
-	// states and len is mutually exclusive.
-	return o.validUnd(e) || o.len.IsSomeAnd(func(lv lenValidator) bool {
-		return lv.valid(e)
-	})
+	return mapOption(o.states, func(s states) bool {
+		return s.valid(e)
+	}).Or(some(false)).Value() || mapOption(or(o.len, o.values), func(_ struct{}) bool {
+		return mapOption(o.len, func(s lenValidator) bool { return s.valid(e) }).Or(some(true)).Value() &&
+			mapOption(o.values, func(s valuesValidator) bool { return s.valid(e) }).Or(some(true)).Value()
+	}).Or(some(false)).Value()
 }
 
 type lenValidator struct {
@@ -195,14 +240,15 @@ type lenValidator struct {
 }
 
 func parseLen(s string) (lenValidator, error) {
+	org := s
 	s, _ = strings.CutPrefix(s, UndTagValueLen)
 	if len(s) < 2 { // <n, at least 2.
-		return lenValidator{}, fmt.Errorf("unknown op: %s", s)
+		return lenValidator{}, fmt.Errorf("unknown op: %s", org)
 	}
 	var v lenValidator
 	switch {
 	default:
-		return lenValidator{}, fmt.Errorf("unknown op: %s", s)
+		return lenValidator{}, fmt.Errorf("unknown op: %s", org)
 	case s[:2] == "==":
 		v.op = lenOpEqEq
 	case s[:2] == ">=":
@@ -287,9 +333,47 @@ func (o lenOp) compare(i, j int) bool {
 	}
 }
 
+type valuesValidator struct {
+	nonnull bool
+}
+
+func parseValues(s string) (valuesValidator, error) {
+	org := s
+	s, _ = strings.CutPrefix(s, UndTagValueValues)
+	if len(s) < 2 || s[0] != ':' { // :nonull
+		return valuesValidator{}, fmt.Errorf("unknown op: %s", org)
+	}
+
+	s = s[1:] // removes ':'
+
+	switch s {
+	case "nonnull":
+		return valuesValidator{nonnull: true}, nil
+	}
+
+	return valuesValidator{}, fmt.Errorf("unknown op: %s", org)
+}
+
+func (v valuesValidator) valid(e ElasticLike) bool {
+	switch {
+	case v.nonnull:
+		return !e.HasNull()
+	}
+	return true
+}
+
+func (v valuesValidator) String() string {
+	switch {
+	case v.nonnull:
+		return "must not contain null"
+	}
+	return ""
+}
+
 type ElasticLike interface {
 	UndLike
 	Len() int
+	HasNull() bool
 }
 
 type UndLike interface {
@@ -366,14 +450,6 @@ func (v cachedValidator) check() error {
 	if v.err != nil {
 		return v.err
 	}
-	for _, f := range v.v {
-		if f.check == nil {
-			continue
-		}
-		if err := f.check(); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -381,7 +457,6 @@ type fieldValidator struct {
 	i        int
 	rt       reflect.Type
 	validate func(fv reflect.Value) error
-	check    func() error
 }
 
 func cacheValidator(rt reflect.Type) cachedValidator {
@@ -460,8 +535,13 @@ func makeValidator(rt reflect.Type) cachedValidator {
 			return cachedValidator{rt: rt, err: fmt.Errorf("%s: %w", ft.Name, err)}
 		}
 
-		if !isElasticLike && opt.len.IsSome() {
-			return cachedValidator{rt: rt, err: fmt.Errorf("%s: len on non elastic", ft.Name)}
+		if !isElasticLike {
+			if opt.len.IsSome() {
+				return cachedValidator{rt: rt, err: fmt.Errorf("%s: len on non elastic", ft.Name)}
+			}
+			if opt.values.IsSome() {
+				return cachedValidator{rt: rt, err: fmt.Errorf("%s: values on non elastic", ft.Name)}
+			}
 		}
 
 		var validateOpt func(fv reflect.Value) error
@@ -494,22 +574,18 @@ func makeValidator(rt reflect.Type) cachedValidator {
 			validate = func(fv reflect.Value) error {
 				err := validateOpt(fv)
 				if err != nil {
-					return fmt.Errorf("%s.%w", ft.Name, err)
+					return err
 				}
 				return fv.Interface().(ValidatorUnd).ValidateUnd()
 			}
 		}
 
-		var check func() error
 		if ft.Type.Implements(checkerUndTy) {
-			check = func() error {
-				// keep it addressable. The type might implement it on pointer type.
-				fv := reflect.New(ft.Type).Elem()
-				err := fv.Interface().(CheckerUnd).CheckUnd()
-				if err != nil {
-					return fmt.Errorf("%s.%w", ft.Name, err)
-				}
-				return nil
+			// keep it addressable. The type might implement it on pointer type.
+			fv := reflect.New(ft.Type).Elem()
+			err := fv.Interface().(CheckerUnd).CheckUnd()
+			if err != nil {
+				return cachedValidator{rt: rt, err: fmt.Errorf("%s.%w", ft.Name, err)}
 			}
 		}
 
@@ -517,7 +593,6 @@ func makeValidator(rt reflect.Type) cachedValidator {
 			i:        i,
 			rt:       ft.Type,
 			validate: validate,
-			check:    check,
 		})
 	}
 

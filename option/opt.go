@@ -13,17 +13,20 @@ import (
 )
 
 var (
+	_ json.Marshaler       = Option[any]{}
+	_ json.Unmarshaler     = (*Option[any])(nil)
+	_ jsonv2.MarshalerV2   = Option[any]{}
+	_ jsonv2.UnmarshalerV2 = (*Option[any])(nil)
+	_ xml.Marshaler        = Option[any]{}
+	_ xml.Unmarshaler      = (*Option[any])(nil)
+	_ slog.LogValuer       = Option[any]{}
+)
+
+var (
 	_ Equality[Option[int]] = (*Option[int])(nil)
 	_ Cloner[Option[any]]   = Option[any]{}
 	_ validate.ValidatorUnd = Option[any]{}
 	_ validate.CheckerUnd   = Option[any]{}
-	_ json.Marshaler        = Option[any]{}
-	_ json.Unmarshaler      = (*Option[any])(nil)
-	_ jsonv2.MarshalerV2    = Option[any]{}
-	_ jsonv2.UnmarshalerV2  = (*Option[any])(nil)
-	_ xml.Marshaler         = Option[any]{}
-	_ xml.Unmarshaler       = (*Option[any])(nil)
-	_ slog.LogValuer        = Option[any]{}
 )
 
 type Equality[T any] interface {

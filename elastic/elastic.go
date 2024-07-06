@@ -14,8 +14,6 @@ import (
 var (
 	_ option.Equality[Elastic[any]] = Elastic[any]{}
 	_ option.Cloner[Elastic[any]]   = Elastic[any]{}
-	_ validate.ValidatorUnd         = Elastic[any]{}
-	_ validate.CheckerUnd           = Elastic[any]{}
 	_ json.Marshaler                = Elastic[any]{}
 	_ json.Unmarshaler              = (*Elastic[any])(nil)
 	_ jsonv2.MarshalerV2            = Elastic[any]{}
@@ -32,6 +30,12 @@ var (
 	//
 	// _ jsonv2.UnmarshalerV2          = (*Elastic[any])(nil)
 	_ slog.LogValuer = Elastic[any]{}
+)
+
+var (
+	_ validate.ValidatorUnd = Elastic[any]{}
+	_ validate.CheckerUnd   = Elastic[any]{}
+	_ validate.ElasticLike  = Elastic[any]{}
 )
 
 // Elastic[T] is a type that can express undefined | null | T | [](null | T).
@@ -117,6 +121,19 @@ func (e Elastic[T]) Len() int {
 		return 0
 	}
 	return len(e.v.Value())
+}
+
+// HasNull reports e is defined value has null in ins value.
+func (e Elastic[T]) HasNull() bool {
+	if !e.IsDefined() {
+		return false
+	}
+	for _, o := range e.v.Value() {
+		if o.IsNone() {
+			return true
+		}
+	}
+	return false
 }
 
 // Value returns a first value of its internal option slice if e is defined.
