@@ -88,6 +88,10 @@ func (o Option[T]) Value() T {
 	return o.v
 }
 
+func (o Option[T]) Get() (T, bool) {
+	return o.Value(), o.IsSome()
+}
+
 // Pointer transforms o to *T, the plain conventional Go representation of an optional value.
 // The value is copied by assignment before returned from Pointer.
 func (o Option[T]) Pointer() *T {

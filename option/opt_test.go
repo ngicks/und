@@ -156,6 +156,21 @@ func TestOption_methods(t *testing.T) {
 		assert.Equal(t, FlattenOption(nn), None[float64]())
 	})
 
+	t.Run("Get", func(t *testing.T) {
+		ss := Some(float64(1.22))
+		sn := None[float64]()
+
+		assertGet := func(t *testing.T, o Option[float64], v float64, ok bool) {
+			t.Helper()
+			gotV, gotOk := o.Get()
+			assert.Equal(t, gotV, v)
+			assert.Equal(t, gotOk, ok)
+		}
+
+		assertGet(t, ss, 1.22, true)
+		assertGet(t, sn, 0, false)
+	})
+
 	t.Run("MapOption", func(t *testing.T) {
 		assert.Equal(t, MapOption(s, func(o string) int { return len(o) }), Some(3))
 		assert.Equal(t, MapOption(n, func(o string) bool { return true }), None[bool]())
