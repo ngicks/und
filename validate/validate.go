@@ -185,20 +185,27 @@ func parseOption(s string) (undOpt, error) {
 }
 
 func (o undOpt) String() string {
-	if o.states.IsSome() {
-		return o.states.Value().String()
+	var builder strings.Builder
+
+	appendStr := func(s fmt.Stringer) {
+		ss := s.String()
+		if builder.Len() > 0 && len(ss) > 0 {
+			_, _ = builder.WriteString(", and ")
+		}
+		_, _ = builder.WriteString(ss)
 	}
-	var s string
+
+	if o.states.IsSome() {
+		appendStr(o.states.Value())
+	}
 	if o.len.IsSome() {
-		s += o.len.Value().String()
+		appendStr(o.len.Value())
 	}
 	if o.values.IsSome() {
-		if len(s) > 0 {
-			s += " and "
-		}
-		s += o.values.Value().String()
+		appendStr(o.values.Value())
 	}
-	return s
+
+	return builder.String()
 }
 
 func (o undOpt) validOpt(opt OptionLike) bool {
@@ -273,7 +280,7 @@ func parseLen(s string) (lenValidator, error) {
 }
 
 func (v lenValidator) String() string {
-	return "length " + v.op.String() + " " + strconv.FormatInt(int64(v.len), 10)
+	return "must have length of " + v.op.String() + " " + strconv.FormatInt(int64(v.len), 10)
 }
 
 func (v lenValidator) valid(e ElasticLike) bool {
