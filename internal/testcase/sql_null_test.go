@@ -3,6 +3,7 @@ package testcase_test
 import (
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"testing"
 
 	"github.com/ngicks/und"
@@ -36,26 +37,70 @@ func TestSqlNull(t *testing.T) {
 	}
 }
 
+type scannerValuer struct {
+	f string
+}
+
+func (v *scannerValuer) Scan(src any) error {
+	if s, ok := src.(string); ok {
+		v.f = s + s
+		return nil
+	}
+	return fmt.Errorf("not a string: want = string, got = %T", src)
+}
+
+func (v scannerValuer) Value() (driver.Value, error) {
+	return v.f[:len(v.f)/2], nil
+}
+
 func TestSqlNullWrapper(t *testing.T) {
-	var u und.SqlNull[string]
-	var su sliceund.SqlNull[string]
-	var o option.SqlNull[string]
+	{
+		var u und.SqlNull[string]
+		var su sliceund.SqlNull[string]
+		var o option.SqlNull[string]
 
-	assert.NilError(t, u.Scan("foo"))
-	assert.NilError(t, su.Scan("bar"))
-	assert.NilError(t, o.Scan("baz"))
+		assert.NilError(t, u.Scan("foo"))
+		assert.NilError(t, su.Scan("bar"))
+		assert.NilError(t, o.Scan("baz"))
 
-	var (
-		v   driver.Value
-		err error
-	)
-	v, err = u.Value()
-	assert.NilError(t, err)
-	assert.Equal(t, v, "foo")
-	v, err = su.Value()
-	assert.NilError(t, err)
-	assert.Equal(t, v, "bar")
-	v, err = o.Value()
-	assert.NilError(t, err)
-	assert.Equal(t, v, "baz")
+		var (
+			v   driver.Value
+			err error
+		)
+		v, err = u.Value()
+		assert.NilError(t, err)
+		assert.Equal(t, v, "foo")
+		v, err = su.Value()
+		assert.NilError(t, err)
+		assert.Equal(t, v, "bar")
+		v, err = o.Value()
+		assert.NilError(t, err)
+		assert.Equal(t, v, "baz")
+	}
+	{
+		var u und.SqlNull[scannerValuer]
+		var su sliceund.SqlNull[scannerValuer]
+		var o option.SqlNull[scannerValuer]
+
+		assert.NilError(t, u.Scan("foo"))
+		assert.NilError(t, su.Scan("foo"))
+		assert.NilError(t, o.Scan("foo"))
+
+		var (
+			v   driver.Value
+			err error
+		)
+		v, err = u.Value()
+		assert.NilError(t, err)
+		assert.Equal(t, v, "foo")
+		assert.Equal(t, u.Und.Value().f, "foofoo")
+		v, err = su.Value()
+		assert.NilError(t, err)
+		assert.Equal(t, v, "foo")
+		assert.Equal(t, su.Und.Value().f, "foofoo")
+		v, err = o.Value()
+		assert.NilError(t, err)
+		assert.Equal(t, v, "foo")
+		assert.Equal(t, o.Option.Value().f, "foofoo")
+	}
 }
