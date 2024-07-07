@@ -169,7 +169,7 @@ func (o Option[T]) CheckUnd() error {
 }
 
 func (o Option[T]) MarshalJSON() ([]byte, error) {
-	if !o.some {
+	if o.IsNone() {
 		// same as bytes.Clone.
 		return []byte(`null`), nil
 	}
