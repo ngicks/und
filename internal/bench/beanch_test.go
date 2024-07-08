@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	jsonv2 "github.com/go-json-experiment/json"
+	"github.com/ngicks/und"
 	"github.com/ngicks/und/sliceund"
 	"github.com/oapi-codegen/nullable"
 )
@@ -13,12 +14,6 @@ var inputs = []string{
 	`{"Pad2":123}`,
 	`{"U":null}`,
 	`{"Pad1":445,"U":123}`,
-}
-
-var expected = []int{
-	0,   // undefined
-	1,   // null
-	123, // value
 }
 
 type sampleNullableV1 struct {
@@ -55,6 +50,12 @@ type sampleSliceV2 struct {
 	Pad1 int               `json:",omitzero"`
 	U    sliceund.Und[int] `json:",omitzero"`
 	Pad2 int               `json:",omitzero"`
+}
+
+type sampleNonSliceV2 struct {
+	Pad1 int          `json:",omitzero"`
+	U    und.Und[int] `json:",omitzero"`
+	Pad2 int          `json:",omitzero"`
 }
 
 func BenchmarkSerdeNullableV1(b *testing.B) {
@@ -141,6 +142,22 @@ func BenchmarkSerdeSliceV2(b *testing.B) {
 	for range b.N {
 		for _, input := range inputs {
 			var s sampleSliceV2
+			err := jsonv2.Unmarshal([]byte(input), &s)
+			if err != nil {
+				panic(err)
+			}
+			_, err = jsonv2.Marshal(s)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func BenchmarkSerdeNonSliceV2(b *testing.B) {
+	for range b.N {
+		for _, input := range inputs {
+			var s sampleNonSliceV2
 			err := jsonv2.Unmarshal([]byte(input), &s)
 			if err != nil {
 				panic(err)
