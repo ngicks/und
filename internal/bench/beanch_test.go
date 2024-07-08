@@ -114,7 +114,7 @@ func BenchmarkSerdeNullableV2(b *testing.B) {
 			if err != nil {
 				panic(err)
 			}
-			_, err = json.Marshal(s)
+			_, err = jsonv2.Marshal(s)
 			if err != nil {
 				panic(err)
 			}
