@@ -58,10 +58,43 @@ type sampleNonSliceV2 struct {
 	Pad2 int          `json:",omitzero"`
 }
 
-func BenchmarkSerdeNullableV1(b *testing.B) {
+func benchMarshalV1[T any](b *testing.B) {
+	b.Helper()
 	for range b.N {
 		for _, input := range inputs {
-			var s sampleNullableV1
+			b.StopTimer()
+			var s T
+			err := json.Unmarshal([]byte(input), &s)
+			if err != nil {
+				panic(err)
+			}
+			b.StartTimer()
+			_, err = json.Marshal(s)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func benchUnmarshalV1[T any](b *testing.B) {
+	b.Helper()
+	for range b.N {
+		for _, input := range inputs {
+			var s T
+			err := json.Unmarshal([]byte(input), &s)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func benchSerdeV1[T any](b *testing.B) {
+	b.Helper()
+	for range b.N {
+		for _, input := range inputs {
+			var s T
 			err := json.Unmarshal([]byte(input), &s)
 			if err != nil {
 				panic(err)
@@ -74,15 +107,18 @@ func BenchmarkSerdeNullableV1(b *testing.B) {
 	}
 }
 
-func BenchmarkSerdeMapV1(b *testing.B) {
+func benchMarshalV2[T any](b *testing.B) {
+	b.Helper()
 	for range b.N {
 		for _, input := range inputs {
-			var s sampleMapV1
-			err := json.Unmarshal([]byte(input), &s)
+			b.StopTimer()
+			var s T
+			err := jsonv2.Unmarshal([]byte(input), &s)
 			if err != nil {
 				panic(err)
 			}
-			_, err = json.Marshal(s)
+			b.StartTimer()
+			_, err = jsonv2.Marshal(s)
 			if err != nil {
 				panic(err)
 			}
@@ -90,15 +126,12 @@ func BenchmarkSerdeMapV1(b *testing.B) {
 	}
 }
 
-func BenchmarkSerdeSliceV1(b *testing.B) {
+func benchUnmarshalV2[T any](b *testing.B) {
+	b.Helper()
 	for range b.N {
 		for _, input := range inputs {
-			var s sampleSliceV1
-			err := json.Unmarshal([]byte(input), &s)
-			if err != nil {
-				panic(err)
-			}
-			_, err = json.Marshal(s)
+			var s T
+			err := jsonv2.Unmarshal([]byte(input), &s)
 			if err != nil {
 				panic(err)
 			}
@@ -106,10 +139,11 @@ func BenchmarkSerdeSliceV1(b *testing.B) {
 	}
 }
 
-func BenchmarkSerdeNullableV2(b *testing.B) {
+func benchSerdeV2[T any](b *testing.B) {
+	b.Helper()
 	for range b.N {
 		for _, input := range inputs {
-			var s sampleNullableV2
+			var s T
 			err := jsonv2.Unmarshal([]byte(input), &s)
 			if err != nil {
 				panic(err)
@@ -122,50 +156,68 @@ func BenchmarkSerdeNullableV2(b *testing.B) {
 	}
 }
 
-func BenchmarkSerdeMapV2(b *testing.B) {
-	for range b.N {
-		for _, input := range inputs {
-			var s sampleMapV2
-			err := jsonv2.Unmarshal([]byte(input), &s)
-			if err != nil {
-				panic(err)
-			}
-			_, err = jsonv2.Marshal(s)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-}
-
-func BenchmarkSerdeSliceV2(b *testing.B) {
-	for range b.N {
-		for _, input := range inputs {
-			var s sampleSliceV2
-			err := jsonv2.Unmarshal([]byte(input), &s)
-			if err != nil {
-				panic(err)
-			}
-			_, err = jsonv2.Marshal(s)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-}
-
-func BenchmarkSerdeNonSliceV2(b *testing.B) {
-	for range b.N {
-		for _, input := range inputs {
-			var s sampleNonSliceV2
-			err := jsonv2.Unmarshal([]byte(input), &s)
-			if err != nil {
-				panic(err)
-			}
-			_, err = jsonv2.Marshal(s)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
+func BenchmarkUnd(b *testing.B) {
+	b.Run("Marshal", func(b *testing.B) {
+		b.Run("NullableV1", func(b *testing.B) {
+			benchMarshalV1[sampleNullableV1](b)
+		})
+		b.Run("MapV1", func(b *testing.B) {
+			benchMarshalV1[sampleMapV1](b)
+		})
+		b.Run("SliceV1", func(b *testing.B) {
+			benchMarshalV1[sampleSliceV1](b)
+		})
+		b.Run("NullableV2", func(b *testing.B) {
+			benchMarshalV2[sampleNullableV2](b)
+		})
+		b.Run("MapV2", func(b *testing.B) {
+			benchMarshalV2[sampleMapV2](b)
+		})
+		b.Run("SliceV2", func(b *testing.B) {
+			benchMarshalV2[sampleSliceV2](b)
+		})
+	})
+	b.Run("Unmarshal", func(b *testing.B) {
+		b.Run("NullableV1", func(b *testing.B) {
+			benchUnmarshalV1[sampleNullableV1](b)
+		})
+		b.Run("MapV1", func(b *testing.B) {
+			benchUnmarshalV1[sampleMapV1](b)
+		})
+		b.Run("SliceV1", func(b *testing.B) {
+			benchUnmarshalV1[sampleSliceV1](b)
+		})
+		b.Run("NullableV2", func(b *testing.B) {
+			benchUnmarshalV2[sampleNullableV2](b)
+		})
+		b.Run("MapV2", func(b *testing.B) {
+			benchUnmarshalV2[sampleMapV2](b)
+		})
+		b.Run("SliceV2", func(b *testing.B) {
+			benchUnmarshalV2[sampleSliceV2](b)
+		})
+	})
+	b.Run("Serde", func(b *testing.B) {
+		b.Run("NullableV1", func(b *testing.B) {
+			benchSerdeV1[sampleNullableV1](b)
+		})
+		b.Run("MapV1", func(b *testing.B) {
+			benchSerdeV1[sampleMapV1](b)
+		})
+		b.Run("SliceV1", func(b *testing.B) {
+			benchSerdeV1[sampleSliceV1](b)
+		})
+		b.Run("NullableV2", func(b *testing.B) {
+			benchSerdeV2[sampleNullableV2](b)
+		})
+		b.Run("MapV2", func(b *testing.B) {
+			benchSerdeV2[sampleMapV2](b)
+		})
+		b.Run("SliceV2", func(b *testing.B) {
+			benchSerdeV2[sampleSliceV2](b)
+		})
+		b.Run("NonSliceV2", func(b *testing.B) {
+			benchSerdeV2[sampleNonSliceV2](b)
+		})
+	})
 }
