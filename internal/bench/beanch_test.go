@@ -139,7 +139,7 @@ func benchMarshalV2[T any](b *testing.B, inputs []T) {
 	b.Helper()
 	for range b.N {
 		for _, input := range inputs {
-			_, err := jsonv2.Marshal(input)
+			_, err := jsonv2.Marshal(&input)
 			if err != nil {
 				panic(err)
 			}
@@ -169,7 +169,7 @@ func benchSerdeV2[T any](b *testing.B) {
 			if err != nil {
 				panic(err)
 			}
-			bin, err := jsonv2.Marshal(s)
+			bin, err := jsonv2.Marshal(&s)
 			if err != nil {
 				panic(err)
 			}
