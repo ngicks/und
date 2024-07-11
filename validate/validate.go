@@ -1,30 +1,29 @@
 package validate
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 	"sync"
+
+	"github.com/ngicks/und/internal/structtag"
 )
 
 var (
 	// ErrNotStruct would be returned by ValidateUnd and CheckUnd
 	// if input is not a struct nor a pointer to a struct.
-	ErrNotStruct = errors.New("not struct")
+	ErrNotStruct = structtag.ErrNotStruct
 	// ErrMultipleOption would be returned by ValidateUnd and CheckUnd
 	// if input's `und` struct tags have multiple mutually exclusive options.
-	ErrMultipleOption = errors.New("multiple option")
+	ErrMultipleOption = structtag.ErrMultipleOption
 	// ErrUnknownOption is an error value which will be returned by ValidateUnd and CheckUnd
 	// if an input has unknown options in `und` struct tag.
-	ErrUnknownOption = errors.New("unknown option")
+	ErrUnknownOption = structtag.ErrUnknownOption
 	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
 	// if an input has malformed len option in `und` struct tag.
-	ErrMalformedLen = errors.New("malformed len")
+	ErrMalformedLen = structtag.ErrMalformedLen
 	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
 	// if an input has malformed values option in `und` struct tag.
-	ErrMalformedValues = errors.New("malformed values")
+	ErrMalformedValues = structtag.ErrMalformedValues
 )
 
 const (
@@ -63,337 +62,6 @@ const (
 	UndTagValueValues = "values"
 )
 
-type undOpt struct {
-	states optionLite[states]
-	len    optionLite[lenValidator]
-	values optionLite[valuesValidator]
-}
-
-type states struct {
-	filled bool
-	def    bool
-	null   bool
-	und    bool
-}
-
-func (s states) valid(u UndLike) bool {
-	switch {
-	case u.IsDefined():
-		return s.def
-	case u.IsNull():
-		return s.null
-	default: // case u.IsUndefined():
-		return s.und
-	}
-}
-
-func (s states) String() string {
-	if s.filled {
-		if s.def {
-			return "is " + UndTagValueRequired
-		} else {
-			return "is " + UndTagValueNullish
-		}
-	}
-	var builder strings.Builder
-	if s.def {
-		builder.WriteString("defined")
-	}
-	if s.null {
-		if builder.Len() > 0 {
-			builder.WriteString(" or ")
-		}
-		builder.WriteString("null")
-	}
-	if s.und {
-		if builder.Len() > 0 {
-			builder.WriteString(" or ")
-		}
-		builder.WriteString("undefined")
-	}
-	return "must be " + builder.String()
-}
-
-func parseOption(s string) (undOpt, error) {
-	org := s
-	var (
-		opt  string
-		opts undOpt
-	)
-	for len(s) > 0 {
-		opt, s, _ = strings.Cut(s, ",")
-		if strings.HasPrefix(opt, UndTagValueLen) {
-			if opts.len.IsSome() {
-				return undOpt{}, fmt.Errorf("%w: %s", ErrMultipleOption, org)
-			}
-			lenV, err := parseLen(opt)
-			if err != nil {
-				return undOpt{}, fmt.Errorf("%w: %w", ErrMalformedLen, err)
-			}
-			opts.len = some(lenV)
-			continue
-		}
-
-		if strings.HasPrefix(opt, UndTagValueValues) {
-			if opts.values.IsSome() {
-				return undOpt{}, fmt.Errorf("%w: %s", ErrMultipleOption, org)
-			}
-			valuesV, err := parseValues(opt)
-			if err != nil {
-				return undOpt{}, fmt.Errorf("%w: %w", ErrMalformedValues, err)
-			}
-			opts.values = some(valuesV)
-			continue
-		}
-
-		switch opt {
-		case UndTagValueRequired, UndTagValueNullish:
-			if opts.states.IsSome() {
-				return undOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
-			}
-		case UndTagValueDef, UndTagValueNull, UndTagValueUnd:
-			if opts.states.IsSomeAnd(func(s states) bool {
-				return s.filled || opt == UndTagValueDef && s.def || opt == UndTagValueNull && s.null || opt == UndTagValueUnd && s.und
-			}) {
-				return undOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
-			}
-		default:
-			return undOpt{}, ErrUnknownOption
-		}
-
-		opts.states = opts.states.Or(some(states{})).Map(func(v states) states {
-			switch opt {
-			case UndTagValueRequired:
-				v.filled = true
-				v.def = true
-			case UndTagValueNullish:
-				v.filled = true
-				v.null = true
-				v.und = true
-			case UndTagValueDef:
-				v.def = true
-			case UndTagValueNull:
-				v.null = true
-			case UndTagValueUnd:
-				v.und = true
-			}
-			return v
-		})
-	}
-
-	return opts, nil
-}
-
-func (o undOpt) String() string {
-	var builder strings.Builder
-
-	appendStr := func(s fmt.Stringer) {
-		ss := s.String()
-		if builder.Len() > 0 && len(ss) > 0 {
-			_, _ = builder.WriteString(", and ")
-		}
-		_, _ = builder.WriteString(ss)
-	}
-
-	if o.states.IsSome() {
-		appendStr(o.states.Value())
-	}
-	if o.len.IsSome() {
-		appendStr(o.len.Value())
-	}
-	if o.values.IsSome() {
-		appendStr(o.values.Value())
-	}
-
-	return builder.String()
-}
-
-func (o undOpt) validOpt(opt OptionLike) bool {
-	return o.states.IsSomeAnd(func(s states) bool {
-		switch {
-		case opt.IsSome():
-			return s.def
-		default: // opt.IsNone():
-			return s.null || s.und
-		}
-	})
-}
-
-func (o undOpt) validUnd(u UndLike) bool {
-	return o.states.IsSomeAnd(func(s states) bool {
-		switch {
-		case u.IsDefined():
-			return s.def
-		case u.IsNull():
-			return s.null
-		default: // case u.IsUndefined():
-			return s.und
-		}
-	})
-}
-
-func (o undOpt) validElastic(e ElasticLike) bool {
-	return mapOption(o.states, func(s states) bool {
-		return s.valid(e)
-	}).Or(some(false)).Value() || mapOption(or(o.len, o.values), func(_ struct{}) bool {
-		return mapOption(o.len, func(s lenValidator) bool { return s.valid(e) }).Or(some(true)).Value() &&
-			mapOption(o.values, func(s valuesValidator) bool { return s.valid(e) }).Or(some(true)).Value()
-	}).Or(some(false)).Value()
-}
-
-type lenValidator struct {
-	len int
-	op  lenOp
-}
-
-func parseLen(s string) (lenValidator, error) {
-	org := s
-	s, _ = strings.CutPrefix(s, UndTagValueLen)
-	if len(s) < 2 { // <n, at least 2.
-		return lenValidator{}, fmt.Errorf("unknown op: %s", org)
-	}
-	var v lenValidator
-	switch {
-	default:
-		return lenValidator{}, fmt.Errorf("unknown op: %s", org)
-	case s[:2] == "==":
-		v.op = lenOpEqEq
-	case s[:2] == ">=":
-		v.op = lenOpGrEq
-	case s[:2] == "<=":
-		v.op = lenOpLeEq
-	case s[0] == '<':
-		v.op = lenOpLe
-	case s[0] == '>':
-		v.op = lenOpGr
-	}
-
-	s = s[v.op.len():]
-
-	len, err := strconv.ParseUint(s, 10, 64)
-	if err != nil {
-		return lenValidator{}, fmt.Errorf("unknown len: %w", err)
-	}
-
-	v.len = int(len)
-	return v, nil
-}
-
-func (v lenValidator) String() string {
-	return "must have length of " + v.op.String() + " " + strconv.FormatInt(int64(v.len), 10)
-}
-
-func (v lenValidator) valid(e ElasticLike) bool {
-	if v.op == 0 {
-		return true
-	}
-	return v.op.compare(e.Len(), v.len)
-}
-
-type lenOp int
-
-const (
-	lenOpEqEq = iota + 1 // ==
-	lenOpGr              // >
-	lenOpGrEq            // >=
-	lenOpLe              // <
-	lenOpLeEq            // <=
-)
-
-func (o lenOp) len() int {
-	switch o {
-	case lenOpLe, lenOpGr:
-		return 1
-	case lenOpEqEq, lenOpGrEq, lenOpLeEq:
-		return 2
-	}
-	return 0
-}
-
-func (o lenOp) String() string {
-	switch o {
-	default: // case lenOpEqEq:
-		return "=="
-	case lenOpGr:
-		return ">"
-	case lenOpGrEq:
-		return ">="
-	case lenOpLe:
-		return "<"
-	case lenOpLeEq:
-		return "<="
-	}
-}
-
-func (o lenOp) compare(i, j int) bool {
-	switch o {
-	default: // case lenOpEqEq:
-		return i == j
-	case lenOpGr:
-		return i > j
-	case lenOpGrEq:
-		return i >= j
-	case lenOpLe:
-		return i < j
-	case lenOpLeEq:
-		return i <= j
-	}
-}
-
-type valuesValidator struct {
-	nonnull bool
-}
-
-func parseValues(s string) (valuesValidator, error) {
-	org := s
-	s, _ = strings.CutPrefix(s, UndTagValueValues)
-	if len(s) < 2 || s[0] != ':' { // :nonull
-		return valuesValidator{}, fmt.Errorf("unknown op: %s", org)
-	}
-
-	s = s[1:] // removes ':'
-
-	switch s {
-	case "nonnull":
-		return valuesValidator{nonnull: true}, nil
-	}
-
-	return valuesValidator{}, fmt.Errorf("unknown op: %s", org)
-}
-
-func (v valuesValidator) valid(e ElasticLike) bool {
-	switch {
-	case v.nonnull:
-		return !e.HasNull()
-	}
-	return true
-}
-
-func (v valuesValidator) String() string {
-	switch {
-	case v.nonnull:
-		return "must not contain null"
-	}
-	return ""
-}
-
-type ElasticLike interface {
-	UndLike
-	Len() int
-	HasNull() bool
-}
-
-type UndLike interface {
-	IsDefined() bool
-	IsNull() bool
-	IsUndefined() bool
-}
-
-type OptionLike interface {
-	IsNone() bool
-	IsSome() bool
-}
-
 // ValidatorUnd wraps the ValidateUnd method.
 //
 // ValidateUnd method is implemented on data container types, und.Und[T] and option.Option[T], etc.
@@ -410,10 +78,16 @@ type CheckerUnd interface {
 	CheckUnd() error
 }
 
+type (
+	ElasticLike = structtag.ElasticLike
+	UndLike     = structtag.UndLike
+	OptionLike  = structtag.OptionLike
+)
+
 var (
-	elasticLike    = reflect.TypeFor[ElasticLike]()
-	undLikeTy      = reflect.TypeFor[UndLike]()
-	optionLikeTy   = reflect.TypeFor[OptionLike]()
+	elasticLike    = reflect.TypeFor[structtag.ElasticLike]()
+	undLikeTy      = reflect.TypeFor[structtag.UndLike]()
+	optionLikeTy   = reflect.TypeFor[structtag.OptionLike]()
 	validatorUndTy = reflect.TypeFor[ValidatorUnd]()
 	checkerUndTy   = reflect.TypeFor[CheckerUnd]()
 )
@@ -537,16 +211,16 @@ func makeValidator(rt reflect.Type) cachedValidator {
 		if tag == "" {
 			continue
 		}
-		opt, err := parseOption(tag)
+		opt, err := structtag.ParseOption(tag)
 		if err != nil {
 			return cachedValidator{rt: rt, err: fmt.Errorf("%s: %w", ft.Name, err)}
 		}
 
 		if !isElasticLike {
-			if opt.len.IsSome() {
+			if opt.Len.IsSome() {
 				return cachedValidator{rt: rt, err: fmt.Errorf("%s: len on non elastic", ft.Name)}
 			}
-			if opt.values.IsSome() {
+			if opt.Values.IsSome() {
 				return cachedValidator{rt: rt, err: fmt.Errorf("%s: values on non elastic", ft.Name)}
 			}
 		}
@@ -555,21 +229,21 @@ func makeValidator(rt reflect.Type) cachedValidator {
 		switch {
 		case isElasticLike:
 			validateOpt = func(fv reflect.Value) error {
-				if !opt.validElastic(fv.Interface().(ElasticLike)) {
+				if !opt.ValidElastic(fv.Interface().(ElasticLike)) {
 					return fmt.Errorf("%s: input %s", ft.Name, opt)
 				}
 				return nil
 			}
 		case isUndLike:
 			validateOpt = func(fv reflect.Value) error {
-				if !opt.validUnd(fv.Interface().(UndLike)) {
+				if !opt.ValidUnd(fv.Interface().(UndLike)) {
 					return fmt.Errorf("%s: input %s", ft.Name, opt)
 				}
 				return nil
 			}
 		case isOptLike:
 			validateOpt = func(fv reflect.Value) error {
-				if !opt.validOpt(fv.Interface().(OptionLike)) {
+				if !opt.ValidOpt(fv.Interface().(OptionLike)) {
 					return fmt.Errorf("%s: input %s", ft.Name, opt)
 				}
 				return nil
