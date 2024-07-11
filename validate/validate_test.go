@@ -152,6 +152,34 @@ type (
 	}
 )
 
+type (
+	validRecursive struct {
+		Intermediate
+	}
+
+	Intermediate struct {
+		Bar option.Option[int] `und:"required"`
+		Baz *validRecursive
+	}
+)
+
+type (
+	validTree struct {
+		Node *ValidTreeNode
+	}
+
+	ValidTreeNode struct {
+		V    ValidTreeValues
+		L, R *ValidTreeNode
+	}
+
+	ValidTreeValues struct {
+		A int
+		B option.Option[string] `und:"required"`
+		C bool
+	}
+)
+
 var (
 	valid = All{
 		OptRequired:       option.Some("foo"),
@@ -349,4 +377,72 @@ func TestValidate_invalid_options(t *testing.T) {
 	t.Logf("err = %v", err)
 	assert.ErrorIs(t, err, validate.ErrMalformedLen)
 	assert.ErrorContains(t, err, "B.A:")
+}
+
+func TestValidate_recursion_embedded(t *testing.T) {
+	assert.NilError(t, validate.CheckUnd(validRecursive{}))
+	assert.NilError(t, validate.ValidateUnd(validRecursive{Intermediate{Bar: option.Some(5)}}))
+	assert.Assert(t, validate.ValidateUnd(validRecursive{Intermediate{}}) != nil)
+	assert.NilError(t, validate.ValidateUnd(validRecursive{Intermediate{Bar: option.Some(5), Baz: &validRecursive{Intermediate{Bar: option.Some[int](15)}}}}))
+	assert.Assert(t, validate.ValidateUnd(validRecursive{Intermediate{Bar: option.Some(5), Baz: &validRecursive{Intermediate{Bar: option.None[int]()}}}}) != nil)
+}
+
+func TestValidate_recursion(t *testing.T) {
+	assert.NilError(t, validate.CheckUnd(validTree{}))
+	assert.NilError(t, validate.ValidateUnd(validTree{
+		Node: &ValidTreeNode{
+			V: ValidTreeValues{
+				A: 5,
+				B: option.Some("foo"),
+				C: true,
+			},
+		},
+	}))
+	assert.Assert(t, validate.ValidateUnd(validTree{
+		Node: &ValidTreeNode{
+			V: ValidTreeValues{
+				A: 5,
+				B: option.None[string](),
+				C: true,
+			},
+		},
+	}) != nil)
+	assert.NilError(t, validate.ValidateUnd(validTree{
+		Node: &ValidTreeNode{
+			V: ValidTreeValues{
+				A: 5,
+				B: option.Some("foo"),
+				C: true,
+			},
+			L: &ValidTreeNode{
+				V: ValidTreeValues{
+					B: option.Some("bar"),
+				},
+			},
+		},
+	}))
+	assert.Assert(t, validate.ValidateUnd(validTree{
+		Node: &ValidTreeNode{
+			V: ValidTreeValues{
+				A: 5,
+				B: option.Some("foo"),
+				C: true,
+			},
+			L: &ValidTreeNode{
+				V: ValidTreeValues{
+					B: option.Some("bar"),
+				},
+			},
+			R: &ValidTreeNode{
+				V: ValidTreeValues{
+					B: option.Some("baz"),
+				},
+				R: &ValidTreeNode{
+					V: ValidTreeValues{
+						B: option.None[string](),
+					},
+				},
+			},
+		},
+	}) != nil)
 }

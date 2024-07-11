@@ -119,6 +119,13 @@ func (v cachedValidator) validate(rv reflect.Value) error {
 	if v.err != nil {
 		return v.err
 	}
+	if rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			// no further stepping
+			return nil
+		}
+		rv = rv.Elem()
+	}
 	for _, f := range v.v {
 		if err := f.validate(rv.Field(f.i)); err != nil {
 			return err
@@ -143,12 +150,12 @@ type fieldValidator struct {
 func cacheValidator(rt reflect.Type) cachedValidator {
 	v, ok := validatorCache.Load(rt)
 	if !ok {
-		v, _ = validatorCache.LoadOrStore(rt, makeValidator(rt))
+		v, _ = validatorCache.LoadOrStore(rt, makeValidator(rt, nil))
 	}
 	return v.(cachedValidator)
 }
 
-func makeValidator(rt reflect.Type) cachedValidator {
+func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) cachedValidator {
 	if rt.Kind() == reflect.Pointer {
 		rt = rt.Elem()
 	}
@@ -156,6 +163,12 @@ func makeValidator(rt reflect.Type) cachedValidator {
 	if rt.Kind() != reflect.Struct {
 		return cachedValidator{rt: rt, err: fmt.Errorf("%w: input is expected to be a struct type but is %s", ErrNotStruct, rt.Kind())}
 	}
+
+	if visited == nil {
+		visited = make(map[reflect.Type]*cachedValidator)
+	}
+	mainValidator := &cachedValidator{}
+	visited[rt] = mainValidator
 
 	var fieldValidators []fieldValidator
 	for i := 0; i < rt.NumField(); i++ {
@@ -169,24 +182,33 @@ func makeValidator(rt reflect.Type) cachedValidator {
 		isUndLike := ft.Type.Implements(undLikeTy)
 		isOptLike := ft.Type.Implements(optionLikeTy)
 		if !isElasticLike && !isUndLike && !isOptLike {
-			switch ft.Type.Kind() {
+			ftDeref := ft.Type
+			switch ftDeref.Kind() {
 			default:
 				continue
 			case reflect.Pointer:
-				if ft.Type.Elem().Kind() != reflect.Struct {
+				ftDeref = ftDeref.Elem()
+				if ftDeref.Kind() != reflect.Struct {
 					continue
 				}
 			case reflect.Struct:
 			}
-			subFieldValidator := makeValidator(ft.Type)
-			if subFieldValidator.err != nil {
-				return cachedValidator{
-					rt: rt,
-					v: []fieldValidator{{
-						i:        i,
-						validate: subFieldValidator.validate,
-					}},
+			var (
+				subFieldValidator *cachedValidator
+				has               bool
+			)
+			if subFieldValidator, has = visited[ftDeref]; !has {
+				v := makeValidator(ft.Type, visited)
+				if v.err != nil {
+					return cachedValidator{
+						rt: rt,
+						v: []fieldValidator{{
+							i:        i,
+							validate: v.validate,
+						}},
+					}
 				}
+				subFieldValidator = &v
 			}
 
 			fieldValidators = append(fieldValidators, fieldValidator{
@@ -277,5 +299,6 @@ func makeValidator(rt reflect.Type) cachedValidator {
 		})
 	}
 
-	return cachedValidator{rt: rt, v: fieldValidators}
+	*mainValidator = cachedValidator{rt: rt, v: fieldValidators}
+	return *mainValidator
 }
