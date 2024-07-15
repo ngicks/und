@@ -71,41 +71,41 @@ type UndOpt struct {
 
 type States struct {
 	filled bool
-	def    bool
-	null   bool
-	und    bool
+	Def    bool
+	Null   bool
+	Und    bool
 }
 
 func (s States) Valid(u UndLike) bool {
 	switch {
 	case u.IsDefined():
-		return s.def
+		return s.Def
 	case u.IsNull():
-		return s.null
+		return s.Null
 	default: // case u.IsUndefined():
-		return s.und
+		return s.Und
 	}
 }
 
 func (s States) String() string {
 	if s.filled {
-		if s.def {
+		if s.Def {
 			return "is " + UndTagValueRequired
 		} else {
 			return "is " + UndTagValueNullish
 		}
 	}
 	var builder strings.Builder
-	if s.def {
+	if s.Def {
 		builder.WriteString("defined")
 	}
-	if s.null {
+	if s.Null {
 		if builder.Len() > 0 {
 			builder.WriteString(" or ")
 		}
 		builder.WriteString("null")
 	}
-	if s.und {
+	if s.Und {
 		if builder.Len() > 0 {
 			builder.WriteString(" or ")
 		}
@@ -153,7 +153,7 @@ func ParseOption(s string) (UndOpt, error) {
 			}
 		case UndTagValueDef, UndTagValueNull, UndTagValueUnd:
 			if opts.States.IsSomeAnd(func(s States) bool {
-				return s.filled || opt == UndTagValueDef && s.def || opt == UndTagValueNull && s.null || opt == UndTagValueUnd && s.und
+				return s.filled || opt == UndTagValueDef && s.Def || opt == UndTagValueNull && s.Null || opt == UndTagValueUnd && s.Und
 			}) {
 				return UndOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
 			}
@@ -165,17 +165,17 @@ func ParseOption(s string) (UndOpt, error) {
 			switch opt {
 			case UndTagValueRequired:
 				v.filled = true
-				v.def = true
+				v.Def = true
 			case UndTagValueNullish:
 				v.filled = true
-				v.null = true
-				v.und = true
+				v.Null = true
+				v.Und = true
 			case UndTagValueDef:
-				v.def = true
+				v.Def = true
 			case UndTagValueNull:
-				v.null = true
+				v.Null = true
 			case UndTagValueUnd:
-				v.und = true
+				v.Und = true
 			}
 			return v
 		})
@@ -212,9 +212,9 @@ func (o UndOpt) ValidOpt(opt OptionLike) bool {
 	return o.States.IsSomeAnd(func(s States) bool {
 		switch {
 		case opt.IsSome():
-			return s.def
+			return s.Def
 		default: // opt.IsNone():
-			return s.null || s.und
+			return s.Null || s.Und
 		}
 	})
 }
@@ -223,11 +223,11 @@ func (o UndOpt) ValidUnd(u UndLike) bool {
 	return o.States.IsSomeAnd(func(s States) bool {
 		switch {
 		case u.IsDefined():
-			return s.def
+			return s.Def
 		case u.IsNull():
-			return s.null
+			return s.Null
 		default: // case u.IsUndefined():
-			return s.und
+			return s.Und
 		}
 	})
 }
@@ -248,9 +248,13 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 	}).Or(option.Some(false)).Value()
 }
 
+func (o UndOpt) Ty() {
+
+}
+
 type LenValidator struct {
-	len int
-	op  lenOp
+	Len int
+	Op  lenOp
 }
 
 func ParseLen(s string) (LenValidator, error) {
@@ -264,37 +268,37 @@ func ParseLen(s string) (LenValidator, error) {
 	default:
 		return LenValidator{}, fmt.Errorf("unknown op: %s", org)
 	case s[:2] == "==":
-		v.op = lenOpEqEq
+		v.Op = lenOpEqEq
 	case s[:2] == ">=":
-		v.op = lenOpGrEq
+		v.Op = lenOpGrEq
 	case s[:2] == "<=":
-		v.op = lenOpLeEq
+		v.Op = lenOpLeEq
 	case s[0] == '<':
-		v.op = lenOpLe
+		v.Op = lenOpLe
 	case s[0] == '>':
-		v.op = lenOpGr
+		v.Op = lenOpGr
 	}
 
-	s = s[v.op.len():]
+	s = s[v.Op.len():]
 
 	len, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		return LenValidator{}, fmt.Errorf("unknown len: %w", err)
 	}
 
-	v.len = int(len)
+	v.Len = int(len)
 	return v, nil
 }
 
 func (v LenValidator) String() string {
-	return "must have length of " + v.op.String() + " " + strconv.FormatInt(int64(v.len), 10)
+	return "must have length of " + v.Op.String() + " " + strconv.FormatInt(int64(v.Len), 10)
 }
 
 func (v LenValidator) Valid(e ElasticLike) bool {
-	if v.op == 0 {
+	if v.Op == 0 {
 		return true
 	}
-	return v.op.compare(e.Len(), v.len)
+	return v.Op.Compare(e.Len(), v.Len)
 }
 
 type lenOp int
@@ -332,7 +336,7 @@ func (o lenOp) String() string {
 	}
 }
 
-func (o lenOp) compare(i, j int) bool {
+func (o lenOp) Compare(i, j int) bool {
 	switch o {
 	default: // case lenOpEqEq:
 		return i == j
@@ -348,7 +352,7 @@ func (o lenOp) compare(i, j int) bool {
 }
 
 type ValuesValidator struct {
-	nonnull bool
+	Nonnull bool
 }
 
 func ParseValues(s string) (ValuesValidator, error) {
@@ -362,7 +366,7 @@ func ParseValues(s string) (ValuesValidator, error) {
 
 	switch s {
 	case "nonnull":
-		return ValuesValidator{nonnull: true}, nil
+		return ValuesValidator{Nonnull: true}, nil
 	}
 
 	return ValuesValidator{}, fmt.Errorf("unknown op: %s", org)
@@ -370,7 +374,7 @@ func ParseValues(s string) (ValuesValidator, error) {
 
 func (v ValuesValidator) Valid(e ElasticLike) bool {
 	switch {
-	case v.nonnull:
+	case v.Nonnull:
 		return !e.HasNull()
 	}
 	return true
@@ -378,7 +382,7 @@ func (v ValuesValidator) Valid(e ElasticLike) bool {
 
 func (v ValuesValidator) String() string {
 	switch {
-	case v.nonnull:
+	case v.Nonnull:
 		return "must not contain null"
 	}
 	return ""
