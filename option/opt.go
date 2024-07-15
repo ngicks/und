@@ -161,6 +161,9 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
+	// not gonna call like json.Unmarshal(data, &o.v)
+	// since it could be half-baked result if unmarshaling fails at some point.
+	// o's state must stay valid.
 	var v T
 	err := json.Unmarshal(data, &v)
 	if err != nil {
