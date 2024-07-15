@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	UndTag = "und"
 	// The field must be required(Some or Defined).
 	// mutually exclusive to nullish, def, null, und.
 	// UndTagValueRequired can be combined with len (there's no point though).

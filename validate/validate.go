@@ -27,24 +27,24 @@ var (
 )
 
 const (
-	UndTag = "und"
+	UndTag = structtag.UndTag
 	// The field must be required(Some or Defined).
 	// mutually exclusive to nullish, def, null, und.
 	// UndTagValueRequired can be combined with len (there's no point though).
-	UndTagValueRequired = "required"
+	UndTagValueRequired = structtag.UndTagValueRequired
 	// The field must be nullish(None, Null, Undefined).
 	// mutually exclusive to required, def, null, und.
 	// UndTagValueNullish can be combined with len.
-	UndTagValueNullish = "nullish"
+	UndTagValueNullish = structtag.UndTagValueNullish
 	// The field is allowed to be Some or Defined.
 	// can be combined with null, und or len.
-	UndTagValueDef = "def"
+	UndTagValueDef = structtag.UndTagValueDef
 	// The field is allowed to be None or Null.
 	// can be combined with def, und or len.
-	UndTagValueNull = "null"
+	UndTagValueNull = structtag.UndTagValueNull
 	// The field is allowed to be None or Undefined.
 	// can be combined with def, null or len.
-	UndTagValueUnd = "und"
+	UndTagValueUnd = structtag.UndTagValueUnd
 	// Only for elastic types.
 	//
 	// The value must be formatted as len==n, len>n, len>=n, len<n or len<=n,
@@ -53,13 +53,13 @@ const (
 	// e.g. if tag is len>12, field.Len() > 12 must return true.
 	//
 	// can be combined with other options.
-	UndTagValueLen = "len"
+	UndTagValueLen = structtag.UndTagValueLen
 	// Only for elastic types.
 	//
 	// The value must be formatted as values:nonnull.
 	//
 	// nonnull value means its internal value must not have null.
-	UndTagValueValues = "values"
+	UndTagValueValues = structtag.UndTagValueValues
 )
 
 // ValidatorUnd wraps the ValidateUnd method.
@@ -226,6 +226,8 @@ func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) c
 		}
 
 		if ft.Type.Kind() == reflect.Pointer {
+			// When field is nil, what should we do? It it considered none or undefined?
+			// I don't have any idea on this. Just return an error.
 			return cachedValidator{rt: rt, err: fmt.Errorf("%s: pointer implementor field", ft.Name)}
 		}
 
