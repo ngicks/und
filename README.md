@@ -175,20 +175,51 @@ func main() {
 
 ## being undefined is harder to express in Go.
 
-- JSON, JavaScript Object Notation, includes concept of being absence(undefined), nil(null) or value(`T`).
-- When unmarshaling incoming JSON bytes slice, you can use `*T` to decode value matching `T` and additionally converts undefined **OR** null to nil.
-  - `nil` indicates the JSON field was `null` and thus nil was assigned to the field.
-  - Or the field was nil and `json.Unmarshal` skipped modifying the field since no matching JSON field was present in the input.
-- That's hard to express in Go, since:
-  - You can always do that by encoding struct into `map[string]any` then remove fields that are supposed to be absent in an output JSON value.
-  - Or define custom JSON marshaler that skips if fields are in some specific state.
-  - If you do not want to do those,
-    - You'll need a type that has 3 states.
-    - You can do it by various ways, which include `**T`, `[]T`, `map[bool]T` and `struct {state int; value T}`.
-      - `**T` is definitely not a choice since it is not allowed to be a method receiver as per specification.
-      - `struct {state int; value T}` can not be skipped by v1 `encoding/json` since it does not check emptiness of struct.
+### Normal way to process JSON in Go.
 
-As a conclusion, this package implements `struct {state int; value T}` and `[]T` kind types.
+When processing JSON values in GO, normally, at least I assume, you define a type that matches schema of JSON value, and use them with `encoding/json`.
+(Of course there are numbers of third party modules that process JSON nicely, but I place them out of scope.)
+
+I think you'll normally specify `*T` as field type to allow it to be empty. This treats undefined and null fields equally (unless you use non-zero value for an unmarshale target.)
+This works fine in many cases. However sometimes its simplicity conflicts the concept of JSON.
+
+### The difference of null | undefined sometimes does matter
+
+As you can see in [Open API spec](https://github.com/OAI/OpenAPI-Specification),
+JSON naturally has concept of absent fields(field is not specified in `required` section),
+and also nullable field(`nullable` attribute is set to `true`)
+
+**The difference of null and undefined does matter** in some common practice.
+For example, [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/elasticsearch-intro.html) allows users to send partial document JSON to [Update part of a document](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html#_update_part_of_a_document). The Elasticsearch treats all of `undefined`(absent), `null`, `[]` equally; nonexistent field. So the partial update API skips updating of undefined fields and clears the fields if corresponding field of input JSON is `null`.
+
+How do you achieve this partial update in Go?
+I suspect simplest and most straightforward way is using `map[string]any` as a staging data.
+
+### Unmarshaling T | null | undefined is easy
+
+If a field type implements `json.Unmarshaler`, `encoding/json` calls this method while unamrashaling incoming JSON value only if there's matching field in the data, even when the value is `null` literal.
+Therefore, `T | null | undefined` can be easily mapped from 3 state where: `UnmarshalJSON` was called with non-null data | was called with `null` literal | was not called, respectively.
+
+### Marshaling T | null | undefined using stating map[string]any
+
+The problem arises when marshaling the struct if the field has distinct `T | null | undefined` state; `encoding/json` does not omit struct. This is why you end up always specifying `*time.Time` as field type instead of `time.Time`, if you want to omit zero value of the time.
+
+Most simplest way to omit zero struct, I think, is using `map[string]any` as staging data.
+
+You can use [github.com/jeevatkm/go-model](https://github.com/jeevatkm/go-model) to map any arbitrary structs into `map[string]any`. Then you can remove any arbitrary field from that. (You can't use the popular [mapstructure](https://github.com/mitchellh/mapstructure) to achieve this because of [#334](https://github.com/mitchellh/mapstructure/issues/334)). Finally you can marshal `map[string]any` via `json.Marshal`.
+
+This should incur unnecessary overhead to marshaling, also feels clumsier and tiring.
+
+### Solution: use []Option[T] to achieve this
+
+As you can see in here: https://github.com/golang/go/blob/go1.22.5/src/encoding/json/encode.go#L306-L318 ,
+`omitempty` works on `[]T` and `map[K]V`.
+
+With generics introduced in Go1.18, you can define a `[]T` based type with convenient methods. The only drawback is that you can't hide internal data structure for those type. Any change to that should be considered a breaking change. But it's ok because I suspect there's not a lot of chance of changing around it.
+
+I've defined type like `type Option[T any]{valid bool; t T}` to express some or none. Then I combine this with `[]T` to express `T | null | undefined` so that I can limit length of slice to 1. The capacity for the slice always stays 1, allocated only once and no chance of growth afterwards, no excess memory consumption(only a single `bool` flag field).
+
+As a conclusion, this module defines `[]Option[T]` based types to handle `T | null | undefined` easily.
 
 ## types and variants
 
