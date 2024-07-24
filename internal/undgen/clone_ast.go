@@ -10,11 +10,14 @@ import (
 
 func clone(fset *token.FileSet, f *ast.File) (*ast.File, *token.FileSet) {
 	var buf bytes.Buffer
-	printer.Fprint(&buf, fset, f) // stupid deep clone
+	err := printer.Fprint(&buf, fset, f) // stupid deep clone
+	if err != nil {
+		panic(err)
+	}
 	pos := fset.Position(f.FileStart)
 
 	fset = token.NewFileSet()
-	f, err := parser.ParseFile(fset, pos.Filename, buf.String(), parser.ParseComments)
+	f, err = parser.ParseFile(fset, pos.Filename, buf.String(), parser.ParseComments)
 	if err != nil {
 		panic(err)
 	}

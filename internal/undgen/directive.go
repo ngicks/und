@@ -44,11 +44,11 @@ func ParseComment(cg *ast.CommentGroup) (directive Directive, has bool, err erro
 			return Directive{generated: true}, true, nil
 		}
 		if text[0] != '{' {
-			return Directive{}, true, fmt.Errorf("must be JSON object or specific text without any enclosure: malformed: %s", text)
+			return Directive{}, true, fmt.Errorf("must be a JSON object or specific text without any enclosure: malformed: %s", text)
 		}
 		var rest strings.Builder
 		rest.WriteString(text)
-		if i < len(cg.List)-1 {
+		if i+1 < len(cg.List) {
 			for _, c := range cg.List[i+1:] {
 				rest.WriteString(stripMarker(c.Text))
 			}

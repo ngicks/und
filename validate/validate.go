@@ -48,7 +48,7 @@ const (
 	// Only for elastic types.
 	//
 	// The value must be formatted as len==n, len>n, len>=n, len<n or len<=n,
-	// where n is unsigned integer.
+	// where n is unsigned integer and greater than 0.
 	// The field's length will be evaluated as (length) (comparison operator) (n),
 	// e.g. if tag is len>12, field.Len() > 12 must return true.
 	//

@@ -61,9 +61,12 @@ type All struct {
 	ElaEqEquNull     elastic.Elastic[string] `json:",omitzero" und:"null,len==2"`
 	ElaEqEquUnd      elastic.Elastic[string] `json:",omitzero" und:"und,len==2"`
 
-	ElaEqEqNonNullSlice  elastic.Elastic[string] `json:",omitzero" und:"values:nonnull"`
-	ElaEqEqNonNullSingle elastic.Elastic[string] `json:",omitzero" und:"values:nonnull,len==1"`
-	ElaEqEqNonNull       elastic.Elastic[string] `json:",omitzero" und:"values:nonnull,len==3"`
+	ElaEqEqNonNullSlice      elastic.Elastic[string] `json:",omitzero" und:"values:nonnull"`
+	ElaEqEqNonNullNullSlice  elastic.Elastic[string] `json:",omitzero" und:"null,values:nonnull"`
+	ElaEqEqNonNullSingle     elastic.Elastic[string] `json:",omitzero" und:"values:nonnull,len==1"`
+	ElaEqEqNonNullNullSingle elastic.Elastic[string] `json:",omitzero" und:"null,values:nonnull,len==1"`
+	ElaEqEqNonNull           elastic.Elastic[string] `json:",omitzero" und:"values:nonnull,len==3"`
+	ElaEqEqNonNullNull       elastic.Elastic[string] `json:",omitzero" und:"null,values:nonnull,len==3"`
 }
 
 //undgen:ignore

@@ -289,3 +289,14 @@ func (u Und[T]) LogValue() slog.Value {
 func (u Und[T]) SqlNull() sql.Null[T] {
 	return u.Unwrap().Value().SqlNull()
 }
+
+func Map[T, U any](u Und[T], f func(t T) U) Und[U] {
+	switch {
+	case u.IsUndefined():
+		return Undefined[U]()
+	case u.IsNull():
+		return Null[U]()
+	default:
+		return Defined(f(u.Value()))
+	}
+}

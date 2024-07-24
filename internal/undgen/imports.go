@@ -12,6 +12,7 @@ type UndImports struct {
 	elastic      string
 	sliceUnd     string
 	sliceElastic string
+	conversion   string
 }
 
 func parseImports(specs []*ast.ImportSpec) (nameMap UndImports, ok bool) {
@@ -23,7 +24,8 @@ func parseImports(specs []*ast.ImportSpec) (nameMap UndImports, ok bool) {
 		switch pkgPath {
 		case "github.com/ngicks/und/option", "github.com/ngicks/und",
 			"github.com/ngicks/und/elastic", "github.com/ngicks/und/sliceund",
-			"github.com/ngicks/und/sliceund/elastic":
+			"github.com/ngicks/und/sliceund/elastic",
+			"github.com/ngicks/und/conversion":
 			ok = true
 		}
 		var f *string
@@ -38,6 +40,8 @@ func parseImports(specs []*ast.ImportSpec) (nameMap UndImports, ok bool) {
 			f = &nameMap.sliceUnd
 		case "github.com/ngicks/und/sliceund/elastic":
 			f = &nameMap.sliceElastic
+		case "github.com/ngicks/und/conversion":
+			f = &nameMap.conversion
 		}
 		if s.Name != nil {
 			*f = s.Name.Name
@@ -76,11 +80,12 @@ func (i UndImports) fill(idents map[string]bool) UndImports {
 	setFallingBack(&i.elastic, "elastic")
 	setFallingBack(&i.sliceUnd, "sliceund")
 	setFallingBack(&i.sliceElastic, "sliceelastic")
+	setFallingBack(&i.conversion, "conversion")
 	return i
 }
 
 func (i UndImports) Has(x string, sel string) bool {
-	switch x {
+	switch x { // conversion does not have type.
 	case i.option:
 		return sel == "Option"
 	case i.und, i.sliceUnd:
@@ -124,5 +129,22 @@ func (i UndImports) Imports() map[string]string {
 		"github.com/ngicks/und/elastic":          i.elastic,
 		"github.com/ngicks/und/sliceund":         i.sliceUnd,
 		"github.com/ngicks/und/sliceund/elastic": i.sliceElastic,
+		"github.com/ngicks/und/conversion":       i.conversion,
+	}
+}
+
+func (i UndImports) Und(isSlice bool) string {
+	if isSlice {
+		return i.sliceUnd
+	} else {
+		return i.und
+	}
+}
+
+func (i UndImports) Elastic(isSlice bool) string {
+	if isSlice {
+		return i.sliceElastic
+	} else {
+		return i.elastic
 	}
 }
