@@ -268,15 +268,15 @@ func ParseLen(s string) (LenValidator, error) {
 	default:
 		return LenValidator{}, fmt.Errorf("unknown op: %s", org)
 	case s[:2] == "==":
-		v.Op = lenOpEqEq
+		v.Op = LenOpEqEq
 	case s[:2] == ">=":
-		v.Op = lenOpGrEq
+		v.Op = LenOpGrEq
 	case s[:2] == "<=":
-		v.Op = lenOpLeEq
+		v.Op = LenOpLeEq
 	case s[0] == '<':
-		v.Op = lenOpLe
+		v.Op = LenOpLe
 	case s[0] == '>':
-		v.Op = lenOpGr
+		v.Op = LenOpGr
 	}
 
 	s = s[v.Op.len():]
@@ -304,18 +304,18 @@ func (v LenValidator) Valid(e ElasticLike) bool {
 type lenOp int
 
 const (
-	lenOpEqEq = iota + 1 // ==
-	lenOpGr              // >
-	lenOpGrEq            // >=
-	lenOpLe              // <
-	lenOpLeEq            // <=
+	LenOpEqEq = iota + 1 // ==
+	LenOpGr              // >
+	LenOpGrEq            // >=
+	LenOpLe              // <
+	LenOpLeEq            // <=
 )
 
 func (o lenOp) len() int {
 	switch o {
-	case lenOpLe, lenOpGr:
+	case LenOpLe, LenOpGr:
 		return 1
-	case lenOpEqEq, lenOpGrEq, lenOpLeEq:
+	case LenOpEqEq, LenOpGrEq, LenOpLeEq:
 		return 2
 	}
 	return 0
@@ -325,13 +325,13 @@ func (o lenOp) String() string {
 	switch o {
 	default: // case lenOpEqEq:
 		return "=="
-	case lenOpGr:
+	case LenOpGr:
 		return ">"
-	case lenOpGrEq:
+	case LenOpGrEq:
 		return ">="
-	case lenOpLe:
+	case LenOpLe:
 		return "<"
-	case lenOpLeEq:
+	case LenOpLeEq:
 		return "<="
 	}
 }
@@ -340,13 +340,13 @@ func (o lenOp) Compare(i, j int) bool {
 	switch o {
 	default: // case lenOpEqEq:
 		return i == j
-	case lenOpGr:
+	case LenOpGr:
 		return i > j
-	case lenOpGrEq:
+	case LenOpGrEq:
 		return i >= j
-	case lenOpLe:
+	case LenOpLe:
 		return i < j
-	case lenOpLeEq:
+	case LenOpLeEq:
 		return i <= j
 	}
 }
