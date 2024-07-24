@@ -13,23 +13,26 @@ import (
 )
 
 var (
+	_ json.Marshaler       = Und[any]{}
+	_ json.Unmarshaler     = (*Und[any])(nil)
+	_ jsonv2.MarshalerV2   = Und[any]{}
+	_ jsonv2.UnmarshalerV2 = (*Und[any])(nil)
+	_ xml.Marshaler        = Und[any]{}
+	_ xml.Unmarshaler      = (*Und[any])(nil)
+	_ slog.LogValuer       = Und[any]{}
+)
+
+var (
 	_ option.Equality[Und[any]] = Und[any]{}
 	_ option.Cloner[Und[any]]   = Und[any]{}
 	_ validate.ValidatorUnd     = Und[any]{}
 	_ validate.CheckerUnd       = Und[any]{}
-	_ json.Marshaler            = Und[any]{}
-	_ json.Unmarshaler          = (*Und[any])(nil)
-	_ jsonv2.MarshalerV2        = Und[any]{}
-	_ jsonv2.UnmarshalerV2      = (*Und[any])(nil)
-	_ xml.Marshaler             = Und[any]{}
-	_ xml.Unmarshaler           = (*Und[any])(nil)
-	_ slog.LogValuer            = Und[any]{}
 )
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
 // Und[T] is comparable if T is comparable. And it can be copied by assign.
 //
-// Und[T] implements IsZero and can be skippable struct fields when marshaled through appropriate marshalers,
+// Und[T] implements IsZero and is omitted when is a struct field of other structs and appropriate marshalers and appropriate struct tag on the field,
 // e.g. "github.com/go-json-experiment/json/jsontext" with omitzero option set to the field,
 // or "github.com/json-iterator/go" with omitempty option to the field and an appropriate extension.
 //

@@ -62,7 +62,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("marshaled by v2=\n%s\n", bin)
-	// see? undefined (=zero value) fields are skipped.
+	// see? undefined (=zero value) fields are omitted.
 	/*
 	   marshaled by v2=
 	   {
@@ -107,8 +107,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("marshaled by v1=\n%s\n", bin)
-	// You see. Types defined under ./sliceund/ can be skipped by encoding/json.
-	// Types defined in ./ and ./elastic cannot be skipped by it.
+	// You see. Types defined under ./sliceund/ can be omitted by encoding/json.
+	// Types defined in ./ and ./elastic cannot be omitted by it.
 	/*
 	   marshaled by v1=
 	   	{

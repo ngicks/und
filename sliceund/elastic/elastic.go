@@ -41,8 +41,10 @@ var (
 )
 
 // Elastic[T] is a type that can express undefined | null | T | [](null | T).
+// Elastic[T] implements json.Unmarshaler so that it can be unmarshaled from all of those type.
+// However it always marshaled into an array of JSON value that corresponds to T.
 //
-// Elastic[T] can be a skippable struct field with omitempty option of `encoding/json`.
+// Elastic[T] can be a omittable struct field with omitempty option of `encoding/json`.
 //
 // Although it exposes its internal data structure,
 // you should not mutate internal data.

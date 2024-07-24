@@ -29,12 +29,12 @@ var (
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
 //
-// Und[T] can be a skippable struct field with omitempty option of `encoding/json`.
+// Und[T] can be a omittable struct field with omitempty option of `encoding/json`.
 //
 // Although it exposes its internal data structure,
 // you should not mutate internal data.
 // Using map[T]U, []T or json.RawMessage as base type is only allowed hacks
-// to make it skippable by `json:",omitempty" option,
+// to make it omittable by `json:",omitempty" option,
 // without losing freedom of adding methods.
 // Any method implemented on Und[T] assumes
 // it has only either 0 or 1 element.
@@ -97,7 +97,7 @@ func FromSqlNull[T any](v sql.Null[T]) Und[T] {
 
 // IsZero is an alias for IsUndefined.
 // Using `json:",omitzero"` option with "github.com/go-json-experiment/json"
-// skips this field while encoding if IsZero returns true.
+// omits this field while encoding if IsZero returns true.
 func (u Und[T]) IsZero() bool {
 	return u.IsUndefined()
 }

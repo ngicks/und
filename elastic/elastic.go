@@ -39,9 +39,10 @@ var (
 )
 
 // Elastic[T] is a type that can express undefined | null | T | [](null | T).
-// Elastic[T] is comparable if T is comparable. And it can be copied by assign.
+// Elastic[T] implements json.Unmarshaler so that it can be unmarshaled from all of those type.
+// However it always marshaled into an array of JSON value that corresponds to T.
 //
-// Elastic[T] implements IsZero and can be skippable struct fields when marshaled through appropriate marshalers,
+// Elastic[T] implements IsZero and can be omittable struct fields when marshaled through appropriate marshalers,
 // e.g. "github.com/go-json-experiment/json/jsontext" with omitzero option set to the field,
 // or "github.com/json-iterator/go" with omitempty option to the field and an appropriate extension.
 //

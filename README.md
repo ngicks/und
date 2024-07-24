@@ -4,19 +4,23 @@ Types to interoperate with applications that make full use of JSON.
 
 ## Before v1
 
+und expects no breaking change except for `MarshalJSONV2` and `UnmarshalJSONV2` methods.
+
+Normally those methods are not used directly by users, so this expected breakage should not incur visible effects for most of them.
+
 - und waits for release of `encoding/json/v2`
   - und depends on `github.com/go-json-experiment/json` which is an experimental `encoding/json/v2` implementation.
-  - Types defined in this module implement `json.MarshalerV2` and `json.UnmarshalerV2`. The API dependency is relatively thin and narrow. I suspects they will not break the interface the part where we are relaying.
-- It'll eventually have a breaking change when `encoding/json/v2` is released.
-  - However that should not need change of your code, just bump version.
+  - Types defined in this module implement `json.MarshalerV2` and `json.UnmarshalerV2`.
+  - Eventually the dependency would be swapped to `encoding/json/v2` and those methods would be changed to use `v2`,
+  - or erased completely if `v2` decides not to continue to use that names.
 
 ## Example
 
-run example by `go run github.com/ngicks/und/example@v1.0.0-alpha1`.
+run example by `go run github.com/ngicks/und/example@v1.0.0-alpha4`.
 
-You can skip fields by jsonv2(`github.com/go-json-experiment/json`) with `omitzero` json option.
+You'll see zero value fields whose type is defined under this module are omitted by jsonv2(`github.com/go-json-experiment/json`) with `omitzero` json option.
 
-Or you can skip `sliceund` and `sliceund/elastic` type fields with `encoding/json` v1.
+Also types defined under `sliceund` and `sliceund/elastic` are omitted by `encoding/json` v1 if zero, with `omitempty` struct tag option.
 
 ```go
 package main
@@ -83,7 +87,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("marshaled by v2=\n%s\n", bin)
-	// see? undefined (=zero value) fields are skipped.
+	// see? undefined (=zero value) fields are omitted.
 	/*
 	   marshaled by v2=
 	   {
@@ -128,8 +132,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("marshaled by v1=\n%s\n", bin)
-	// You see. Types defined under ./sliceund/ can be skipped by encoding/json.
-	// Types defined in ./ and ./elastic cannot be skipped by it.
+	// You see. Types defined under ./sliceund/ can be omitted by encoding/json.
+	// Types defined in ./ and ./elastic cannot be omitted by it.
 	/*
 	   marshaled by v1=
 	   	{
@@ -206,8 +210,8 @@ Other types are based on `Option[T]`.
 There are 2 variants
 
 - `github.com/ngicks/und`: `Option[Option[T]]` based types.
-  - skippable only if encoding through
+  - omitted only if encoding through
     - `github.com/go-json-experiment/json`(possibly a future `encoding/json/v2`) with the `,omitzero` options
     - [jsoniter](https://github.com/json-iterator/go) with `,omitempty` and custom encoder.
 - `github.com/ngicks/und/sliceund`: `[]Option[T]` based types.
-  - skippable with `,omitempty`.
+  - omitted with `,omitempty`.
