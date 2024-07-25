@@ -61,7 +61,7 @@ type field struct {
 
 var toPlainMethods = template.Must(template.New("").Parse(
 	`//{{.PrefixComment}}
-func (v {{.SrcTypeName}}) ToPlain() {{.DstTypeName}} {
+func (v {{.SrcTypeName}}) UndPlain() {{.DstTypeName}} {
 	return {{.DstTypeName}}{
 {{ range .Fields }}                {{.FieldName}}: {{.FieldExpr}},
 {{end}}

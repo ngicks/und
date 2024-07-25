@@ -71,7 +71,7 @@ type AllPlain struct {
 }
 
 //undgen:generated
-func (v All) ToPlain() AllPlain {
+func (v All) UndPlain() AllPlain {
 	return AllPlain{
 		Foo:               v.Foo,
 		Bar:               v.Bar,
@@ -229,7 +229,7 @@ type WithTypeParamPlain[T any] struct {
 }
 
 //undgen:generated
-func (v WithTypeParam[T]) ToPlain() WithTypeParamPlain[T] {
+func (v WithTypeParam[T]) UndPlain() WithTypeParamPlain[T] {
 	return WithTypeParamPlain[T]{
 		Foo: v.Foo,
 		Bar: v.Bar,
