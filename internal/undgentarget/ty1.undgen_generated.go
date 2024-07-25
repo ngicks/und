@@ -20,15 +20,15 @@ type AllPlain struct {
 	UntouchedUnd      und.Und[int]       `json:",omitzero"`
 	UntouchedSliceUnd sliceund.Und[int]  `json:",omitzero"`
 
-	OptRequired       string    `json:",omitzero" und:"required"`
-	OptNullish        *struct{} `json:",omitzero" und:"nullish"`
-	OptDef            string    `json:",omitzero" und:"def"`
-	OptNull           *struct{} `json:",omitzero" und:"null"`
-	OptUnd            *struct{} `json:",omitzero" und:"und"`
-	OptDefOrUnd       string    `json:",omitzero" und:"def,und"`
-	OptDefOrNull      string    `json:",omitzero" und:"def,null"`
-	OptNullOrUnd      *struct{} `json:",omitzero" und:"null,und"`
-	OptDefOrNullOrUnd string    `json:",omitzero" und:"def,null,und"`
+	OptRequired       string                `json:",omitzero" und:"required"`
+	OptNullish        *struct{}             `json:",omitzero" und:"nullish"`
+	OptDef            string                `json:",omitzero" und:"def"`
+	OptNull           *struct{}             `json:",omitzero" und:"null"`
+	OptUnd            *struct{}             `json:",omitzero" und:"und"`
+	OptDefOrUnd       option.Option[string] `json:",omitzero" und:"def,und"`
+	OptDefOrNull      option.Option[string] `json:",omitzero" und:"def,null"`
+	OptNullOrUnd      *struct{}             `json:",omitzero" und:"null,und"`
+	OptDefOrNullOrUnd option.Option[string] `json:",omitzero" und:"def,null,und"`
 
 	UndRequired       string                   `json:",omitzero" und:"required"`
 	UndNullish        option.Option[*struct{}] `json:",omitzero" und:"nullish"`
@@ -85,10 +85,10 @@ func (v All) ToPlain() AllPlain {
 		OptDef:            v.OptDef.Value(),
 		OptNull:           nil,
 		OptUnd:            nil,
-		OptDefOrUnd:       v.OptDefOrUnd.Value(),
-		OptDefOrNull:      v.OptDefOrNull.Value(),
+		OptDefOrUnd:       v.OptDefOrUnd,
+		OptDefOrNull:      v.OptDefOrNull,
 		OptNullOrUnd:      nil,
-		OptDefOrNullOrUnd: v.OptDefOrNullOrUnd.Value(),
+		OptDefOrNullOrUnd: v.OptDefOrNullOrUnd,
 		UndRequired:       v.UndRequired.Value(),
 		UndNullish:        conversion.UndNullish(v.UndNullish),
 		UndDef:            v.UndDef.Value(),

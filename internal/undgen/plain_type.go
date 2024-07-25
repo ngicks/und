@@ -411,7 +411,9 @@ func modifyUndField(
 			imports.Matcher(left.Name, right.Name).Match(
 				func() {
 					switch s := undOpt.States.Value(); {
-					default: // case s.Def && (s.Null || s.Und):
+					default:
+						modified = false
+					case s.Def && (s.Null || s.Und):
 						modified = false
 					case s.Def:
 						f.Type = fieldTy.Index // unwrap, simply T.
@@ -575,7 +577,9 @@ func nullishConverter(imports UndImports) *genericConverter {
 
 func optionConverter(undOpt structtag.UndOpt) *genericConverter {
 	switch s := undOpt.States.Value(); {
-	default: // case s.Def && (s.Null || s.Und):
+	default:
+		return nil
+	case s.Def && (s.Null || s.Und):
 		return nil
 	case s.Def:
 		return &genericConverter{
