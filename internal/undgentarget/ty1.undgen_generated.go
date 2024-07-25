@@ -107,72 +107,117 @@ func (v All) ToPlain() AllPlain {
 		ElaDefOrNull:      conversion.UnwrapElastic(v.ElaDefOrNull).Unwrap().Value(),
 		ElaNullOrUnd:      conversion.UndNullish(v.ElaNullOrUnd),
 		ElaDefOrNullOrUnd: v.ElaDefOrNullOrUnd,
-		ElaEqEq: conversion.UnwrapLen1(und.Map(conversion.UnwrapElastic(v.ElaEqEq), func(s []option.Option[string]) (r [1]option.Option[string]) {
-			copy(r[:], s)
-			return
-		})).Value(),
+		ElaEqEq: conversion.UnwrapLen1(und.Map(
+			conversion.UnwrapElastic(v.ElaEqEq),
+			func(s []option.Option[string]) (r [1]option.Option[string]) {
+				copy(r[:], s)
+				return
+			},
+		),
+		).Value(),
 		ElaGr:   conversion.LenNAtLeast(2, conversion.UnwrapElastic(v.ElaGr)).Value(),
 		ElaGrEq: conversion.LenNAtLeast(1, conversion.UnwrapElastic(v.ElaGrEq)).Value(),
 		ElaLe:   conversion.LenNAtMost(0, conversion.UnwrapElastic(v.ElaLe)).Value(),
 		ElaLeEq: conversion.LenNAtMost(1, conversion.UnwrapElastic(v.ElaLeEq)).Value(),
-		ElaEqEquRequired: und.Map(conversion.UnwrapElastic(v.ElaEqEquRequired), func(s []option.Option[string]) (r [2]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}).Value(),
-		ElaEqEquNullish: und.Map(conversion.UnwrapElastic(v.ElaEqEquNullish), func(s []option.Option[string]) (r [2]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}),
-		ElaEqEquDef: und.Map(conversion.UnwrapElastic(v.ElaEqEquDef), func(s []option.Option[string]) (r [2]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}).Value(),
-		ElaEqEquNull: und.Map(conversion.UnwrapElastic(v.ElaEqEquNull), func(s []option.Option[string]) (r [2]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}).Unwrap().Value(),
-		ElaEqEquUnd: und.Map(conversion.UnwrapElastic(v.ElaEqEquUnd), func(s []option.Option[string]) (r [2]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}).Unwrap().Value(),
+		ElaEqEquRequired: und.Map(
+			conversion.UnwrapElastic(v.ElaEqEquRequired),
+			func(s []option.Option[string]) (r [2]option.Option[string]) {
+				copy(r[:], s)
+				return
+			},
+		).Value(),
+		ElaEqEquNullish: und.Map(
+			conversion.UnwrapElastic(v.ElaEqEquNullish),
+			func(s []option.Option[string]) (r [2]option.Option[string]) {
+				copy(r[:], s)
+				return
+			},
+		),
+		ElaEqEquDef: und.Map(
+			conversion.UnwrapElastic(v.ElaEqEquDef),
+			func(s []option.Option[string]) (r [2]option.Option[string]) {
+				copy(r[:], s)
+				return
+			},
+		).Value(),
+		ElaEqEquNull: und.Map(
+			conversion.UnwrapElastic(v.ElaEqEquNull),
+			func(s []option.Option[string]) (r [2]option.Option[string]) {
+				copy(r[:], s)
+				return
+			},
+		).Unwrap().Value(),
+		ElaEqEquUnd: und.Map(
+			conversion.UnwrapElastic(v.ElaEqEquUnd),
+			func(s []option.Option[string]) (r [2]option.Option[string]) {
+				copy(r[:], s)
+				return
+			},
+		).Unwrap().Value(),
 		ElaEqEqNonNullSlice:     conversion.NonNull(conversion.UnwrapElastic(v.ElaEqEqNonNullSlice)),
 		ElaEqEqNonNullNullSlice: nil,
-		ElaEqEqNonNullSingle: conversion.UnwrapLen1(und.Map(und.Map(conversion.UnwrapElastic(v.ElaEqEqNonNullSingle), func(s []option.Option[string]) (r [1]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}), func(s [1]option.Option[string]) (r [1]string) {
-			for i := 0; i < 1; i++ {
-				r[i] = s[i].Value()
-			}
-			return
-		})).Value(),
-		ElaEqEqNonNullNullSingle: conversion.UnwrapLen1(und.Map(und.Map(conversion.UnwrapElastic(v.ElaEqEqNonNullNullSingle), func(s []option.Option[string]) (r [1]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}), func(s [1]option.Option[string]) (r [1]string) {
-			for i := 0; i < 1; i++ {
-				r[i] = s[i].Value()
-			}
-			return
-		})).Unwrap().Value(),
-		ElaEqEqNonNull: und.Map(und.Map(conversion.UnwrapElastic(v.ElaEqEqNonNull), func(s []option.Option[string]) (r [3]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}), func(s [3]option.Option[string]) (r [3]string) {
-			for i := 0; i < 3; i++ {
-				r[i] = s[i].Value()
-			}
-			return
-		}).Value(),
-		ElaEqEqNonNullNull: und.Map(und.Map(conversion.UnwrapElastic(v.ElaEqEqNonNullNull), func(s []option.Option[string]) (r [3]option.Option[string]) {
-			copy(r[:], s)
-			return
-		}), func(s [3]option.Option[string]) (r [3]string) {
-			for i := 0; i < 3; i++ {
-				r[i] = s[i].Value()
-			}
-			return
-		}).Unwrap().Value(),
+		ElaEqEqNonNullSingle: conversion.UnwrapLen1(und.Map(
+			und.Map(
+				conversion.UnwrapElastic(v.ElaEqEqNonNullSingle),
+				func(s []option.Option[string]) (r [1]option.Option[string]) {
+					copy(r[:], s)
+					return
+				},
+			),
+			func(s [1]option.Option[string]) (r [1]string) {
+				for i := 0; i < 1; i++ {
+					r[i] = s[i].Value()
+				}
+				return
+			},
+		),
+		).Value(),
+		ElaEqEqNonNullNullSingle: conversion.UnwrapLen1(und.Map(
+			und.Map(
+				conversion.UnwrapElastic(v.ElaEqEqNonNullNullSingle),
+				func(s []option.Option[string]) (r [1]option.Option[string]) {
+					copy(r[:], s)
+					return
+				},
+			),
+			func(s [1]option.Option[string]) (r [1]string) {
+				for i := 0; i < 1; i++ {
+					r[i] = s[i].Value()
+				}
+				return
+			},
+		),
+		).Unwrap().Value(),
+		ElaEqEqNonNull: und.Map(
+			und.Map(
+				conversion.UnwrapElastic(v.ElaEqEqNonNull),
+				func(s []option.Option[string]) (r [3]option.Option[string]) {
+					copy(r[:], s)
+					return
+				},
+			),
+			func(s [3]option.Option[string]) (r [3]string) {
+				for i := 0; i < 3; i++ {
+					r[i] = s[i].Value()
+				}
+				return
+			},
+		).Value(),
+		ElaEqEqNonNullNull: und.Map(
+			und.Map(
+				conversion.UnwrapElastic(v.ElaEqEqNonNullNull),
+				func(s []option.Option[string]) (r [3]option.Option[string]) {
+					copy(r[:], s)
+					return
+				},
+			),
+			func(s [3]option.Option[string]) (r [3]string) {
+				for i := 0; i < 3; i++ {
+					r[i] = s[i].Value()
+				}
+				return
+			},
+		).Unwrap().Value(),
 	}
 }
 

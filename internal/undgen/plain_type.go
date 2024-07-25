@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/ngicks/und/internal/structtag"
 	"golang.org/x/tools/go/ast/astutil"
@@ -798,6 +799,17 @@ func (c *elasticConverter) Expr(
 	expr := c.g.Expr(field)
 	for _, wrapper := range c.wrappers {
 		expr = wrapper.Expr(expr)
+		var ok bool
+		expr, ok = strings.CutSuffix(expr, ")")
+		if ok {
+			s := strings.TrimLeftFunc(expr, unicode.IsSpace)
+			switch s[len(s)-1] {
+			case '(', '\n':
+				expr += ")"
+			default:
+				expr += ",\n)"
+			}
+		}
 	}
 	return expr
 }
@@ -890,24 +902,12 @@ func newTemplateParams(
 		sizeStr = strconv.FormatInt(int64(size), 10)
 	}
 	return templateParams{
-		OptionPkg: imports.option,
-		UndPkg: func() string {
-			if isSlice {
-				return imports.sliceUnd
-			} else {
-				return imports.und
-			}
-		}(),
-		ElasticPkg: func() string {
-			if isSlice {
-				return imports.sliceElastic
-			} else {
-				return imports.elastic
-			}
-		}(),
-		Arg:       arg,
-		TypeParam: buf.String(),
-		Size:      sizeStr,
+		OptionPkg:  imports.option,
+		UndPkg:     imports.Und(isSlice),
+		ElasticPkg: imports.Elastic(isSlice),
+		Arg:        arg,
+		TypeParam:  buf.String(),
+		Size:       sizeStr,
 	}
 }
 
@@ -920,16 +920,22 @@ func suffixSlice(s string, suffix bool) string {
 
 var (
 	undFixedSize = template.Must(template.New("").Parse(
-		`{{.UndPkg}}.Map({{.Arg}}, func(s []{{.OptionPkg}}.Option[{{.TypeParam}}]) (r [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) {
-	copy(r[:], s)
-	return
-})`))
+		`{{.UndPkg}}.Map(
+	{{.Arg}},
+	func(s []{{.OptionPkg}}.Option[{{.TypeParam}}]) (r [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) {
+		copy(r[:], s)
+		return
+	},
+)`))
 	mapUndNonNullFixedSize = template.Must(template.New("").Parse(
-		`{{.UndPkg}}.Map({{.Arg}}, func(s [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) (r [{{.Size}}]{{.TypeParam}}) {
-	for i := 0; i < {{.Size}}; i++ {
-		r[i] = s[i].Value()
-	}
-	return
-	})`,
+		`{{.UndPkg}}.Map(
+	{{.Arg}},
+	func(s [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) (r [{{.Size}}]{{.TypeParam}}) {
+		for i := 0; i < {{.Size}}; i++ {
+			r[i] = s[i].Value()
+		}
+		return
+	},
+)`,
 	))
 )
