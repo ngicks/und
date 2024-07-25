@@ -72,46 +72,48 @@ func main() {
 
 			genFilename := suffixFilename(rel, ".undgen_generated")
 			fmt.Printf("writing to %q\n", genFilename)
-			f, err := os.Create(genFilename)
-			if err != nil {
-				panic(err)
+
+			var buf bytes.Buffer
+
+			fmt.Fprintf(&buf, "package %s\n\n", pkgName)
+			fmt.Fprintf(&buf, "import (\n")
+			for k, v := range genTy.Imports {
+				fmt.Fprintf(&buf, "\t")
+				if v != "" {
+					fmt.Fprintf(&buf, "%s ", v)
+				}
+				fmt.Fprintf(&buf, "%q\n", k)
 			}
-			func() {
-				defer f.Close()
+			fmt.Fprintf(&buf, ")\n")
 
-				var buf bytes.Buffer
-
-				fmt.Fprintf(&buf, "package %s\n\n", pkgName)
-				fmt.Fprintf(&buf, "import (\n")
-				for k, v := range genTy.Imports {
-					fmt.Fprintf(&buf, "\t")
-					if v != "" {
-						fmt.Fprintf(&buf, "%s ", v)
-					}
-					fmt.Fprintf(&buf, "%q\n", k)
-				}
-				fmt.Fprintf(&buf, ")\n")
-
-				for _, ty := range genTy.Generated {
-					fmt.Fprintf(&buf, "\n")
-					fmt.Fprintf(&buf, "//undgen:generated\n")
-					printer.Fprint(&buf, ty.Fset, ty.Decl)
-					fmt.Fprintf(&buf, "\n\n")
-					err = ty.PrintToPlain(&buf)
-					if err != nil {
-						panic(err)
-					}
-					fmt.Fprintf(&buf, "\n")
-				}
-
-				cmd := exec.CommandContext(context.Background(), "goimports")
-				cmd.Stdin = &buf
-				var formatted bytes.Buffer
-				cmd.Stdout = &formatted
-				err := cmd.Run()
+			for _, ty := range genTy.Generated {
+				fmt.Fprintf(&buf, "\n")
+				fmt.Fprintf(&buf, "//undgen:generated\n")
+				printer.Fprint(&buf, ty.Fset, ty.Decl)
+				fmt.Fprintf(&buf, "\n\n")
+				err = ty.PrintToPlain(&buf)
 				if err != nil {
 					panic(err)
 				}
+				fmt.Fprintf(&buf, "\n")
+			}
+
+			fmt.Printf("\n\n%s\n\n", buf.Bytes())
+			cmd := exec.CommandContext(context.Background(), "goimports")
+			cmd.Stdin = &buf
+			var formatted bytes.Buffer
+			cmd.Stdout = &formatted
+			err = cmd.Run()
+			if err != nil {
+				panic(err)
+			}
+
+			func() {
+				f, err := os.Create(genFilename)
+				if err != nil {
+					panic(err)
+				}
+				defer f.Close()
 				_, err = f.Write([]byte("// " + importPkgComment + "\n"))
 				if err != nil {
 					panic(err)
