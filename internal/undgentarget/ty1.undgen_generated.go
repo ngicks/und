@@ -2,11 +2,11 @@
 package undgentarget
 
 import (
-	und "github.com/ngicks/und"
-	conversion "github.com/ngicks/und/conversion"
-	elastic "github.com/ngicks/und/elastic"
-	option "github.com/ngicks/und/option"
-	sliceund "github.com/ngicks/und/sliceund"
+	"github.com/ngicks/und"
+	"github.com/ngicks/und/conversion"
+	"github.com/ngicks/und/elastic"
+	"github.com/ngicks/und/option"
+	"github.com/ngicks/und/sliceund"
 )
 
 //undgen:generated
