@@ -95,6 +95,11 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
+				fmt.Fprintf(&buf, "\n\n")
+				err = ty.PrintToRaw(&buf)
+				if err != nil {
+					panic(err)
+				}
 				fmt.Fprintf(&buf, "\n")
 			}
 

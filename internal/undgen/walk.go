@@ -25,13 +25,14 @@ type GeneratedTypeBuf struct {
 type PlainType struct {
 	Fset *token.FileSet
 	// TypeSpec only. The TypeSpec does not print `type` keyword before its spec. So keep it as GenDecl.
-	Decl    *ast.GenDecl
-	ToPlain []Conversion
+	Decl            *ast.GenDecl
+	FieldConverters []Conversion
 }
 
 type Conversion struct {
-	FieldName string
-	Converter fieldConverter
+	FieldName     string
+	Converter     fieldConverter
+	BackConverter fieldConverter
 }
 
 func TargetTypes(pkgs []*packages.Package) (map[string]map[string]bool, error) {
@@ -172,6 +173,7 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 							case *ast.Field:
 								// same error
 								converter, _ := undPlainFieldConverter(field, imports)
+								backConverter, _ := undRawFieldBackConverter(field, imports)
 								modified, err := checkAndModifyUndField(field, imports)
 								if err != nil {
 									modifyErr = err
@@ -180,15 +182,17 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 								if modified {
 									modifiedAny = true
 									converters = append(converters, Conversion{
-										FieldName: field.Names[0].Name,
-										Converter: converter,
+										FieldName:     field.Names[0].Name,
+										Converter:     converter,
+										BackConverter: backConverter,
 									})
 									return false
 								} else {
 									//TODO check field is other struct and implements ToPlain
 									converters = append(converters, Conversion{
-										FieldName: field.Names[0].Name,
-										Converter: nil,
+										FieldName:     field.Names[0].Name,
+										Converter:     nil,
+										BackConverter: nil,
 									})
 								}
 								// TODO: check if field is another struct,

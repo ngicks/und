@@ -15,12 +15,31 @@ type fieldConverter interface {
 	Expr(field string) string
 }
 
+type noopFieldConverter struct {
+}
+
+func (c noopFieldConverter) Expr(field string) string {
+	return field
+}
+
+type simpleExpr struct {
+	raw string
+}
+
+func nilSimpleExpr() simpleExpr {
+	return simpleExpr{raw: "nil"}
+}
+
+func (e simpleExpr) Expr(field string) string {
+	return e.raw
+}
+
 type genericConverter struct {
 	Selector string
 	// AdditionalImports map[string]string
 	Method string
-	Nil    bool
 	// added before field.
+	OmitArg  bool
 	Args     []string
 	TypePram []string
 }
@@ -35,9 +54,6 @@ func nullishConverter(imports UndImports) *genericConverter {
 func (m *genericConverter) Expr(
 	field string,
 ) string {
-	if m.Nil {
-		return "nil"
-	}
 	if m.Selector == "" {
 		return field + "." + m.Method + "()"
 	}
@@ -53,22 +69,24 @@ func (m *genericConverter) Expr(
 		ident += "."
 	}
 	var args []string
-	if len(m.Args) > 0 {
-		args = append(args, m.Args...)
+	if !m.OmitArg {
+		if len(m.Args) > 0 {
+			args = append(args, m.Args...)
+		}
+		args = append(args, field)
 	}
-	args = append(args, field)
 	return ident + m.Method + instantiation + "(" + strings.Join(args, ",") + ")"
 }
 
 type nestedConverter struct {
-	g        *genericConverter
+	core     fieldConverter
 	wrappers []fieldConverter
 }
 
 func (c *nestedConverter) Expr(
 	field string,
 ) string {
-	expr := c.g.Expr(field)
+	expr := c.core.Expr(field)
 	for _, wrapper := range c.wrappers {
 		expr = wrapper.Expr(expr)
 		var ok bool
@@ -162,6 +180,25 @@ var (
 	func(s [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) (r [{{.Size}}]{{.TypeParam}}) {
 		for i := 0; i < {{.Size}}; i++ {
 			r[i] = s[i].Value()
+		}
+		return
+	},
+)`,
+	))
+	mapUndFixedToSlice = template.Must(template.New("").Parse(
+		`{{.UndPkg}}.Map(
+	{{.Arg}},
+	func(s [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) (r []{{.OptionPkg}}.Option[{{.TypeParam}}]) {
+		return s[:]
+	},
+)`,
+	))
+	nullifyUndFixedSize = template.Must(template.New("").Parse(
+		`{{.UndPkg}}.Map(
+	{{.Arg}},
+	func(s [{{.Size}}]{{.TypeParam}}) (r [{{.Size}}]{{.OptionPkg}}.Option[{{.TypeParam}}]) {
+		for i := 0; i < {{.Size}}; i++ {
+			r[i] = {{.OptionPkg}}.Some(s[i])
 		}
 		return
 	},

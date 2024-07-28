@@ -46,7 +46,7 @@ func undPlainFieldConverter(
 	return r, nil
 }
 
-func optionUndPlainConverter(undOpt structtag.UndOpt) *genericConverter {
+func optionUndPlainConverter(undOpt structtag.UndOpt) fieldConverter {
 	switch s := undOpt.States.Value(); {
 	default:
 		return nil
@@ -57,13 +57,11 @@ func optionUndPlainConverter(undOpt structtag.UndOpt) *genericConverter {
 			Method: "Value",
 		}
 	case s.Null || s.Und:
-		return &genericConverter{
-			Nil: true,
-		}
+		return nilSimpleExpr()
 	}
 }
 
-func undUndPlainConverter(states structtag.States, imports UndImports) *genericConverter {
+func undUndPlainConverter(states structtag.States, imports UndImports) fieldConverter {
 	switch s := states; {
 	default:
 		return nil
@@ -80,9 +78,7 @@ func undUndPlainConverter(states structtag.States, imports UndImports) *genericC
 			Method: "Value",
 		}
 	case s.Null || s.Und:
-		return &genericConverter{
-			Nil: true,
-		}
+		return nilSimpleExpr()
 	}
 }
 
@@ -95,11 +91,13 @@ func elasticUndPlainConverter(
 	// very really simple case.
 	if undOpt.States.IsSome() && undOpt.Len.IsNone() && undOpt.Values.IsNone() {
 		switch s := undOpt.States.Value(); {
-		default: //case s.Def && s.Null && s.Und:
+		default:
+			return nil
+		case s.Def && s.Null && s.Und:
 			return nil
 		case s.Def && (s.Null || s.Und):
 			return &nestedConverter{
-				g: &genericConverter{
+				core: &genericConverter{
 					Selector: imports.conversion,
 					Method:   suffixSlice("UnwrapElastic", isSlice),
 				},
@@ -110,18 +108,16 @@ func elasticUndPlainConverter(
 				},
 			}
 		case s.Null && s.Und:
-			return &nestedConverter{g: nullishConverter(imports)}
+			return &nestedConverter{core: nullishConverter(imports)}
 		case s.Def:
 			return &nestedConverter{
-				g: &genericConverter{ // []option.Option[T]
+				core: &genericConverter{ // []option.Option[T]
 					Method: "Unwrap().Value",
 				},
 			}
 		case s.Null || s.Und:
 			return &nestedConverter{
-				g: &genericConverter{
-					Nil: true,
-				},
+				core: nilSimpleExpr(),
 			}
 		}
 	}
@@ -135,19 +131,17 @@ func elasticUndPlainConverter(
 		switch s := states; {
 		case s.Null && s.Und:
 			return &nestedConverter{
-				g: nullishConverter(imports),
+				core: nullishConverter(imports),
 			}
 		case s.Null || s.Und:
 			return &nestedConverter{
-				g: &genericConverter{
-					Nil: true,
-				},
+				core: nilSimpleExpr(),
 			}
 		}
 	}
 	// fist, converts Elastic[T] -> Und[[]option.Option[T]]
 	c := &nestedConverter{
-		g: &genericConverter{
+		core: &genericConverter{
 			Selector: imports.conversion,
 			Method:   suffixSlice("UnwrapElastic", isSlice),
 		},

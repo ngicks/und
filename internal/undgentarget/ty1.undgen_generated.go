@@ -222,6 +222,154 @@ func (v All) UndPlain() AllPlain {
 }
 
 //undgen:generated
+func (v AllPlain) UndRaw() All {
+	return All{
+		Foo:               v.Foo,
+		Bar:               v.Bar,
+		Baz:               v.Baz,
+		Qux:               v.Qux,
+		UntouchedOpt:      v.UntouchedOpt,
+		UntouchedUnd:      v.UntouchedUnd,
+		UntouchedSliceUnd: v.UntouchedSliceUnd,
+		OptRequired:       option.Some(v.OptRequired),
+		OptNullish:        option.None[string](),
+		OptDef:            option.Some(v.OptDef),
+		OptNull:           option.None[string](),
+		OptUnd:            option.None[string](),
+		OptDefOrUnd:       v.OptDefOrUnd,
+		OptDefOrNull:      v.OptDefOrNull,
+		OptNullOrUnd:      option.None[string](),
+		OptDefOrNullOrUnd: v.OptDefOrNullOrUnd,
+		UndRequired:       und.Defined(v.UndRequired),
+		UndNullish:        conversion.UndNullishBack[string](v.UndNullish),
+		UndDef:            und.Defined(v.UndDef),
+		UndNull:           und.Null[string](),
+		UndUnd:            und.Undefined[string](),
+		UndDefOrUnd:       conversion.MapOptionToUnd(false, v.UndDefOrUnd),
+		UndDefOrNull:      conversion.MapOptionToUnd(true, v.UndDefOrNull),
+		UndNullOrUnd:      conversion.UndNullishBack[string](v.UndNullOrUnd),
+		UndDefOrNullOrUnd: v.UndDefOrNullOrUnd,
+		ElaRequired:       elastic.FromOptions(v.ElaRequired),
+		ElaNullish:        conversion.UndNullishBackElastic[string](v.ElaNullish),
+		ElaDef:            elastic.FromOptions(v.ElaDef),
+		ElaNull:           elastic.Null[string](),
+		ElaUnd:            elastic.Undefined[string](),
+		ElaDefOrUnd:       conversion.MapOptionOptionToElastic(false, v.ElaDefOrUnd),
+		ElaDefOrNull:      conversion.MapOptionOptionToElastic(true, v.ElaDefOrNull),
+		ElaNullOrUnd:      conversion.UndNullishBackElastic[string](v.ElaNullOrUnd),
+		ElaDefOrNullOrUnd: v.ElaDefOrNullOrUnd,
+		ElaEqEq: elastic.FromUnd(und.Map(
+			conversion.WrapLen1(und.Defined(v.ElaEqEq)),
+			func(s [1]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaGr:   elastic.FromUnd(und.Defined(v.ElaGr)),
+		ElaGrEq: elastic.FromUnd(und.Defined(v.ElaGrEq)),
+		ElaLe:   elastic.FromUnd(und.Defined(v.ElaLe)),
+		ElaLeEq: elastic.FromUnd(und.Defined(v.ElaLeEq)),
+		ElaEqEquRequired: elastic.FromUnd(und.Map(
+			und.Defined(v.ElaEqEquRequired),
+			func(s [2]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEquNullish: elastic.FromUnd(und.Map(
+			v.ElaEqEquNullish,
+			func(s [2]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEquDef: elastic.FromUnd(und.Map(
+			und.Defined(v.ElaEqEquDef),
+			func(s [2]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEquNull: elastic.FromUnd(und.Map(
+			conversion.MapOptionToUnd(true, v.ElaEqEquNull),
+			func(s [2]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEquUnd: elastic.FromUnd(und.Map(
+			conversion.MapOptionToUnd(false, v.ElaEqEquUnd),
+			func(s [2]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEqNonNullSlice:     elastic.FromUnd(conversion.Nullify(v.ElaEqEqNonNullSlice)),
+		ElaEqEqNonNullNullSlice: elastic.Null[string](),
+		ElaEqEqNonNullSingle: elastic.FromUnd(und.Map(
+			und.Map(
+				conversion.WrapLen1(und.Defined(v.ElaEqEqNonNullSingle)),
+				func(s [1]string) (r [1]option.Option[string]) {
+					for i := 0; i < 1; i++ {
+						r[i] = option.Some(s[i])
+					}
+					return
+				},
+			),
+			func(s [1]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEqNonNullNullSingle: elastic.FromUnd(und.Map(
+			und.Map(
+				conversion.WrapLen1(conversion.MapOptionToUnd(true, v.ElaEqEqNonNullNullSingle)),
+				func(s [1]string) (r [1]option.Option[string]) {
+					for i := 0; i < 1; i++ {
+						r[i] = option.Some(s[i])
+					}
+					return
+				},
+			),
+			func(s [1]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEqNonNull: elastic.FromUnd(und.Map(
+			und.Map(
+				und.Defined(v.ElaEqEqNonNull),
+				func(s [3]string) (r [3]option.Option[string]) {
+					for i := 0; i < 3; i++ {
+						r[i] = option.Some(s[i])
+					}
+					return
+				},
+			),
+			func(s [3]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+		ElaEqEqNonNullNull: elastic.FromUnd(und.Map(
+			und.Map(
+				conversion.MapOptionToUnd(true, v.ElaEqEqNonNullNull),
+				func(s [3]string) (r [3]option.Option[string]) {
+					for i := 0; i < 3; i++ {
+						r[i] = option.Some(s[i])
+					}
+					return
+				},
+			),
+			func(s [3]option.Option[string]) (r []option.Option[string]) {
+				return s[:]
+			},
+		),
+		),
+	}
+}
+
+//undgen:generated
 type WithTypeParamPlain[T any] struct {
 	Foo string
 	Bar T
@@ -234,5 +382,14 @@ func (v WithTypeParam[T]) UndPlain() WithTypeParamPlain[T] {
 		Foo: v.Foo,
 		Bar: v.Bar,
 		Baz: v.Baz.Value(),
+	}
+}
+
+//undgen:generated
+func (v WithTypeParamPlain[T]) UndRaw() WithTypeParam[T] {
+	return WithTypeParam[T]{
+		Foo: v.Foo,
+		Bar: v.Bar,
+		Baz: option.Some(v.Baz),
 	}
 }
