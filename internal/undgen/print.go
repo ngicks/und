@@ -152,7 +152,7 @@ func (p Printer) generateFile(filename string, genTy GeneratedTypeBuf) (*bytes.B
 	fmt.Fprintf(buf, "import (\n")
 	for k, v := range genTy.Imports {
 		fmt.Fprintf(buf, "\t")
-		if v != "" {
+		if v != "" && v != path.Base(k) {
 			fmt.Fprintf(buf, "%s ", v)
 		}
 		fmt.Fprintf(buf, "%q\n", k)
