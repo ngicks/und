@@ -61,6 +61,21 @@ func (e Elastic[T]) CheckUnd() error {
 	return e.inner().Value().CheckUnd()
 }
 
+// Option returns the first value of e wrapped in option.Option[T] if
+// e has length greater than 0.
+// Otherwise it returns a none option.
+func (e Elastic[T]) Option() option.Option[T] {
+	if e.Len() > 0 {
+		return e.Unwrap().Value()[0]
+	}
+	return option.None[T]()
+}
+
+// Options returns e's internal value as a slice of options.
+func (e Elastic[T]) Options() []option.Option[T] {
+	return e.Unwrap().Value()
+}
+
 // MarshalJSON implements json.Marshaler.
 func (u Elastic[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(u.inner())

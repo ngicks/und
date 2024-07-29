@@ -4,7 +4,9 @@
     "jsonfield",
     "jsoniter",
     "ngicks",
+    "nonnull",
     "omitempty",
+    "omitzero",
     "serde",
     "sliceund",
     "struct",
@@ -12,6 +14,7 @@
     "testhelper",
     "Undefinedable",
     "Undefineder",
+    "undtag",
     "unmarshaler"
   ]
 }
