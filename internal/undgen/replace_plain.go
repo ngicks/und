@@ -3,11 +3,12 @@ package undgen
 import (
 	"go/token"
 	"reflect"
+	"slices"
 	"strconv"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/dstutil"
-	"github.com/ngicks/und/internal/structtag"
+	"github.com/ngicks/und/internal/undtag"
 )
 
 func checkAndModifyUndField(
@@ -35,7 +36,7 @@ func isUndField(field *dst.Field, imports UndImports) (
 	fieldTy *dst.IndexExpr,
 	x *dst.SelectorExpr,
 	left, right *dst.Ident,
-	undOpt structtag.UndOpt,
+	undOpt undtag.UndOpt,
 	ok bool,
 	err error,
 ) {
@@ -67,12 +68,12 @@ func isUndField(field *dst.Field, imports UndImports) (
 		return
 	}
 
-	tag = reflect.StructTag(tag[1 : len(tag)-1]).Get(structtag.UndTag)
+	tag = reflect.StructTag(tag[1 : len(tag)-1]).Get(undtag.UndTag)
 	if tag == "" {
 		return
 	}
 
-	undOpt, err = structtag.ParseOption(tag)
+	undOpt, err = undtag.ParseOption(tag)
 	if err != nil {
 		return
 	}
@@ -87,7 +88,7 @@ func modifyUndField(
 	fieldTy *dst.IndexExpr,
 	x *dst.SelectorExpr,
 	left *dst.Ident, right *dst.Ident,
-	undOpt structtag.UndOpt,
+	undOpt undtag.UndOpt,
 ) (modified bool) {
 	dstutil.Apply(
 		field,
@@ -132,10 +133,10 @@ func modifyUndField(
 					}
 				},
 				func(isSlice bool) {
-					if (undOpt.States.IsSomeAnd(func(s structtag.States) bool {
+					if (undOpt.States.IsSomeAnd(func(s undtag.States) bool {
 						return s.Def && s.Null && s.Und
-					})) && (undOpt.Len.IsNone() || undOpt.Len.IsSomeAnd(func(lv structtag.LenValidator) bool {
-						return lv.Op != structtag.LenOpEqEq
+					})) && (undOpt.Len.IsNone() || undOpt.Len.IsSomeAnd(func(lv undtag.LenValidator) bool {
+						return lv.Op != undtag.LenOpEqEq
 					})) && (undOpt.Values.IsNone()) {
 						modified = false
 						return
@@ -157,7 +158,7 @@ func modifyUndField(
 
 					if undOpt.Len.IsSome() {
 						lv := undOpt.Len.Value()
-						if lv.Op == structtag.LenOpEqEq {
+						if lv.Op == undtag.LenOpEqEq {
 							if lv.Len == 1 {
 								// und.Und[[]option.Option[T]] -> und.Und[option.Option[T]]
 								fieldTy.Index = fieldTy.Index.(*dst.ArrayType).Elt

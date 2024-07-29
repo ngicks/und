@@ -1,4 +1,4 @@
-package structtag
+package undtag
 
 type ElasticLike interface {
 	UndLike

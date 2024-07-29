@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dave/dst"
-	"github.com/ngicks/und/internal/structtag"
+	"github.com/ngicks/und/internal/undtag"
 )
 
 func undRawFieldBackConverter(
@@ -46,7 +46,7 @@ func undRawFieldBackConverter(
 	return r, nil
 }
 
-func optionUndRawConverter(undOpt structtag.UndOpt, imports UndImports, typeParam string) *genericConverter {
+func optionUndRawConverter(undOpt undtag.UndOpt, imports UndImports, typeParam string) *genericConverter {
 	switch s := undOpt.States.Value(); {
 	default:
 		return nil
@@ -67,7 +67,7 @@ func optionUndRawConverter(undOpt structtag.UndOpt, imports UndImports, typePara
 	}
 }
 
-func undUndRawConverter(states structtag.States, imports UndImports, typeParam string, isSlice bool) *genericConverter {
+func undUndRawConverter(states undtag.States, imports UndImports, typeParam string, isSlice bool) *genericConverter {
 	switch s := states; {
 	default:
 		return nil
@@ -107,7 +107,7 @@ func undUndRawConverter(states structtag.States, imports UndImports, typeParam s
 }
 
 func elasticUndRawConverter(
-	undOpt structtag.UndOpt,
+	undOpt undtag.UndOpt,
 	imports UndImports,
 	isSlice bool,
 	typeParam string,
@@ -201,7 +201,7 @@ func elasticUndRawConverter(
 		// if len is EqEq, map Und[[n]option.Option[T]] -> Und[[]option.Option[T]]
 		lv := undOpt.Len.Value()
 		switch lv.Op {
-		case structtag.LenOpEqEq:
+		case undtag.LenOpEqEq:
 			c.wrappers = append(
 				[]fieldConverter{
 					&templateConverter{
@@ -219,7 +219,7 @@ func elasticUndRawConverter(
 		// Und[[n]T] -> Und[[n]option.Option[T]]
 		switch {
 		case v.Nonnull:
-			if undOpt.Len.IsSomeAnd(func(lv structtag.LenValidator) bool { return lv.Op == structtag.LenOpEqEq }) {
+			if undOpt.Len.IsSomeAnd(func(lv undtag.LenValidator) bool { return lv.Op == undtag.LenOpEqEq }) {
 				wrapper = &templateConverter{
 					t: nullifyUndFixedSize,
 					p: newTemplateParams(imports, isSlice, "", typeParam, undOpt.Len.Value().Len),
@@ -236,7 +236,7 @@ func elasticUndRawConverter(
 	}
 
 	// When len == 1, convert und.Und[[1]option.Option[T]] or und.Und[[1]T] to und.Und[option.Option[T]], und.Und[T] respectively
-	if undOpt.Len.IsSomeAnd(func(lv structtag.LenValidator) bool { return lv.Op == structtag.LenOpEqEq && lv.Len == 1 }) {
+	if undOpt.Len.IsSomeAnd(func(lv undtag.LenValidator) bool { return lv.Op == undtag.LenOpEqEq && lv.Len == 1 }) {
 		c.wrappers = append(
 			[]fieldConverter{&genericConverter{
 				Selector: imports.conversion,

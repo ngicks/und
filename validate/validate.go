@@ -5,46 +5,46 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/ngicks/und/internal/structtag"
+	"github.com/ngicks/und/internal/undtag"
 )
 
 var (
 	// ErrNotStruct would be returned by ValidateUnd and CheckUnd
 	// if input is not a struct nor a pointer to a struct.
-	ErrNotStruct = structtag.ErrNotStruct
+	ErrNotStruct = undtag.ErrNotStruct
 	// ErrMultipleOption would be returned by ValidateUnd and CheckUnd
 	// if input's `und` struct tags have multiple mutually exclusive options.
-	ErrMultipleOption = structtag.ErrMultipleOption
+	ErrMultipleOption = undtag.ErrMultipleOption
 	// ErrUnknownOption is an error value which will be returned by ValidateUnd and CheckUnd
 	// if an input has unknown options in `und` struct tag.
-	ErrUnknownOption = structtag.ErrUnknownOption
+	ErrUnknownOption = undtag.ErrUnknownOption
 	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
 	// if an input has malformed len option in `und` struct tag.
-	ErrMalformedLen = structtag.ErrMalformedLen
+	ErrMalformedLen = undtag.ErrMalformedLen
 	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
 	// if an input has malformed values option in `und` struct tag.
-	ErrMalformedValues = structtag.ErrMalformedValues
+	ErrMalformedValues = undtag.ErrMalformedValues
 )
 
 const (
-	UndTag = structtag.UndTag
+	UndTag = undtag.UndTag
 	// The field must be required(Some or Defined).
 	// mutually exclusive to nullish, def, null, und.
 	// UndTagValueRequired can be combined with len (there's no point though).
-	UndTagValueRequired = structtag.UndTagValueRequired
+	UndTagValueRequired = undtag.UndTagValueRequired
 	// The field must be nullish(None, Null, Undefined).
 	// mutually exclusive to required, def, null, und.
 	// UndTagValueNullish can be combined with len.
-	UndTagValueNullish = structtag.UndTagValueNullish
+	UndTagValueNullish = undtag.UndTagValueNullish
 	// The field is allowed to be Some or Defined.
 	// can be combined with null, und or len.
-	UndTagValueDef = structtag.UndTagValueDef
+	UndTagValueDef = undtag.UndTagValueDef
 	// The field is allowed to be None or Null.
 	// can be combined with def, und or len.
-	UndTagValueNull = structtag.UndTagValueNull
+	UndTagValueNull = undtag.UndTagValueNull
 	// The field is allowed to be None or Undefined.
 	// can be combined with def, null or len.
-	UndTagValueUnd = structtag.UndTagValueUnd
+	UndTagValueUnd = undtag.UndTagValueUnd
 	// Only for elastic types.
 	//
 	// The value must be formatted as len==n, len>n, len>=n, len<n or len<=n,
@@ -53,13 +53,13 @@ const (
 	// e.g. if tag is len>12, field.Len() > 12 must return true.
 	//
 	// can be combined with other options.
-	UndTagValueLen = structtag.UndTagValueLen
+	UndTagValueLen = undtag.UndTagValueLen
 	// Only for elastic types.
 	//
 	// The value must be formatted as values:nonnull.
 	//
 	// nonnull value means its internal value must not have null.
-	UndTagValueValues = structtag.UndTagValueValues
+	UndTagValueValues = undtag.UndTagValueValues
 )
 
 // ValidatorUnd wraps the ValidateUnd method.
@@ -79,15 +79,15 @@ type CheckerUnd interface {
 }
 
 type (
-	ElasticLike = structtag.ElasticLike
-	UndLike     = structtag.UndLike
-	OptionLike  = structtag.OptionLike
+	ElasticLike = undtag.ElasticLike
+	UndLike     = undtag.UndLike
+	OptionLike  = undtag.OptionLike
 )
 
 var (
-	elasticLike    = reflect.TypeFor[structtag.ElasticLike]()
-	undLikeTy      = reflect.TypeFor[structtag.UndLike]()
-	optionLikeTy   = reflect.TypeFor[structtag.OptionLike]()
+	elasticLike    = reflect.TypeFor[undtag.ElasticLike]()
+	undLikeTy      = reflect.TypeFor[undtag.UndLike]()
+	optionLikeTy   = reflect.TypeFor[undtag.OptionLike]()
 	validatorUndTy = reflect.TypeFor[ValidatorUnd]()
 	checkerUndTy   = reflect.TypeFor[CheckerUnd]()
 )
@@ -235,7 +235,7 @@ func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) c
 		if tag == "" {
 			continue
 		}
-		opt, err := structtag.ParseOption(tag)
+		opt, err := undtag.ParseOption(tag)
 		if err != nil {
 			return cachedValidator{rt: rt, err: fmt.Errorf("%s: %w", ft.Name, err)}
 		}

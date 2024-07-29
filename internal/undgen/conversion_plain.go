@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/dave/dst"
-	"github.com/ngicks/und/internal/structtag"
+	"github.com/ngicks/und/internal/undtag"
 )
 
 func undPlainFieldConverter(
@@ -46,7 +46,7 @@ func undPlainFieldConverter(
 	return r, nil
 }
 
-func optionUndPlainConverter(undOpt structtag.UndOpt) fieldConverter {
+func optionUndPlainConverter(undOpt undtag.UndOpt) fieldConverter {
 	switch s := undOpt.States.Value(); {
 	default:
 		return nil
@@ -61,7 +61,7 @@ func optionUndPlainConverter(undOpt structtag.UndOpt) fieldConverter {
 	}
 }
 
-func undUndPlainConverter(states structtag.States, imports UndImports) fieldConverter {
+func undUndPlainConverter(states undtag.States, imports UndImports) fieldConverter {
 	switch s := states; {
 	default:
 		return nil
@@ -83,7 +83,7 @@ func undUndPlainConverter(states structtag.States, imports UndImports) fieldConv
 }
 
 func elasticUndPlainConverter(
-	undOpt structtag.UndOpt,
+	undOpt undtag.UndOpt,
 	imports UndImports,
 	isSlice bool,
 	typeParam string,
@@ -151,32 +151,32 @@ func elasticUndPlainConverter(
 		lv := undOpt.Len.Value()
 		var wrapper fieldConverter
 		switch lv.Op {
-		case structtag.LenOpEqEq:
+		case undtag.LenOpEqEq:
 			// to [n]option.Option[T]
 			wrapper = &templateConverter{
 				t: undFixedSize,
 				p: newTemplateParams(imports, isSlice, "", typeParam, lv.Len),
 			}
 			// other then trim down or append it to the size at most or at least.
-		case structtag.LenOpGr:
+		case undtag.LenOpGr:
 			wrapper = &genericConverter{
 				Selector: imports.conversion,
 				Method:   suffixSlice("LenNAtLeast", isSlice),
 				Args:     []string{strconv.FormatInt(int64(lv.Len+1), 10)},
 			}
-		case structtag.LenOpGrEq:
+		case undtag.LenOpGrEq:
 			wrapper = &genericConverter{
 				Selector: imports.conversion,
 				Method:   suffixSlice("LenNAtLeast", isSlice),
 				Args:     []string{strconv.FormatInt(int64(lv.Len), 10)},
 			}
-		case structtag.LenOpLe:
+		case undtag.LenOpLe:
 			wrapper = &genericConverter{
 				Selector: imports.conversion,
 				Method:   suffixSlice("LenNAtMost", isSlice),
 				Args:     []string{strconv.FormatInt(int64(lv.Len-1), 10)},
 			}
-		case structtag.LenOpLeEq:
+		case undtag.LenOpLeEq:
 			wrapper = &genericConverter{
 				Selector: imports.conversion,
 				Method:   suffixSlice("LenNAtMost", isSlice),
@@ -190,7 +190,7 @@ func elasticUndPlainConverter(
 		var wrapper fieldConverter
 		switch {
 		case v.Nonnull:
-			if undOpt.Len.IsSomeAnd(func(lv structtag.LenValidator) bool { return lv.Op == structtag.LenOpEqEq }) {
+			if undOpt.Len.IsSomeAnd(func(lv undtag.LenValidator) bool { return lv.Op == undtag.LenOpEqEq }) {
 				wrapper = &templateConverter{
 					t: mapUndNonNullFixedSize,
 					p: newTemplateParams(imports, isSlice, "", typeParam, undOpt.Len.Value().Len),
@@ -207,7 +207,7 @@ func elasticUndPlainConverter(
 	}
 
 	// Then when len == 1, convert und.Und[[1]option.Option[T]] or und.Und[[1]T] to und.Und[option.Option[T]], und.Und[T] respectively
-	if undOpt.Len.IsSomeAnd(func(lv structtag.LenValidator) bool { return lv.Op == structtag.LenOpEqEq && lv.Len == 1 }) {
+	if undOpt.Len.IsSomeAnd(func(lv undtag.LenValidator) bool { return lv.Op == undtag.LenOpEqEq && lv.Len == 1 }) {
 		c.wrappers = append(
 			c.wrappers,
 			&genericConverter{
