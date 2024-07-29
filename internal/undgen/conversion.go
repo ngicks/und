@@ -2,9 +2,6 @@ package undgen
 
 import (
 	"bytes"
-	"go/ast"
-	"go/printer"
-	"go/token"
 	"strconv"
 	"strings"
 	"text/template"
@@ -135,15 +132,9 @@ func newTemplateParams(
 	imports UndImports,
 	isSlice bool,
 	arg string,
-	typeParam ast.Node,
+	typeParam string,
 	size int,
 ) templateParams {
-	var buf bytes.Buffer
-	fset := token.NewFileSet()
-	err := printer.Fprint(&buf, fset, typeParam)
-	if err != nil {
-		panic(err)
-	}
 	var sizeStr string
 	if size > 0 {
 		sizeStr = strconv.FormatInt(int64(size), 10)
@@ -153,7 +144,7 @@ func newTemplateParams(
 		UndPkg:     imports.Und(isSlice),
 		ElasticPkg: imports.Elastic(isSlice),
 		Arg:        arg,
-		TypeParam:  buf.String(),
+		TypeParam:  typeParam,
 		Size:       sizeStr,
 	}
 }

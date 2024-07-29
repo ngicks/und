@@ -85,15 +85,43 @@ func (i UndImports) fill(idents map[string]bool) UndImports {
 }
 
 func (i UndImports) Has(x string, sel string) bool {
+	return i.Kind(x, sel) > 0
+}
+
+type UndTypeKind int
+
+const (
+	TypeKindOption UndTypeKind = iota + 1
+	TypeKindUnd
+	TypeKindSliceUnd
+	TypeKindElastic
+	TypeKindSliceElastic
+)
+
+func (i UndImports) Kind(x string, sel string) UndTypeKind {
 	switch x { // conversion does not have type.
 	case i.option:
-		return sel == "Option"
-	case i.und, i.sliceUnd:
-		return sel == "Und"
-	case i.elastic, i.sliceElastic:
-		return sel == "Elastic"
+		if sel == "Option" {
+			return TypeKindOption
+		}
+	case i.und:
+		if sel == "Und" {
+			return TypeKindUnd
+		}
+	case i.sliceUnd:
+		if sel == "Und" {
+			return TypeKindSliceUnd
+		}
+	case i.elastic:
+		if sel == "Elastic" {
+			return TypeKindElastic
+		}
+	case i.sliceElastic:
+		if sel == "Elastic" {
+			return TypeKindSliceElastic
+		}
 	}
-	return false
+	return 0
 }
 
 func (i UndImports) Matcher(x string, sel string) matcher {

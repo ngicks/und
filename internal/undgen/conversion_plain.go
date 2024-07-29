@@ -1,24 +1,24 @@
 package undgen
 
 import (
-	"go/ast"
 	"strconv"
 
+	"github.com/dave/dst"
 	"github.com/ngicks/und/internal/structtag"
 )
 
 func undPlainFieldConverter(
-	f *ast.Field,
+	f *dst.Field,
 	imports UndImports,
+	fieldInfo undFieldInfo,
 ) (fieldConverter, error) {
-	fieldTy, _, left, right, undOpt, ok, err := isUndField(f, imports)
+	_, _, left, right, undOpt, ok, err := isUndField(f, imports)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		return nil, nil
 	}
-	typeParam := fieldTy.Index
 
 	var r fieldConverter
 	imports.
@@ -37,7 +37,7 @@ func undPlainFieldConverter(
 				}
 			},
 			func(isSlice bool) {
-				c := elasticUndPlainConverter(undOpt, imports, isSlice, typeParam)
+				c := elasticUndPlainConverter(undOpt, imports, isSlice, fieldInfo.TypeParm)
 				if c != nil {
 					r = c
 				}
@@ -86,7 +86,7 @@ func elasticUndPlainConverter(
 	undOpt structtag.UndOpt,
 	imports UndImports,
 	isSlice bool,
-	typeParam ast.Node,
+	typeParam string,
 ) *nestedConverter {
 	// very really simple case.
 	if undOpt.States.IsSome() && undOpt.Len.IsNone() && undOpt.Values.IsNone() {

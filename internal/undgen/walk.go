@@ -1,13 +1,17 @@
 package undgen
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
+	"go/printer"
 	"go/token"
 	"path"
 	"slices"
 
-	"golang.org/x/tools/go/ast/astutil"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
+	"github.com/dave/dst/dstutil"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -35,8 +39,49 @@ type Conversion struct {
 	BackConverter fieldConverter
 }
 
-func TargetTypes(pkgs []*packages.Package) (map[string]map[string]bool, error) {
-	targetTypeNames := map[string]map[string]bool{}
+type targetTypes struct {
+	m map[string]map[string]typeInfo
+}
+
+type typeInfo struct {
+	UndFields map[string]undFieldInfo
+	Name      string
+}
+
+type undFieldInfo struct {
+	Kind     UndTypeKind
+	Name     string
+	TypeParm string // maybe empty if the ti is remote type.
+}
+
+func (tt *targetTypes) hasPkg(pkgPath string) bool {
+	// reading from nil map does not panic.
+	_, ok := tt.m[pkgPath]
+	return ok
+}
+
+func (tt *targetTypes) get(pkgPath string, name string) (typeInfo, bool) {
+	m, ok := tt.m[pkgPath]
+	if !ok {
+		return typeInfo{}, false
+	}
+	mm, ok := m[name]
+	return mm, ok
+}
+
+func (tt *targetTypes) add(pkgPath string, ti typeInfo) {
+	if tt.m == nil {
+		tt.m = make(map[string]map[string]typeInfo)
+	}
+
+	if tt.m[pkgPath] == nil {
+		tt.m[pkgPath] = make(map[string]typeInfo)
+	}
+	tt.m[pkgPath][ti.Name] = ti
+}
+
+func TargetTypes(pkgs []*packages.Package) (tt *targetTypes, err error) {
+	tt = new(targetTypes)
 
 	// first path, collect generation targets
 	for _, pkg := range pkgs {
@@ -72,31 +117,31 @@ func TargetTypes(pkgs []*packages.Package) (map[string]map[string]bool, error) {
 						}
 
 						// TODO: recursively check struct types.
-						if !hasUndType(ts, imports) {
+						ti, ok := parseUndType(ts, imports)
+						if !ok {
 							continue
 						}
 
-						if targetTypeNames[pkg.PkgPath] == nil {
-							targetTypeNames[pkg.PkgPath] = map[string]bool{}
-						}
-						targetTypeNames[pkg.PkgPath][ts.Name.Name] = true
+						tt.add(pkg.PkgPath, ti)
 					}
 				}
 			}
 		}
 	}
 
-	return targetTypeNames, nil
+	return tt, nil
 }
 
-func hasUndType(ts *ast.TypeSpec, imports UndImports) bool {
+func parseUndType(ts *ast.TypeSpec, imports UndImports) (ti typeInfo, hasUndField bool) {
 	st, ok := ts.Type.(*ast.StructType)
 	if !ok {
-		return false
+		return typeInfo{}, false
 	}
 	if st.Fields == nil {
-		return false
+		return typeInfo{}, false
 	}
+
+	hasUndField = false
 	for _, f := range st.Fields.List {
 		typ, ok := f.Type.(*ast.IndexExpr)
 		if !ok {
@@ -115,13 +160,32 @@ func hasUndType(ts *ast.TypeSpec, imports UndImports) bool {
 		}
 		right := expr.Sel
 		if imports.Has(left.Name, right.Name) {
-			return true
+			hasUndField = true
+			var buf bytes.Buffer
+			fset := token.NewFileSet()
+			err := printer.Fprint(&buf, fset, typ.Index)
+			if err != nil {
+				panic(err)
+			}
+			for _, n := range f.Names {
+				if ti.UndFields == nil {
+					ti.UndFields = make(map[string]undFieldInfo)
+				}
+				ti.UndFields[n.Name] = undFieldInfo{
+					Kind:     imports.Kind(left.Name, right.Name),
+					Name:     n.Name,
+					TypeParm: buf.String(),
+				}
+			}
 		}
 		// TODO: check it is struct type and contains und types.
 		// If it is defined under code generation target package and contains und types,
 		// It should have corresponding plain type.
 	}
-	return false
+
+	ti.Name = ts.Name.Name
+
+	return ti, hasUndField
 }
 
 func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
@@ -132,7 +196,7 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 
 	var generated GeneratedPlainType
 	for _, pkg := range pkgs {
-		if _, ok := targets[pkg.PkgPath]; !ok {
+		if !targets.hasPkg(pkg.PkgPath) {
 			continue
 		}
 		for _, f := range pkg.Syntax {
@@ -143,21 +207,27 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 
 			// clone before modification.
 			clonedF, fset := clone(pkg.Fset, f)
+
+			df, err := decorator.DecorateFile(fset, clonedF)
+			if err != nil {
+				return GeneratedPlainType{}, err
+			}
 		DECL:
-			for _, decl := range clonedF.Decls {
+			for _, decl := range df.Decls {
 				switch x := decl.(type) {
 				default:
 					continue DECL
-				case *ast.GenDecl:
+				case *dst.GenDecl:
 					if x.Tok != token.TYPE {
 						continue
 					}
-					for _, s := range x.Specs {
-						ts := s.(*ast.TypeSpec)
+					for i, s := range x.Specs {
+						ts := s.(*dst.TypeSpec)
 						if ts.Name == nil {
 							continue
 						}
-						if !targets[pkg.PkgPath][ts.Name.Name] {
+						ti, ok := targets.get(pkg.PkgPath, ts.Name.Name)
+						if !ok {
 							continue
 						}
 						modifiedAny := false
@@ -165,43 +235,47 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 							modifyErr  error
 							converters []Conversion
 						)
-						astutil.Apply(ts.Type, func(c *astutil.Cursor) bool {
-							node := c.Node()
-							switch field := node.(type) {
-							default:
-								return true
-							case *ast.Field:
-								// same error
-								converter, _ := undPlainFieldConverter(field, imports)
-								backConverter, _ := undRawFieldBackConverter(field, imports)
-								modified, err := checkAndModifyUndField(field, imports)
-								if err != nil {
-									modifyErr = err
+						dstutil.Apply(
+							ts.Type,
+							func(c *dstutil.Cursor) bool {
+								node := c.Node()
+								switch field := node.(type) {
+								default:
+									return true
+								case *dst.Field:
+									// same error
+									converter, _ := undPlainFieldConverter(field, imports, ti.UndFields[field.Names[0].Name])
+									backConverter, _ := undRawFieldBackConverter(field, imports, ti.UndFields[field.Names[0].Name])
+									modified, err := checkAndModifyUndField(field, imports)
+									if err != nil {
+										modifyErr = err
+										return false
+									}
+									if modified {
+										modifiedAny = true
+										converters = append(converters, Conversion{
+											FieldName:     field.Names[0].Name,
+											Converter:     converter,
+											BackConverter: backConverter,
+										})
+										return false
+									} else {
+										//TODO check field is other struct and implements ToPlain
+										converters = append(converters, Conversion{
+											FieldName:     field.Names[0].Name,
+											Converter:     nil,
+											BackConverter: nil,
+										})
+									}
+									// TODO: check if field is another struct,
+									// if it is generate target, then modify the field to the one suffixed with `Plain`.
+									// Or if it implements ToPlain type, then modify the field to the return value of ToPlain.
+									// Further more, we can expand `undgen:` directive comment format to use other `ToPlain` method name.
 									return false
 								}
-								if modified {
-									modifiedAny = true
-									converters = append(converters, Conversion{
-										FieldName:     field.Names[0].Name,
-										Converter:     converter,
-										BackConverter: backConverter,
-									})
-									return false
-								} else {
-									//TODO check field is other struct and implements ToPlain
-									converters = append(converters, Conversion{
-										FieldName:     field.Names[0].Name,
-										Converter:     nil,
-										BackConverter: nil,
-									})
-								}
-								// TODO: check if field is another struct,
-								// if it is generate target, then modify the field to the one suffixed with `Plain`.
-								// Or if it implements ToPlain type, then modify the field to the return value of ToPlain.
-								// Further more, we can expand `undgen:` directive comment format to use other `ToPlain` method name.
-								return false
-							}
-						}, nil)
+							},
+							nil,
+						)
 
 						if modifyErr != nil {
 							return generated, err
@@ -250,10 +324,15 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 							}
 						}
 
-						genDecl := *x
-						genDecl.Specs = []ast.Spec{ts}
-						genBuf.Generated = append(genBuf.Generated, PlainType{fset, &genDecl, converters})
+						restorer := decorator.NewRestorer()
+						_, err := restorer.FileRestorer().RestoreFile(df)
+						if err != nil {
+							panic(err)
+						}
 
+						genDecl := restorer.Ast.Nodes[x].(*ast.GenDecl)
+						genDecl.Specs = []ast.Spec{genDecl.Specs[i]}
+						genBuf.Generated = append(genBuf.Generated, PlainType{restorer.Fset, genDecl, converters})
 						if idx >= 0 {
 							generated.Pkg[pkg.PkgPath][idx] = genBuf
 						} else {
@@ -270,15 +349,15 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 // suffixTypeName traverse ast tree starting from node
 // until first found *ast.TypeSpec.
 // It suffixes a type name with suffix.
-func suffixTypeName(node ast.Node, suffix string) {
-	astutil.Apply(
+func suffixTypeName(node dst.Node, suffix string) {
+	dstutil.Apply(
 		node,
-		func(c *astutil.Cursor) bool {
+		func(c *dstutil.Cursor) bool {
 			node := c.Node()
 			switch x := node.(type) {
 			default:
 				return true
-			case *ast.TypeSpec:
+			case *dst.TypeSpec:
 				x.Name.Name = x.Name.Name + suffix
 				c.Replace(x)
 				return false

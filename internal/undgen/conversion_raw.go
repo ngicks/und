@@ -1,46 +1,43 @@
 package undgen
 
 import (
-	"bytes"
 	"fmt"
-	"go/ast"
-	"go/printer"
-	"go/token"
 
+	"github.com/dave/dst"
 	"github.com/ngicks/und/internal/structtag"
 )
 
 func undRawFieldBackConverter(
-	f *ast.Field,
+	f *dst.Field,
 	imports UndImports,
+	fieldInfo undFieldInfo,
 ) (fieldConverter, error) {
-	fieldTy, _, left, right, undOpt, ok, err := isUndField(f, imports)
+	_, _, left, right, undOpt, ok, err := isUndField(f, imports)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		return nil, nil
 	}
-	typeParam := fieldTy.Index
 
 	var r fieldConverter
 	imports.
 		Matcher(left.Name, right.Name).
 		Match(
 			func() {
-				c := optionUndRawConverter(undOpt, imports, typeParam)
+				c := optionUndRawConverter(undOpt, imports, fieldInfo.TypeParm)
 				if c != nil {
 					r = c
 				}
 			},
 			func(isSlice bool) {
-				c := undUndRawConverter(undOpt.States.Value(), imports, typeParam, isSlice)
+				c := undUndRawConverter(undOpt.States.Value(), imports, fieldInfo.TypeParm, isSlice)
 				if c != nil {
 					r = c
 				}
 			},
 			func(isSlice bool) {
-				c := elasticUndRawConverter(undOpt, imports, isSlice, typeParam)
+				c := elasticUndRawConverter(undOpt, imports, isSlice, fieldInfo.TypeParm)
 				if c != nil {
 					r = c
 				}
@@ -49,7 +46,7 @@ func undRawFieldBackConverter(
 	return r, nil
 }
 
-func optionUndRawConverter(undOpt structtag.UndOpt, imports UndImports, typeParam ast.Node) *genericConverter {
+func optionUndRawConverter(undOpt structtag.UndOpt, imports UndImports, typeParam string) *genericConverter {
 	switch s := undOpt.States.Value(); {
 	default:
 		return nil
@@ -61,28 +58,16 @@ func optionUndRawConverter(undOpt structtag.UndOpt, imports UndImports, typePara
 			Method:   "Some",
 		}
 	case s.Null || s.Und:
-		var buf bytes.Buffer
-		fset := token.NewFileSet()
-		err := printer.Fprint(&buf, fset, typeParam)
-		if err != nil {
-			panic(err)
-		}
 		return &genericConverter{
 			Selector: imports.option,
 			Method:   "None",
-			TypePram: []string{buf.String()},
+			TypePram: []string{typeParam},
 			OmitArg:  true,
 		}
 	}
 }
 
-func undUndRawConverter(states structtag.States, imports UndImports, typeParam ast.Node, isSlice bool) *genericConverter {
-	var buf bytes.Buffer
-	fset := token.NewFileSet()
-	err := printer.Fprint(&buf, fset, typeParam)
-	if err != nil {
-		panic(err)
-	}
+func undUndRawConverter(states structtag.States, imports UndImports, typeParam string, isSlice bool) *genericConverter {
 	switch s := states; {
 	default:
 		return nil
@@ -98,7 +83,7 @@ func undUndRawConverter(states structtag.States, imports UndImports, typeParam a
 		return &genericConverter{
 			Selector: imports.conversion,
 			Method:   suffixSlice("UndNullishBack", isSlice),
-			TypePram: []string{buf.String()},
+			TypePram: []string{typeParam},
 		}
 	case s.Def:
 		return &genericConverter{
@@ -115,7 +100,7 @@ func undUndRawConverter(states structtag.States, imports UndImports, typeParam a
 					return "Undefined"
 				}
 			}(),
-			TypePram: []string{buf.String()},
+			TypePram: []string{typeParam},
 			OmitArg:  true,
 		}
 	}
@@ -125,16 +110,8 @@ func elasticUndRawConverter(
 	undOpt structtag.UndOpt,
 	imports UndImports,
 	isSlice bool,
-	typeParam ast.Node,
+	typeParam string,
 ) *nestedConverter {
-	var buf bytes.Buffer
-	fset := token.NewFileSet()
-	err := printer.Fprint(&buf, fset, typeParam)
-	if err != nil {
-		panic(err)
-	}
-	typeParamStr := buf.String()
-
 	// very really simple case.
 	if undOpt.States.IsSome() && undOpt.Len.IsNone() && undOpt.Values.IsNone() {
 		switch s := undOpt.States.Value(); {
@@ -154,7 +131,7 @@ func elasticUndRawConverter(
 			return &nestedConverter{core: &genericConverter{
 				Selector: imports.conversion,
 				Method:   suffixSlice("UndNullishBackElastic", isSlice),
-				TypePram: []string{typeParamStr},
+				TypePram: []string{typeParam},
 			}}
 		case s.Def:
 			return &nestedConverter{
@@ -174,7 +151,7 @@ func elasticUndRawConverter(
 							return "Undefined"
 						}
 					}(),
-					TypePram: []string{typeParamStr},
+					TypePram: []string{typeParam},
 					OmitArg:  true,
 				},
 			}
@@ -192,7 +169,7 @@ func elasticUndRawConverter(
 			return &nestedConverter{core: &genericConverter{
 				Selector: imports.conversion,
 				Method:   suffixSlice("UndNullishBackElastic", isSlice),
-				TypePram: []string{typeParamStr},
+				TypePram: []string{typeParam},
 			}}
 		case s.Null || s.Und:
 			return &nestedConverter{
@@ -205,7 +182,7 @@ func elasticUndRawConverter(
 							return "Undefined"
 						}
 					}(),
-					TypePram: []string{typeParamStr},
+					TypePram: []string{typeParam},
 					OmitArg:  true,
 				},
 			}

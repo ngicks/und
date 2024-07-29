@@ -1,17 +1,17 @@
 package undgen
 
 import (
-	"go/ast"
 	"go/token"
 	"reflect"
 	"strconv"
 
+	"github.com/dave/dst"
+	"github.com/dave/dst/dstutil"
 	"github.com/ngicks/und/internal/structtag"
-	"golang.org/x/tools/go/ast/astutil"
 )
 
 func checkAndModifyUndField(
-	f *ast.Field,
+	f *dst.Field,
 	imports UndImports,
 ) (modified bool, err error) {
 	fieldTy, x, left, right, undOpt, ok, err := isUndField(f, imports)
@@ -31,26 +31,26 @@ func checkAndModifyUndField(
 // undOpt is parsed struct tag.
 // ok is true only when result is valid and target und type field.
 // err is non-nil only when und struct tag is malformed.
-func isUndField(field *ast.Field, imports UndImports) (
-	fieldTy *ast.IndexExpr,
-	x *ast.SelectorExpr,
-	left, right *ast.Ident,
+func isUndField(field *dst.Field, imports UndImports) (
+	fieldTy *dst.IndexExpr,
+	x *dst.SelectorExpr,
+	left, right *dst.Ident,
 	undOpt structtag.UndOpt,
 	ok bool,
 	err error,
 ) {
-	fieldTy, ok = field.Type.(*ast.IndexExpr)
+	fieldTy, ok = field.Type.(*dst.IndexExpr)
 	if !ok {
 		// no traversal for now.
 		return
 	}
 	// It's not possible to placing und types without selection since it's outer type.
 	// Do not alias.
-	x, ok = fieldTy.X.(*ast.SelectorExpr)
+	x, ok = fieldTy.X.(*dst.SelectorExpr)
 	if !ok {
 		return
 	}
-	left, ok = x.X.(*ast.Ident)
+	left, ok = x.X.(*dst.Ident)
 	if !ok || left == nil {
 		return
 	}
@@ -59,7 +59,10 @@ func isUndField(field *ast.Field, imports UndImports) (
 		return
 	}
 
-	tag := field.Tag.Value
+	tag := ""
+	if field.Tag != nil {
+		tag = field.Tag.Value
+	}
 	if tag == "" {
 		return
 	}
@@ -79,17 +82,17 @@ func isUndField(field *ast.Field, imports UndImports) (
 }
 
 func modifyUndField(
-	field *ast.Field,
+	field *dst.Field,
 	imports UndImports,
-	fieldTy *ast.IndexExpr,
-	x *ast.SelectorExpr,
-	left *ast.Ident, right *ast.Ident,
+	fieldTy *dst.IndexExpr,
+	x *dst.SelectorExpr,
+	left *dst.Ident, right *dst.Ident,
 	undOpt structtag.UndOpt,
 ) (modified bool) {
-	astutil.Apply(
+	dstutil.Apply(
 		field,
-		func(c *astutil.Cursor) bool {
-			f, ok := c.Node().(*ast.Field)
+		func(c *dstutil.Cursor) bool {
+			f, ok := c.Node().(*dst.Field)
 			if !ok {
 				return true
 			}
@@ -145,8 +148,8 @@ func modifyUndField(
 					} else {
 						fieldTy.X = undExpr(imports)
 					}
-					fieldTy.Index = &ast.ArrayType{
-						Elt: &ast.IndexExpr{
+					fieldTy.Index = &dst.ArrayType{
+						Elt: &dst.IndexExpr{
 							X:     optionExpr(imports),
 							Index: fieldTy.Index,
 						},
@@ -157,10 +160,10 @@ func modifyUndField(
 						if lv.Op == structtag.LenOpEqEq {
 							if lv.Len == 1 {
 								// und.Und[[]option.Option[T]] -> und.Und[option.Option[T]]
-								fieldTy.Index = fieldTy.Index.(*ast.ArrayType).Elt
+								fieldTy.Index = fieldTy.Index.(*dst.ArrayType).Elt
 							} else {
 								// und.Und[[]option.Option[T]] -> und.Und[[n]option.Option[T]]
-								fieldTy.Index.(*ast.ArrayType).Len = &ast.BasicLit{
+								fieldTy.Index.(*dst.ArrayType).Len = &dst.BasicLit{
 									Kind:  token.INT,
 									Value: strconv.FormatInt(int64(undOpt.Len.Value().Len), 10),
 								}
@@ -172,10 +175,10 @@ func modifyUndField(
 						switch x := undOpt.Values.Value(); {
 						case x.Nonnull:
 							switch x := fieldTy.Index.(type) {
-							case *ast.ArrayType:
+							case *dst.ArrayType:
 								// und.Und[[n]option.Option[T]] -> und.Und[[n]T]
-								x.Elt = x.Elt.(*ast.IndexExpr).Index
-							case *ast.IndexExpr:
+								x.Elt = x.Elt.(*dst.IndexExpr).Index
+							case *dst.IndexExpr:
 								// und.Und[option.Option[T]] -> und.Und[T]
 								fieldTy.Index = x.Index
 							default:
@@ -220,43 +223,43 @@ func modifyUndField(
 }
 
 // returns *struct{}
-func startStructExpr() *ast.StarExpr {
-	return &ast.StarExpr{
-		X: &ast.StructType{
-			Fields: &ast.FieldList{Opening: 1, Closing: 2},
+func startStructExpr() *dst.StarExpr {
+	return &dst.StarExpr{
+		X: &dst.StructType{
+			Fields: &dst.FieldList{Opening: true, Closing: true},
 		},
 	}
 }
 
-func undExpr(imports UndImports) *ast.SelectorExpr {
-	return &ast.SelectorExpr{
-		X: &ast.Ident{
+func undExpr(imports UndImports) *dst.SelectorExpr {
+	return &dst.SelectorExpr{
+		X: &dst.Ident{
 			Name: imports.und,
 		},
-		Sel: &ast.Ident{
+		Sel: &dst.Ident{
 			Name: "Und",
 		},
 	}
 }
 
-func sliceUndExpr(imports UndImports) *ast.SelectorExpr {
-	return &ast.SelectorExpr{
-		X: &ast.Ident{
+func sliceUndExpr(imports UndImports) *dst.SelectorExpr {
+	return &dst.SelectorExpr{
+		X: &dst.Ident{
 			Name: imports.sliceUnd,
 		},
-		Sel: &ast.Ident{
+		Sel: &dst.Ident{
 			Name: "Und",
 		},
 	}
 }
 
 // option.Option
-func optionExpr(imports UndImports) *ast.SelectorExpr {
-	return &ast.SelectorExpr{
-		X: &ast.Ident{
+func optionExpr(imports UndImports) *dst.SelectorExpr {
+	return &dst.SelectorExpr{
+		X: &dst.Ident{
 			Name: imports.option,
 		},
-		Sel: &ast.Ident{
+		Sel: &dst.Ident{
 			Name: "Option",
 		},
 	}
