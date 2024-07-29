@@ -3,13 +3,15 @@ package conversion
 import (
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/elastic"
-	"github.com/ngicks/und/internal/structtag"
+	"github.com/ngicks/und/internal/undtag"
 	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/sliceund"
 	sliceelastic "github.com/ngicks/und/sliceund/elastic"
 )
 
-func UndNullish[T structtag.UndLike](t T) option.Option[*struct{}] {
+type UndLike = undtag.UndLike
+
+func UndNullish[T UndLike](t T) option.Option[*struct{}] {
 	if t.IsNull() {
 		return option.Some[*struct{}](nil)
 	}
