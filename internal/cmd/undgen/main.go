@@ -47,6 +47,9 @@ func main() {
 	}
 
 	p := undgen.Printer{
+		Log: func(msg string, args ...any) {
+			fmt.Printf("%s\n", msg)
+		},
 		GeneratorPkgName: generatorPkgName,
 		FileSuffix:       *outFilenameSuffix,
 	}

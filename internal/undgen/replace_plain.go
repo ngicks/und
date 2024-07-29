@@ -1,6 +1,7 @@
 package undgen
 
 import (
+	"errors"
 	"go/token"
 	"reflect"
 	"slices"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/dstutil"
+	"github.com/ngicks/und/internal/structtag"
 	"github.com/ngicks/und/internal/undtag"
 )
 
@@ -23,6 +25,13 @@ func checkAndModifyUndField(
 		return false, nil
 	}
 	modified = modifyUndField(f, imports, fieldTy, x, left, right, undOpt)
+	if modified && f.Tag != nil {
+		isSlice := false
+		if k := imports.Kind(left.Name, right.Name); k == TypeKindSliceUnd || k == TypeKindSliceElastic {
+			isSlice = true
+		}
+		f.Tag.Value = modifyTag(f.Tag.Value, undOpt, isSlice)
+	}
 	return modified, nil
 }
 
@@ -264,4 +273,33 @@ func optionExpr(imports UndImports) *dst.SelectorExpr {
 			Name: "Option",
 		},
 	}
+}
+
+func modifyTag(tag string, undOpt undtag.UndOpt, isSlice bool) string {
+	encloser := tag[0]
+	// This function assumes encloser to only be `
+	tags, err := structtag.ParseStructTag(reflect.StructTag(tag[1 : len(tag)-1]))
+	if err != nil {
+		// malformed, ignore.
+		return tag
+	}
+	option := "omitempty"
+	if !isSlice {
+		option = "omitzero"
+	}
+	if undOpt.States.IsSomeAnd(func(s undtag.States) bool { return !s.Und }) || (undOpt.States.IsNone() && undOpt.Len.IsSome()) {
+		tags, err = tags.DeleteOption("json", option)
+		if errors.Is(err, structtag.ErrNotFound) {
+			err = nil
+		}
+		tags = slices.DeleteFunc(tags, func(t structtag.Tag) bool {
+			return t.Key == "json" && t.Value == ""
+		})
+	}
+	if err != nil {
+		// is it possible?
+		return tag
+	}
+
+	return string(encloser) + string(tags.StructTag()) + string(encloser)
 }

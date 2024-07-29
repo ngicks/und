@@ -19,7 +19,7 @@ type All struct {
 	UntouchedUnd      und.Und[int]       `json:",omitzero"`
 	UntouchedSliceUnd sliceund.Und[int]  `json:",omitzero"`
 
-	OptRequired       option.Option[string] `json:",omitzero" und:"required"`
+	OptRequired       option.Option[string] `json:"opt_required,omitzero" und:"required"`
 	OptNullish        option.Option[string] `json:",omitzero" und:"nullish"`
 	OptDef            option.Option[string] `json:",omitzero" und:"def"`
 	OptNull           option.Option[string] `json:",omitzero" und:"null"`
