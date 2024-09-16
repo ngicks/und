@@ -62,7 +62,7 @@ func (p *Printer) openFile(name string) (w io.Writer, filename string, err error
 		return nil, "", err
 	}
 
-	if rel := filepath.ToSlash(rel); strings.HasPrefix(rel, "../") || strings.HasPrefix(rel, "/") {
+	if strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
 		return nil, "", fmt.Errorf("generated target file is not under cwd: %s", rel)
 	}
 
