@@ -1,10 +1,8 @@
 package undgen
 
 import (
-	"bytes"
 	"fmt"
 	"go/ast"
-	"go/printer"
 	"go/token"
 	"path"
 	"slices"
@@ -37,155 +35,6 @@ type Conversion struct {
 	FieldName     string
 	Converter     fieldConverter
 	BackConverter fieldConverter
-}
-
-type targetTypes struct {
-	m map[string]map[string]typeInfo
-}
-
-type typeInfo struct {
-	UndFields map[string]undFieldInfo
-	Name      string
-}
-
-type undFieldInfo struct {
-	Kind     UndTypeKind
-	Name     string
-	TypeParm string // maybe empty if the ti is remote type.
-}
-
-func (tt *targetTypes) hasPkg(pkgPath string) bool {
-	// reading from nil map does not panic.
-	_, ok := tt.m[pkgPath]
-	return ok
-}
-
-func (tt *targetTypes) get(pkgPath string, name string) (typeInfo, bool) {
-	m, ok := tt.m[pkgPath]
-	if !ok {
-		return typeInfo{}, false
-	}
-	mm, ok := m[name]
-	return mm, ok
-}
-
-func (tt *targetTypes) add(pkgPath string, ti typeInfo) {
-	if tt.m == nil {
-		tt.m = make(map[string]map[string]typeInfo)
-	}
-
-	if tt.m[pkgPath] == nil {
-		tt.m[pkgPath] = make(map[string]typeInfo)
-	}
-	tt.m[pkgPath][ti.Name] = ti
-}
-
-func TargetTypes(pkgs []*packages.Package) (tt *targetTypes, err error) {
-	tt = new(targetTypes)
-
-	// first path, collect generation targets
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Syntax {
-			imports, ok := parseImports(f.Imports)
-			if !ok {
-				continue
-			}
-
-			for _, decl := range f.Decls {
-				switch x := decl.(type) {
-				default:
-					continue
-				case *ast.GenDecl:
-					if x.Tok != token.TYPE {
-						continue
-					}
-					dec, found, err := ParseComment(x.Doc)
-					if err != nil {
-						return nil, err
-					}
-					if found && dec.MustIgnore() {
-						continue
-					}
-					for _, s := range x.Specs {
-						ts := s.(*ast.TypeSpec)
-						dec, found, err := ParseComment(ts.Comment)
-						if err != nil {
-							return nil, err
-						}
-						if found && dec.MustIgnore() {
-							continue
-						}
-
-						// TODO: recursively check struct types.
-						ti, ok := parseUndType(ts, imports)
-						if !ok {
-							continue
-						}
-
-						tt.add(pkg.PkgPath, ti)
-					}
-				}
-			}
-		}
-	}
-
-	return tt, nil
-}
-
-func parseUndType(ts *ast.TypeSpec, imports UndImports) (ti typeInfo, hasUndField bool) {
-	st, ok := ts.Type.(*ast.StructType)
-	if !ok {
-		return typeInfo{}, false
-	}
-	if st.Fields == nil {
-		return typeInfo{}, false
-	}
-
-	hasUndField = false
-	for _, f := range st.Fields.List {
-		typ, ok := f.Type.(*ast.IndexExpr)
-		if !ok {
-			// no traversal for now.
-			continue
-		}
-		// It's not possible to placing und types without selection since it's outer type.
-		// Do not alias.
-		expr, ok := typ.X.(*ast.SelectorExpr)
-		if !ok {
-			continue
-		}
-		left, ok := expr.X.(*ast.Ident)
-		if !ok || left == nil {
-			continue
-		}
-		right := expr.Sel
-		if imports.Has(left.Name, right.Name) {
-			hasUndField = true
-			var buf bytes.Buffer
-			fset := token.NewFileSet()
-			err := printer.Fprint(&buf, fset, typ.Index)
-			if err != nil {
-				panic(err)
-			}
-			for _, n := range f.Names {
-				if ti.UndFields == nil {
-					ti.UndFields = make(map[string]undFieldInfo)
-				}
-				ti.UndFields[n.Name] = undFieldInfo{
-					Kind:     imports.Kind(left.Name, right.Name),
-					Name:     n.Name,
-					TypeParm: buf.String(),
-				}
-			}
-		}
-		// TODO: check it is struct type and contains und types.
-		// If it is defined under code generation target package and contains und types,
-		// It should have corresponding plain type.
-	}
-
-	ti.Name = ts.Name.Name
-
-	return ti, hasUndField
 }
 
 func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
@@ -244,8 +93,8 @@ func GeneratePlainType(pkgs []*packages.Package) (GeneratedPlainType, error) {
 									return true
 								case *dst.Field:
 									// same error
-									converter, _ := undPlainFieldConverter(field, imports, ti.UndFields[field.Names[0].Name])
-									backConverter, _ := undRawFieldBackConverter(field, imports, ti.UndFields[field.Names[0].Name])
+									converter, _ := undPlainFieldConverter(field, imports, ti.fields[field.Names[0].Name])
+									backConverter, _ := undRawFieldBackConverter(field, imports, ti.fields[field.Names[0].Name])
 									modified, err := checkAndModifyUndField(field, imports)
 									if err != nil {
 										modifyErr = err

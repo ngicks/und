@@ -10,7 +10,7 @@ import (
 func undRawFieldBackConverter(
 	f *dst.Field,
 	imports UndImports,
-	fieldInfo undFieldInfo,
+	fieldInfo TargetFieldInfo,
 ) (fieldConverter, error) {
 	_, _, left, right, undOpt, ok, err := isUndField(f, imports)
 	if err != nil {
