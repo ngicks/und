@@ -1,15 +1,16 @@
 package undgen
 
 import (
-	"bytes"
 	"fmt"
 	"go/ast"
-	"go/printer"
 	"go/token"
+	"go/types"
 	"path"
 	"slices"
 	"strconv"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 type TargetImport struct {
@@ -18,9 +19,19 @@ type TargetImport struct {
 }
 
 type MatchedType struct {
-	Name  string
-	Field []MatchedField
+	Name    string
+	Variant MatchedTypeVariant
+	Field   []MatchedField
 }
+
+type MatchedTypeVariant string
+
+const (
+	MatchedTypeVariantStruct MatchedTypeVariant = "struct"
+	MatchedTypeVariantArray  MatchedTypeVariant = "array"
+	MatchedTypeVariantSlice  MatchedTypeVariant = "slice"
+	MatchedTypeVariantMap    MatchedTypeVariant = "map"
+)
 
 type MatchedField struct {
 	Name   string
@@ -32,10 +43,10 @@ type MatchedField struct {
 type MatchedAs string
 
 const (
-	MatchedAsArray  MatchedAs = "array"
-	MatchedAsSlice  MatchedAs = "slice"
-	MatchedAsMap    MatchedAs = "map"
-	MatchedAsStruct MatchedAs = "struct"
+	MatchedAsArray       MatchedAs = "array"
+	MatchedAsSlice       MatchedAs = "slice"
+	MatchedAsMap         MatchedAs = "map"
+	MatchedAsImplementor MatchedAs = "implementor"
 )
 
 type TargetType struct {
@@ -43,8 +54,25 @@ type TargetType struct {
 	Name       string
 }
 
+// importDecls maps idents (PackageNames) to TargetImport
+type importDecls map[string]TargetImport
+
+func (i importDecls) HasSelector(left, right string) bool {
+	ti, ok := i[left]
+	return ok && slices.Contains(ti.Types, right)
+}
+
+func (i importDecls) MatchTy(path string, name string) (TargetType, bool) {
+	for _, v := range i {
+		if v.ImportPath == path && slices.Contains(v.Types, name) {
+			return TargetType{v.ImportPath, name}, true
+		}
+	}
+	return TargetType{}, false
+}
+
 // parseImports relates ident (PackageName) to TargetImport.
-func parseImports(importSpecs []*ast.ImportSpec, imports []TargetImport) map[string]TargetImport {
+func parseImports(importSpecs []*ast.ImportSpec, imports []TargetImport) importDecls {
 	var m map[string]TargetImport
 	for _, is := range importSpecs {
 		var pkgPath string
@@ -82,12 +110,71 @@ func isAsciiNum(r rune) bool {
 	return '0' <= r && r <= '9'
 }
 
-func FindMatchedTypes(file *ast.File, imports []TargetImport) ([]MatchedType, error) {
+func FindMatchedTypes(pkgs []*packages.Package, imports []TargetImport) ([]MatchedType, error) {
+	allTypes, err := findAllTypesInPackages(pkgs)
+	if err != nil {
+		return nil, err
+	}
+	for _, pkg := range pkgs {
+	}
+}
+
+func findAllTypesInPackages(pkgs []*packages.Package) (map[string]map[string]bool, error) {
+	allTypesInPackages := map[string]map[string]bool{}
+	for _, pkg := range pkgs {
+		for i, f := range pkg.Syntax {
+			for _, dec := range f.Decls {
+				genDecl, ok := dec.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				if genDecl.Tok != token.TYPE {
+					continue
+				}
+
+				direction, _, err := ParseUndComment(genDecl.Doc)
+				if err != nil {
+					return allTypesInPackages, fmt.Errorf("comment for decl %s at %d: %w", f.Name, i, err)
+				}
+
+				if direction.MustIgnore() {
+					continue
+				}
+
+				for _, s := range genDecl.Specs {
+					ts := s.(*ast.TypeSpec)
+					direction, _, err := ParseUndComment(ts.Doc)
+					if err != nil {
+						return allTypesInPackages, fmt.Errorf("comment for decl %q", ts.Name.Name)
+					}
+
+					if direction.MustIgnore() {
+						continue
+					}
+
+					if allTypesInPackages[pkg.PkgPath] == nil {
+						allTypesInPackages[pkg.PkgPath] = map[string]bool{}
+					}
+					allTypesInPackages[pkg.PkgPath][ts.Name.String()] = true
+				}
+			}
+		}
+	}
+	return allTypesInPackages, nil
+}
+
+func findMatchedTypesFile(
+	file *ast.File,
+	typeInfo *types.Info,
+	allTargetTypes map[string]map[string]bool,
+	imports []TargetImport,
+) ([]MatchedType, error) {
+	var matched []MatchedType
 	importMap := parseImports(file.Imports, imports)
 	if len(importMap) == 0 {
-		return nil
+		return nil, nil
 	}
-	for _, dec := range file.Decls {
+	for i, dec := range file.Decls {
 		genDecl, ok := dec.(*ast.GenDecl)
 		if !ok {
 			continue
@@ -98,112 +185,103 @@ func FindMatchedTypes(file *ast.File, imports []TargetImport) ([]MatchedType, er
 
 		direction, _, err := ParseUndComment(genDecl.Doc)
 		if err != nil {
-			return nil, fmt.Errorf("comment for %s: %w", genDecl.Name)
+			return matched, fmt.Errorf("comment for decl at %d: %w", i, file.Name, err)
 		}
 
-	}
+		if direction.MustIgnore() {
+			continue
+		}
 
-	// first path, collect generation targets
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Syntax {
-			imports, ok := parseImports(f.Imports)
+		for _, s := range genDecl.Specs {
+			ts := s.(*ast.TypeSpec)
+			direction, _, err := ParseUndComment(ts.Doc)
+			if err != nil {
+				return matched, fmt.Errorf("comment for decl %q", i, ts.Name.Name)
+			}
+
+			if direction.MustIgnore() {
+				continue
+			}
+
+			obj := typeInfo.Defs[ts.Name]
+			if obj == nil {
+				continue
+			}
+			mt, ok := parseUndType(obj, allTargetTypes, importMap)
 			if !ok {
 				continue
 			}
 
-			for _, decl := range f.Decls {
-				switch x := decl.(type) {
-				default:
-					continue
-				case *ast.GenDecl:
-					if x.Tok != token.TYPE {
-						continue
-					}
-					dec, found, err := ParseComment(x.Doc)
-					if err != nil {
-						return nil, err
-					}
-					if found && dec.MustIgnore() {
-						continue
-					}
-					for _, s := range x.Specs {
-						ts := s.(*ast.TypeSpec)
-						dec, found, err := ParseComment(ts.Comment)
-						if err != nil {
-							return nil, err
-						}
-						if found && dec.MustIgnore() {
-							continue
-						}
-
-						// TODO: recursively check struct types.
-						ti, ok := parseUndType(ts, imports)
-						if !ok {
-							continue
-						}
-
-						tt.add(pkg.PkgPath, ti)
-					}
-				}
-			}
+			matched = append(matched, mt)
 		}
 	}
-
-	return tt, nil
+	return matched, nil
 }
 
-func parseUndType(ts *ast.TypeSpec, imports UndImports) (ti MatchedType, hasUndField bool) {
-	st, ok := ts.Type.(*ast.StructType)
+func parseUndType(
+	obj types.Object,
+	allTargetTypes map[string]map[string]bool,
+	imports importDecls,
+) (mt MatchedType, has bool) {
+	named, ok := obj.Type().(*types.Named)
 	if !ok {
-		return MatchedType{}, false
+		return
 	}
-	if st.Fields == nil {
-		return MatchedType{}, false
+	switch underlying := obj.Type().Underlying().(type) {
+	case *types.Struct:
+	case *types.Array:
+	case *types.Slice:
+	case *types.Map:
 	}
-
-	hasUndField = false
-	for _, f := range st.Fields.List {
-		typ, ok := f.Type.(*ast.IndexExpr)
-		if !ok {
-			// no traversal for now.
-			continue
-		}
-		// It's not possible to placing und types without selection since it's outer type.
-		// Do not alias.
-		expr, ok := typ.X.(*ast.SelectorExpr)
-		if !ok {
-			continue
-		}
-		left, ok := expr.X.(*ast.Ident)
-		if !ok || left == nil {
-			continue
-		}
-		right := expr.Sel
-		if imports.Has(left.Name, right.Name) {
-			hasUndField = true
-			var buf bytes.Buffer
-			fset := token.NewFileSet()
-			err := printer.Fprint(&buf, fset, typ.Index)
-			if err != nil {
-				panic(err)
-			}
-			for _, n := range f.Names {
-				if ti.fields == nil {
-					ti.fields = make(map[string]TargetFieldInfo)
-				}
-				ti.fields[n.Name] = TargetFieldInfo{
-					Kind:     imports.Kind(left.Name, right.Name),
-					Name:     n.Name,
-					TypeParm: buf.String(),
-				}
-			}
-		}
-		// TODO: check it is struct type and contains und types.
-		// If it is defined under code generation target package and contains und types,
-		// It should have corresponding plain type.
+	structTy, ok := obj.Type().Underlying().(*types.Struct)
+	if !ok {
+		return
 	}
 
-	ti.Name = ts.Name.Name
+	has = false
+	var matched []MatchedField
+	for i := range structTy.NumFields() {
+		f := structTy.Field(i)
+		direct, matchedAs, matchedTy := isTargetType(f.Type(), imports)
+		if !direct && matchedAs == "" {
+			continue
+		}
+		matched = append(
+			matched,
+			MatchedField{
+				Name:   named.Obj().Name(),
+				Direct: direct,
+				As:     matchedAs,
+				Type:   matchedTy,
+			},
+		)
+	}
+	return MatchedType{Name: named.Obj().Name(), Field: matched}, len(matched) > 0
+}
 
-	return ti, hasUndField
+func isTargetType(ty types.Type, imports importDecls, depth int) (direct bool, matchedAs MatchedAs, matchedTy TargetType) {
+	switch x := ty.(type) {
+	case *types.Named:
+		if matched, ok := imports.MatchTy(x.Obj().Pkg().Path(), x.Obj().Name()); ok {
+			return true, "", matched
+		}
+		_, matchedAs, matchedTy = isTargetType(x.Underlying(), imports, depth-1)
+		return false, matchedAs, matchedTy
+	case *types.Struct:
+		for i := range x.NumFields() {
+			_, matchedAs, matchedTy = isTargetType(x.Field(i).Type(), imports, depth-1)
+		}
+	}
+	return false
+}
+
+func isRawImplementor(ty types.Type, imports importDecls) bool {
+	ms := types.NewMethodSet(ty)
+	for i := range ms.Len() {
+		sel := ms.At(i)
+		if sel.Obj().Name() == "UndRaw" {
+			return true
+		}
+	}
+	return false
 }
