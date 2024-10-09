@@ -13,36 +13,47 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
+// Finding target types.
+// Targets must be defined in the packages located under the cwd.
+// However it is allowed that evaluating symlinks and as a result traversing upward.
+// (Basically do not do that.)
+//
+// Take []*(golang.org/x/tools/go/packages).Package as an argument.
+// Both ast and type info are used.
+// Modules other than generation target must be also evaluated and type-checked,
+// because they might be implementors of UndRaw/UndPlain thus structs containing them in
+// descendant fields are also target types.
+//
+// All found types are marked as target if they are;
+//  - defined map/slice/array type where value type is target type. The key type is ignored since there's no point converting it.
+//  - defined struct type where at least one field is target type
+//  - Implementor of conversion method set (UndRaw, UndPlain for und types), where both are mutually convertible.
+
 type TargetImport struct {
 	ImportPath string
 	Types      []string
 }
 
 type MatchedType struct {
-	Name    string
-	Variant MatchedTypeVariant
-	Field   []MatchedField
+	// Name of type without type params.
+	// Just here for later reuse to look up ast.
+	Name string
+	// this must not be MatchedAsImplementor
+	Variant MatchedAs
+	// If Variants is other than "struct", this fields is empty.
+	Field []MatchedField
 }
 
-type MatchedTypeVariant string
-
-const (
-	MatchedTypeVariantStruct MatchedTypeVariant = "struct"
-	MatchedTypeVariantArray  MatchedTypeVariant = "array"
-	MatchedTypeVariantSlice  MatchedTypeVariant = "slice"
-	MatchedTypeVariantMap    MatchedTypeVariant = "map"
-)
-
 type MatchedField struct {
-	Name   string
-	Direct bool
-	As     MatchedAs
-	Type   TargetType
+	Name string
+	As   MatchedAs
+	Type TargetType
 }
 
 type MatchedAs string
 
 const (
+	MatchedAsStruct      MatchedAs = "struct"
 	MatchedAsArray       MatchedAs = "array"
 	MatchedAsSlice       MatchedAs = "slice"
 	MatchedAsMap         MatchedAs = "map"
@@ -111,111 +122,56 @@ func isAsciiNum(r rune) bool {
 }
 
 func FindMatchedTypes(pkgs []*packages.Package, imports []TargetImport) ([]MatchedType, error) {
-	allTypes, err := findAllTypesInPackages(pkgs)
-	if err != nil {
-		return nil, err
-	}
 	for _, pkg := range pkgs {
-	}
-}
-
-func findAllTypesInPackages(pkgs []*packages.Package) (map[string]map[string]bool, error) {
-	allTypesInPackages := map[string]map[string]bool{}
-	for _, pkg := range pkgs {
-		for i, f := range pkg.Syntax {
-			for _, dec := range f.Decls {
-				genDecl, ok := dec.(*ast.GenDecl)
-				if !ok {
-					continue
-				}
-				if genDecl.Tok != token.TYPE {
-					continue
-				}
-
-				direction, _, err := ParseUndComment(genDecl.Doc)
-				if err != nil {
-					return allTypesInPackages, fmt.Errorf("comment for decl %s at %d: %w", f.Name, i, err)
-				}
-
-				if direction.MustIgnore() {
-					continue
-				}
-
-				for _, s := range genDecl.Specs {
-					ts := s.(*ast.TypeSpec)
-					direction, _, err := ParseUndComment(ts.Doc)
-					if err != nil {
-						return allTypesInPackages, fmt.Errorf("comment for decl %q", ts.Name.Name)
-					}
-
-					if direction.MustIgnore() {
-						continue
-					}
-
-					if allTypesInPackages[pkg.PkgPath] == nil {
-						allTypesInPackages[pkg.PkgPath] = map[string]bool{}
-					}
-					allTypesInPackages[pkg.PkgPath][ts.Name.String()] = true
-				}
+		for _, f :=range 
+		var matched []MatchedType
+		importMap := parseImports(file.Imports, imports)
+		if len(importMap) == 0 {
+			return nil, nil
+		}
+		for i, dec := range file.Decls {
+			genDecl, ok := dec.(*ast.GenDecl)
+			if !ok {
+				continue
 			}
-		}
-	}
-	return allTypesInPackages, nil
-}
+			if genDecl.Tok != token.TYPE {
+				continue
+			}
 
-func findMatchedTypesFile(
-	file *ast.File,
-	typeInfo *types.Info,
-	allTargetTypes map[string]map[string]bool,
-	imports []TargetImport,
-) ([]MatchedType, error) {
-	var matched []MatchedType
-	importMap := parseImports(file.Imports, imports)
-	if len(importMap) == 0 {
-		return nil, nil
-	}
-	for i, dec := range file.Decls {
-		genDecl, ok := dec.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		if genDecl.Tok != token.TYPE {
-			continue
-		}
-
-		direction, _, err := ParseUndComment(genDecl.Doc)
-		if err != nil {
-			return matched, fmt.Errorf("comment for decl at %d: %w", i, file.Name, err)
-		}
-
-		if direction.MustIgnore() {
-			continue
-		}
-
-		for _, s := range genDecl.Specs {
-			ts := s.(*ast.TypeSpec)
-			direction, _, err := ParseUndComment(ts.Doc)
+			direction, _, err := ParseUndComment(genDecl.Doc)
 			if err != nil {
-				return matched, fmt.Errorf("comment for decl %q", i, ts.Name.Name)
+				return matched, fmt.Errorf("comment for decl at %d: %w", i, file.Name, err)
 			}
 
 			if direction.MustIgnore() {
 				continue
 			}
 
-			obj := typeInfo.Defs[ts.Name]
-			if obj == nil {
-				continue
-			}
-			mt, ok := parseUndType(obj, allTargetTypes, importMap)
-			if !ok {
-				continue
-			}
+			for _, s := range genDecl.Specs {
+				ts := s.(*ast.TypeSpec)
+				direction, _, err := ParseUndComment(ts.Doc)
+				if err != nil {
+					return matched, fmt.Errorf("comment for decl %q", i, ts.Name.Name)
+				}
 
-			matched = append(matched, mt)
+				if direction.MustIgnore() {
+					continue
+				}
+
+				obj := typeInfo.Defs[ts.Name]
+				if obj == nil {
+					continue
+				}
+				mt, ok := parseUndType(obj, allTargetTypes, importMap)
+				if !ok {
+					continue
+				}
+
+				matched = append(matched, mt)
+			}
 		}
+		return matched, nil
 	}
-	return matched, nil
 }
 
 func parseUndType(
