@@ -1,6 +1,7 @@
 package undgen
 
 import (
+	"cmp"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ngicks/go-iterator-helper/x/exp/xiter"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -34,7 +36,53 @@ type TargetImport struct {
 	Types      []string
 }
 
+type ConversionMethodsSet struct {
+	ToRaw   string
+	ToPlain string
+}
+
+type MatchedResult map[string]MatchedPackage
+
+type MatchedPackage struct {
+	Pkg   *packages.Package
+	Files map[string]MatchedFile
+}
+
+func (mt *MatchedPackage) lazyInit(pkg *packages.Package) {
+	if mt.Files == nil {
+		mt.Pkg = pkg
+		mt.Files = make(map[string]MatchedFile)
+	}
+}
+
+type MatchedFile struct {
+	File  *ast.File
+	Types []MatchedType
+}
+
+func (mf *MatchedFile) lazyInit(f *ast.File) {
+	if mf.Types == nil {
+		mf.File = f
+		mf.Types = make([]MatchedType, 0)
+	}
+}
+
+func (mf *MatchedFile) sortCompact() {
+	slices.SortFunc(
+		mf.Types,
+		func(i, j MatchedType) int {
+			return cmp.Compare(i.Pos, j.Pos)
+		},
+	)
+	mf.Types = slices.CompactFunc(
+		mf.Types,
+		func(i, j MatchedType) bool { return i.Name == j.Name },
+	)
+}
+
 type MatchedType struct {
+	// 0-indexed number of appearance within the file. source code order.
+	Pos int
 	// Name of type without type params.
 	// Just here for later reuse to look up ast.
 	Name string
@@ -66,15 +114,22 @@ type TargetType struct {
 }
 
 // importDecls maps idents (PackageNames) to TargetImport
-type importDecls map[string]TargetImport
+type importDecls struct {
+	identToImport map[string]*TargetImport
+	importToIdent map[*TargetImport]string
+}
 
-func (i importDecls) HasSelector(left, right string) bool {
-	ti, ok := i[left]
+func (id importDecls) Len() int {
+	return max(len(id.identToImport), len(id.importToIdent))
+}
+
+func (id importDecls) HasSelector(left, right string) bool {
+	ti, ok := id.identToImport[left]
 	return ok && slices.Contains(ti.Types, right)
 }
 
 func (i importDecls) MatchTy(path string, name string) (TargetType, bool) {
-	for _, v := range i {
+	for _, v := range i.identToImport {
 		if v.ImportPath == path && slices.Contains(v.Types, name) {
 			return TargetType{v.ImportPath, name}, true
 		}
@@ -84,7 +139,22 @@ func (i importDecls) MatchTy(path string, name string) (TargetType, bool) {
 
 // parseImports relates ident (PackageName) to TargetImport.
 func parseImports(importSpecs []*ast.ImportSpec, imports []TargetImport) importDecls {
-	var m map[string]TargetImport
+	// pre-process input
+	imports = slices.Collect(
+		xiter.Map(
+			func(t TargetImport) TargetImport {
+				t.Types = slices.Clone(t.Types)
+				return t
+			},
+			slices.Values(imports),
+		),
+	)
+
+	id := importDecls{
+		identToImport: map[string]*TargetImport{},
+		importToIdent: map[*TargetImport]string{},
+	}
+
 	for _, is := range importSpecs {
 		var pkgPath string
 		// strip " or `
@@ -101,89 +171,121 @@ func parseImports(importSpecs []*ast.ImportSpec, imports []TargetImport) importD
 		if idx < 0 {
 			continue
 		}
-		if m == nil {
-			m = make(map[string]TargetImport)
-		}
+		targetImport := imports[idx]
+		var ident string
 		if is.Name != nil {
-			m[is.Name.Name] = imports[idx]
+			ident = is.Name.Name
 		} else {
 			pkgBase := path.Base(pkgPath)
 			if strings.HasPrefix(pkgBase, "v") && len(strings.TrimFunc(pkgBase[1:], isAsciiNum)) == 0 {
 				pkgBase = path.Base(path.Dir(pkgPath))
 			}
-			m[pkgBase] = imports[idx]
+			ident = pkgBase
 		}
+		id.identToImport[ident] = &targetImport
+		id.importToIdent[&targetImport] = ident
 	}
-	return m
+	return id
 }
 
 func isAsciiNum(r rune) bool {
 	return '0' <= r && r <= '9'
 }
 
-func FindMatchedTypes(pkgs []*packages.Package, imports []TargetImport) ([]MatchedType, error) {
+func FindMatchedTypes(pkgs []*packages.Package, imports []TargetImport, methods ConversionMethodsSet) (MatchedResult, error) {
+	// 1st path, find other than implementor
+	matched, err := findMatchedTypes(pkgs, imports, methods, nil)
+	if err != nil {
+		return matched, err
+	}
+	// 2nd path, find including implementor
+	matched, err = findMatchedTypes(pkgs, imports, methods, matched)
+	if err != nil {
+		return matched, err
+	}
+
+	return matched, nil
+}
+
+func findMatchedTypes(pkgs []*packages.Package, imports []TargetImport, methods ConversionMethodsSet, matched MatchedResult) (MatchedResult, error) {
+	if matched == nil {
+		matched = make(MatchedResult)
+	}
 	for _, pkg := range pkgs {
-		for _, f :=range 
-		var matched []MatchedType
-		importMap := parseImports(file.Imports, imports)
-		if len(importMap) == 0 {
-			return nil, nil
-		}
-		for i, dec := range file.Decls {
-			genDecl, ok := dec.(*ast.GenDecl)
-			if !ok {
-				continue
-			}
-			if genDecl.Tok != token.TYPE {
-				continue
-			}
+		matchedPkg := matched[pkg.PkgPath]
+		matchedPkg.lazyInit(pkg)
 
-			direction, _, err := ParseUndComment(genDecl.Doc)
-			if err != nil {
-				return matched, fmt.Errorf("comment for decl at %d: %w", i, file.Name, err)
-			}
+		for _, file := range pkg.Syntax {
+			filename := pkg.Fset.Position(file.FileStart).Filename
+			matchedFile := matchedPkg.Files[filename]
+			matchedFile.lazyInit(file)
 
-			if direction.MustIgnore() {
-				continue
-			}
+			importMap := parseImports(file.Imports, imports)
+			// Do not return early even if importMap.Len() == 0
+			// since it could still include implementor.
+			for i, dec := range file.Decls {
+				genDecl, ok := dec.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				if genDecl.Tok != token.TYPE {
+					continue
+				}
 
-			for _, s := range genDecl.Specs {
-				ts := s.(*ast.TypeSpec)
-				direction, _, err := ParseUndComment(ts.Doc)
+				direction, _, err := ParseUndComment(genDecl.Doc)
 				if err != nil {
-					return matched, fmt.Errorf("comment for decl %q", i, ts.Name.Name)
+					return matched, fmt.Errorf("comment for decl at %d: %w", i, file.Name, err)
 				}
 
 				if direction.MustIgnore() {
 					continue
 				}
 
-				obj := typeInfo.Defs[ts.Name]
-				if obj == nil {
-					continue
-				}
-				mt, ok := parseUndType(obj, allTargetTypes, importMap)
-				if !ok {
-					continue
-				}
+				for j, s := range genDecl.Specs {
+					ts := s.(*ast.TypeSpec)
+					direction, _, err := ParseUndComment(ts.Doc)
+					if err != nil {
+						return matched, fmt.Errorf("comment for decl %q", i, ts.Name.Name)
+					}
 
-				matched = append(matched, mt)
+					if direction.MustIgnore() {
+						continue
+					}
+
+					obj := pkg.TypesInfo.Defs[ts.Name]
+					if obj == nil {
+						continue
+					}
+					mt, ok := parseUndType(obj, matched, importMap, methods)
+					if !ok {
+						continue
+					}
+					mt.Pos = i + j
+					matchedFile.Types = append(matchedFile.Types, mt)
+				}
 			}
+
+			matchedFile.sortCompact()
+			matchedPkg.Files[filename] = matchedFile
 		}
-		return matched, nil
+
+		matched[pkg.PkgPath] = matchedPkg
 	}
+
+	return matched, nil
 }
 
 func parseUndType(
 	obj types.Object,
-	allTargetTypes map[string]map[string]bool,
+	total MatchedResult,
 	imports importDecls,
+	conversionMethod ConversionMethodsSet,
 ) (mt MatchedType, has bool) {
 	named, ok := obj.Type().(*types.Named)
 	if !ok {
 		return
 	}
-	switch underlying := obj.Type().Underlying().(type) {
+	switch /*underlying :=*/ obj.Type().Underlying().(type) {
 	case *types.Struct:
 	case *types.Array:
 	case *types.Slice:
@@ -198,17 +300,16 @@ func parseUndType(
 	var matched []MatchedField
 	for i := range structTy.NumFields() {
 		f := structTy.Field(i)
-		direct, matchedAs, matchedTy := isTargetType(f.Type(), imports)
+		direct, matchedAs, matchedTy := isTargetType(f.Type(), imports, 0)
 		if !direct && matchedAs == "" {
 			continue
 		}
 		matched = append(
 			matched,
 			MatchedField{
-				Name:   named.Obj().Name(),
-				Direct: direct,
-				As:     matchedAs,
-				Type:   matchedTy,
+				Name: named.Obj().Name(),
+				As:   matchedAs,
+				Type: matchedTy,
 			},
 		)
 	}
@@ -228,7 +329,7 @@ func isTargetType(ty types.Type, imports importDecls, depth int) (direct bool, m
 			_, matchedAs, matchedTy = isTargetType(x.Field(i).Type(), imports, depth-1)
 		}
 	}
-	return false
+	return false, "", TargetType{}
 }
 
 func isRawImplementor(ty types.Type, imports importDecls) bool {
