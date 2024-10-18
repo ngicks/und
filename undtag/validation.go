@@ -1,4 +1,4 @@
-package structtag
+package undtag
 
 import (
 	"errors"
@@ -10,23 +10,54 @@ import (
 )
 
 const (
-	UndTag = "und"
+	// "und" struct tag tells tools like ../validate or github.com/ngicks/go-codegen how fields should be treated.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"def,und"`
+	// }
+	TagName = "und"
 	// The field must be required(Some or Defined).
 	// mutually exclusive to nullish, def, null, und.
 	// UndTagValueRequired can be combined with len (there's no point though).
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"required"`
+	// }
 	UndTagValueRequired = "required"
 	// The field must be nullish(None, Null, Undefined).
 	// mutually exclusive to required, def, null, und.
 	// UndTagValueNullish can be combined with len.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"nullish"`
+	// }
 	UndTagValueNullish = "nullish"
 	// The field is allowed to be Some or Defined.
 	// can be combined with null, und or len.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"def"`
+	// }
 	UndTagValueDef = "def"
 	// The field is allowed to be None or Null.
 	// can be combined with def, und or len.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"null"`
+	// }
 	UndTagValueNull = "null"
 	// The field is allowed to be None or Undefined.
 	// can be combined with def, null or len.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"und"`
+	// }
 	UndTagValueUnd = "und"
 	// Only for elastic types.
 	//
@@ -36,47 +67,71 @@ const (
 	// e.g. if tag is len>12, field.Len() > 12 must return true.
 	//
 	// can be combined with other options.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"len==3"`
+	// }
 	UndTagValueLen = "len"
 	// Only for elastic types.
 	//
 	// The value must be formatted as values:nonnull.
 	//
 	// nonnull value means its internal value must not have null.
+	//
+	// example:
+	// type Sample struct {
+	// 	Foo string `und:"values:nonnull"`
+	// }
 	UndTagValueValues = "values"
 )
 
 var (
-	// ErrNotStruct would be returned by ValidateUnd and CheckUnd
-	// if input is not a struct nor a pointer to a struct.
-	ErrNotStruct = errors.New("not struct")
-	// ErrMultipleOption would be returned by ValidateUnd and CheckUnd
+	// ErrMultipleOption would be returned by UndValidate and CheckUnd
 	// if input's `und` struct tags have multiple mutually exclusive options.
 	ErrMultipleOption = errors.New("multiple option")
-	// ErrUnknownOption is an error value which will be returned by ValidateUnd and CheckUnd
+	// ErrUnknownOption is an error value which will be returned by UndValidate and CheckUnd
 	// if an input has unknown options in `und` struct tag.
 	ErrUnknownOption = errors.New("unknown option")
-	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
+	// ErrMalformedLen is an error which will be returned by UndValidate and CheckUnd
 	// if an input has malformed len option in `und` struct tag.
 	ErrMalformedLen = errors.New("malformed len")
-	// ErrMalformedLen is an error which will be returned by ValidateUnd and CheckUnd
+	// ErrMalformedLen is an error which will be returned by UndValidate and CheckUnd
 	// if an input has malformed values option in `und` struct tag.
 	ErrMalformedValues = errors.New("malformed values")
 )
 
+type ElasticLike interface {
+	UndLike
+	Len() int
+	HasNull() bool
+}
+
+type UndLike interface {
+	IsDefined() bool
+	IsNull() bool
+	IsUndefined() bool
+}
+
+type OptionLike interface {
+	IsNone() bool
+	IsSome() bool
+}
+
 type UndOpt struct {
-	States option.Option[States]
+	States option.Option[StateValidator]
 	Len    option.Option[LenValidator]
 	Values option.Option[ValuesValidator]
 }
 
-type States struct {
+type StateValidator struct {
 	filled bool
 	Def    bool
 	Null   bool
 	Und    bool
 }
 
-func (s States) Valid(u UndLike) bool {
+func (s StateValidator) Valid(u UndLike) bool {
 	switch {
 	case u.IsDefined():
 		return s.Def
@@ -87,7 +142,7 @@ func (s States) Valid(u UndLike) bool {
 	}
 }
 
-func (s States) String() string {
+func (s StateValidator) String() string {
 	if s.filled {
 		if s.Def {
 			return "is " + UndTagValueRequired
@@ -152,7 +207,7 @@ func ParseOption(s string) (UndOpt, error) {
 				return UndOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
 			}
 		case UndTagValueDef, UndTagValueNull, UndTagValueUnd:
-			if opts.States.IsSomeAnd(func(s States) bool {
+			if opts.States.IsSomeAnd(func(s StateValidator) bool {
 				return s.filled || opt == UndTagValueDef && s.Def || opt == UndTagValueNull && s.Null || opt == UndTagValueUnd && s.Und
 			}) {
 				return UndOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
@@ -161,7 +216,7 @@ func ParseOption(s string) (UndOpt, error) {
 			return UndOpt{}, ErrUnknownOption
 		}
 
-		opts.States = opts.States.Or(option.Some(States{})).Map(func(v States) States {
+		opts.States = opts.States.Or(option.Some(StateValidator{})).Map(func(v StateValidator) StateValidator {
 			switch opt {
 			case UndTagValueRequired:
 				v.filled = true
@@ -209,7 +264,7 @@ func (o UndOpt) String() string {
 }
 
 func (o UndOpt) ValidOpt(opt OptionLike) bool {
-	return o.States.IsSomeAnd(func(s States) bool {
+	return o.States.IsSomeAnd(func(s StateValidator) bool {
 		switch {
 		case opt.IsSome():
 			return s.Def
@@ -220,7 +275,7 @@ func (o UndOpt) ValidOpt(opt OptionLike) bool {
 }
 
 func (o UndOpt) ValidUnd(u UndLike) bool {
-	return o.States.IsSomeAnd(func(s States) bool {
+	return o.States.IsSomeAnd(func(s StateValidator) bool {
 		switch {
 		case u.IsDefined():
 			return s.Def
@@ -236,20 +291,16 @@ func or[T, U any](t option.Option[T], u option.Option[U]) option.Option[struct{}
 	if t.IsSome() || u.IsSome() {
 		return option.Some(struct{}{})
 	}
-	return option.Option[struct{}]{}
+	return option.None[struct{}]()
 }
 
 func (o UndOpt) ValidElastic(e ElasticLike) bool {
-	return option.MapOption(o.States, func(s States) bool {
+	return option.MapOption(o.States, func(s StateValidator) bool {
 		return s.Valid(e)
 	}).Or(option.Some(false)).Value() || option.MapOption(or(o.Len, o.Values), func(_ struct{}) bool {
 		return option.MapOption(o.Len, func(s LenValidator) bool { return s.Valid(e) }).Or(option.Some(true)).Value() &&
 			option.MapOption(o.Values, func(s ValuesValidator) bool { return s.Valid(e) }).Or(option.Some(true)).Value()
 	}).Or(option.Some(false)).Value()
-}
-
-func (o UndOpt) Ty() {
-
 }
 
 type LenValidator struct {
@@ -268,15 +319,15 @@ func ParseLen(s string) (LenValidator, error) {
 	default:
 		return LenValidator{}, fmt.Errorf("unknown op: %s", org)
 	case s[:2] == "==":
-		v.Op = lenOpEqEq
+		v.Op = LenOpEqEq
 	case s[:2] == ">=":
-		v.Op = lenOpGrEq
+		v.Op = LenOpGrEq
 	case s[:2] == "<=":
-		v.Op = lenOpLeEq
+		v.Op = LenOpLeEq
 	case s[0] == '<':
-		v.Op = lenOpLe
+		v.Op = LenOpLe
 	case s[0] == '>':
-		v.Op = lenOpGr
+		v.Op = LenOpGr
 	}
 
 	s = s[v.Op.len():]
@@ -304,18 +355,18 @@ func (v LenValidator) Valid(e ElasticLike) bool {
 type lenOp int
 
 const (
-	lenOpEqEq = iota + 1 // ==
-	lenOpGr              // >
-	lenOpGrEq            // >=
-	lenOpLe              // <
-	lenOpLeEq            // <=
+	LenOpEqEq = iota + 1 // ==
+	LenOpGr              // >
+	LenOpGrEq            // >=
+	LenOpLe              // <
+	LenOpLeEq            // <=
 )
 
 func (o lenOp) len() int {
 	switch o {
-	case lenOpLe, lenOpGr:
+	case LenOpLe, LenOpGr:
 		return 1
-	case lenOpEqEq, lenOpGrEq, lenOpLeEq:
+	case LenOpEqEq, LenOpGrEq, LenOpLeEq:
 		return 2
 	}
 	return 0
@@ -325,13 +376,13 @@ func (o lenOp) String() string {
 	switch o {
 	default: // case lenOpEqEq:
 		return "=="
-	case lenOpGr:
+	case LenOpGr:
 		return ">"
-	case lenOpGrEq:
+	case LenOpGrEq:
 		return ">="
-	case lenOpLe:
+	case LenOpLe:
 		return "<"
-	case lenOpLeEq:
+	case LenOpLeEq:
 		return "<="
 	}
 }
@@ -340,13 +391,13 @@ func (o lenOp) Compare(i, j int) bool {
 	switch o {
 	default: // case lenOpEqEq:
 		return i == j
-	case lenOpGr:
+	case LenOpGr:
 		return i > j
-	case lenOpGrEq:
+	case LenOpGrEq:
 		return i >= j
-	case lenOpLe:
+	case LenOpLe:
 		return i < j
-	case lenOpLeEq:
+	case LenOpLeEq:
 		return i <= j
 	}
 }
