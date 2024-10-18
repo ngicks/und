@@ -7,13 +7,13 @@ import (
 )
 
 var (
-	_ validate.ValidatorUnd = Option[any]{}
-	_ validate.CheckerUnd   = Option[any]{}
+	_ validate.UndValidator = Option[any]{}
+	_ validate.UndChecker   = Option[any]{}
 )
 
-func (o Option[T]) ValidateUnd() error {
+func (o Option[T]) UndValidate() error {
 	return MapOrOption(o, nil, func(t T) error {
-		err := validate.ValidateUnd(t)
+		err := validate.UndValidate(t)
 		if errors.Is(err, validate.ErrNotStruct) {
 			return nil
 		}
@@ -21,9 +21,9 @@ func (o Option[T]) ValidateUnd() error {
 	})
 }
 
-func (o Option[T]) CheckUnd() error {
+func (o Option[T]) UndCheck() error {
 	var zero T
-	err := validate.CheckUnd(zero)
+	err := validate.UndCheck(zero)
 	if errors.Is(err, validate.ErrNotStruct) {
 		return nil
 	}

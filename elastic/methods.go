@@ -53,12 +53,12 @@ func (e Elastic[T]) IsZero() bool {
 	return e.IsUndefined()
 }
 
-func (e Elastic[T]) ValidateUnd() error {
-	return e.inner().Value().ValidateUnd()
+func (e Elastic[T]) UndValidate() error {
+	return e.inner().Value().UndValidate()
 }
 
-func (e Elastic[T]) CheckUnd() error {
-	return e.inner().Value().CheckUnd()
+func (e Elastic[T]) UndCheck() error {
+	return e.inner().Value().UndCheck()
 }
 
 // MarshalJSON implements json.Marshaler.

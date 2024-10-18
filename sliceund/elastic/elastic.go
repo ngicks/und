@@ -35,8 +35,8 @@ var (
 )
 
 var (
-	_ validate.ValidatorUnd = Elastic[any]{}
-	_ validate.CheckerUnd   = Elastic[any]{}
+	_ validate.UndValidator = Elastic[any]{}
+	_ validate.UndChecker   = Elastic[any]{}
 	_ validate.ElasticLike  = Elastic[any]{}
 )
 

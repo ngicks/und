@@ -16,8 +16,8 @@ import (
 var (
 	_ option.Equality[Und[any]] = Und[any]{}
 	_ option.Cloner[Und[any]]   = Und[any]{}
-	_ validate.ValidatorUnd     = Und[any]{}
-	_ validate.CheckerUnd       = Und[any]{}
+	_ validate.UndValidator     = Und[any]{}
+	_ validate.UndChecker       = Und[any]{}
 	_ json.Marshaler            = Und[any]{}
 	_ json.Unmarshaler          = (*Und[any])(nil)
 	_ jsonv2.MarshalerV2        = Und[any]{}
@@ -222,12 +222,12 @@ func (u Und[T]) Clone() Und[T] {
 	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
 }
 
-func (u Und[T]) ValidateUnd() error {
-	return u.Unwrap().Value().ValidateUnd()
+func (u Und[T]) UndValidate() error {
+	return u.Unwrap().Value().UndValidate()
 }
 
-func (u Und[T]) CheckUnd() error {
-	return u.Unwrap().Value().CheckUnd()
+func (u Und[T]) UndCheck() error {
+	return u.Unwrap().Value().UndCheck()
 }
 
 // Pointer returns u's internal value as a pointer.

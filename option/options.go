@@ -11,8 +11,8 @@ import (
 var (
 	_ Equality[Options[any]] = Options[any]{}
 	_ Cloner[Options[any]]   = Options[any]{}
-	_ validate.ValidatorUnd  = Options[any]{}
-	_ validate.CheckerUnd    = Options[any]{}
+	_ validate.UndValidator  = Options[any]{}
+	_ validate.UndChecker    = Options[any]{}
 )
 
 type Options[T any] []Option[T]
@@ -51,10 +51,10 @@ func (o Options[T]) Clone() Options[T] {
 	return opts
 }
 
-func (o Options[T]) ValidateUnd() error {
+func (o Options[T]) UndValidate() error {
 	for i, oo := range o {
 		err := MapOrOption(oo, nil, func(t T) error {
-			return validate.ValidateUnd(t)
+			return validate.UndValidate(t)
 		})
 		if err != nil {
 			if errors.Is(err, validate.ErrNotStruct) {
@@ -68,9 +68,9 @@ func (o Options[T]) ValidateUnd() error {
 	return nil
 }
 
-func (o Options[T]) CheckUnd() error {
+func (o Options[T]) UndCheck() error {
 	var zero T
-	err := validate.CheckUnd(zero)
+	err := validate.UndCheck(zero)
 	if errors.Is(err, validate.ErrNotStruct) {
 		return nil
 	}

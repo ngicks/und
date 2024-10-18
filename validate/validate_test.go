@@ -229,8 +229,8 @@ var (
 )
 
 func TestValidate_all(t *testing.T) {
-	assert.NilError(t, validate.CheckUnd(valid))
-	assert.NilError(t, validate.ValidateUnd(valid))
+	assert.NilError(t, validate.UndCheck(valid))
+	assert.NilError(t, validate.UndValidate(valid))
 }
 
 func TestValidate_all_invalid(t *testing.T) {
@@ -274,16 +274,16 @@ func TestValidate_all_invalid(t *testing.T) {
 		},
 	} {
 		patched := patcher(valid)
-		assert.NilError(t, validate.CheckUnd(patched))
-		err := validate.ValidateUnd(patched)
+		assert.NilError(t, validate.UndCheck(patched))
+		err := validate.UndValidate(patched)
 		t.Logf("%v", err)
 		assert.Assert(t, err != nil)
 	}
 }
 
 func TestValidate_nested(t *testing.T) {
-	assert.NilError(t, validate.CheckUnd(Nested{}))
-	assert.NilError(t, validate.ValidateUnd(Nested{
+	assert.NilError(t, validate.UndCheck(Nested{}))
+	assert.NilError(t, validate.UndValidate(Nested{
 		A: option.Some(ChildA{
 			B: option.Some(ChildB{
 				C: option.Some("foo"),
@@ -307,22 +307,22 @@ func TestValidate_nested(t *testing.T) {
 			A: option.None[ChildA](),
 		},
 	} {
-		err := validate.ValidateUnd(n)
+		err := validate.UndValidate(n)
 		t.Logf("err = %v", err)
 		assert.Assert(t, err != nil)
 	}
 }
 
 func TestValidate_embedded(t *testing.T) {
-	assert.NilError(t, validate.CheckUnd(Embedded{}))
-	assert.NilError(t, validate.ValidateUnd(Embedded{
+	assert.NilError(t, validate.UndCheck(Embedded{}))
+	assert.NilError(t, validate.UndValidate(Embedded{
 		Foo: "foo",
 		Sub: Sub{
 			C: option.Some("sub"),
 		},
 		Bar: "bar",
 	}))
-	err := validate.ValidateUnd(Embedded{})
+	err := validate.UndValidate(Embedded{})
 	t.Logf("err = %v", err)
 	assert.Assert(t, err != nil)
 }
@@ -342,7 +342,7 @@ func TestValidate_invalid_options(t *testing.T) {
 		invalidMultiple11{},
 		invalidMultiple12{},
 	} {
-		err := validate.CheckUnd(tt)
+		err := validate.UndCheck(tt)
 		t.Logf("err = %v", err)
 		assert.ErrorIs(t, err, validate.ErrMultipleOption)
 	}
@@ -351,7 +351,7 @@ func TestValidate_invalid_options(t *testing.T) {
 		invalidMalformedLen1{},
 		invalidMalformedLen2{},
 	} {
-		err := validate.CheckUnd(tt)
+		err := validate.UndCheck(tt)
 		t.Logf("err = %v", err)
 		assert.ErrorIs(t, err, validate.ErrMalformedLen)
 	}
@@ -359,7 +359,7 @@ func TestValidate_invalid_options(t *testing.T) {
 	for _, tt := range []any{
 		invalidMalformedValues1{},
 	} {
-		err := validate.CheckUnd(tt)
+		err := validate.UndCheck(tt)
 		t.Logf("err = %v", err)
 		assert.ErrorIs(t, err, validate.ErrMalformedValues)
 	}
@@ -368,28 +368,28 @@ func TestValidate_invalid_options(t *testing.T) {
 		invalidWrongOptionLenOnOpt{},
 		invalidWrongOptionValuesOnOpt{},
 	} {
-		err := validate.CheckUnd(tt)
+		err := validate.UndCheck(tt)
 		t.Logf("err = %v", err)
 		assert.Assert(t, err != nil)
 	}
 
-	err := validate.CheckUnd(invalidNested{})
+	err := validate.UndCheck(invalidNested{})
 	t.Logf("err = %v", err)
 	assert.ErrorIs(t, err, validate.ErrMalformedLen)
 	assert.ErrorContains(t, err, "B.A:")
 }
 
 func TestValidate_recursion_embedded(t *testing.T) {
-	assert.NilError(t, validate.CheckUnd(validRecursive{}))
-	assert.NilError(t, validate.ValidateUnd(validRecursive{Intermediate{Bar: option.Some(5)}}))
-	assert.Assert(t, validate.ValidateUnd(validRecursive{Intermediate{}}) != nil)
-	assert.NilError(t, validate.ValidateUnd(validRecursive{Intermediate{Bar: option.Some(5), Baz: &validRecursive{Intermediate{Bar: option.Some[int](15)}}}}))
-	assert.Assert(t, validate.ValidateUnd(validRecursive{Intermediate{Bar: option.Some(5), Baz: &validRecursive{Intermediate{Bar: option.None[int]()}}}}) != nil)
+	assert.NilError(t, validate.UndCheck(validRecursive{}))
+	assert.NilError(t, validate.UndValidate(validRecursive{Intermediate{Bar: option.Some(5)}}))
+	assert.Assert(t, validate.UndValidate(validRecursive{Intermediate{}}) != nil)
+	assert.NilError(t, validate.UndValidate(validRecursive{Intermediate{Bar: option.Some(5), Baz: &validRecursive{Intermediate{Bar: option.Some[int](15)}}}}))
+	assert.Assert(t, validate.UndValidate(validRecursive{Intermediate{Bar: option.Some(5), Baz: &validRecursive{Intermediate{Bar: option.None[int]()}}}}) != nil)
 }
 
 func TestValidate_recursion(t *testing.T) {
-	assert.NilError(t, validate.CheckUnd(validTree{}))
-	assert.NilError(t, validate.ValidateUnd(validTree{
+	assert.NilError(t, validate.UndCheck(validTree{}))
+	assert.NilError(t, validate.UndValidate(validTree{
 		Node: &ValidTreeNode{
 			V: ValidTreeValues{
 				A: 5,
@@ -398,7 +398,7 @@ func TestValidate_recursion(t *testing.T) {
 			},
 		},
 	}))
-	assert.Assert(t, validate.ValidateUnd(validTree{
+	assert.Assert(t, validate.UndValidate(validTree{
 		Node: &ValidTreeNode{
 			V: ValidTreeValues{
 				A: 5,
@@ -407,7 +407,7 @@ func TestValidate_recursion(t *testing.T) {
 			},
 		},
 	}) != nil)
-	assert.NilError(t, validate.ValidateUnd(validTree{
+	assert.NilError(t, validate.UndValidate(validTree{
 		Node: &ValidTreeNode{
 			V: ValidTreeValues{
 				A: 5,
@@ -421,7 +421,7 @@ func TestValidate_recursion(t *testing.T) {
 			},
 		},
 	}))
-	assert.Assert(t, validate.ValidateUnd(validTree{
+	assert.Assert(t, validate.UndValidate(validTree{
 		Node: &ValidTreeNode{
 			V: ValidTreeValues{
 				A: 5,

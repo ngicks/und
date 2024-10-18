@@ -87,16 +87,16 @@ const (
 )
 
 var (
-	// ErrMultipleOption would be returned by UndValidate and CheckUnd
+	// ErrMultipleOption would be returned by UndValidate and UndCheck
 	// if input's `und` struct tags have multiple mutually exclusive options.
 	ErrMultipleOption = errors.New("multiple option")
-	// ErrUnknownOption is an error value which will be returned by UndValidate and CheckUnd
+	// ErrUnknownOption is an error value which will be returned by UndValidate and UndCheck
 	// if an input has unknown options in `und` struct tag.
 	ErrUnknownOption = errors.New("unknown option")
-	// ErrMalformedLen is an error which will be returned by UndValidate and CheckUnd
+	// ErrMalformedLen is an error which will be returned by UndValidate and UndCheck
 	// if an input has malformed len option in `und` struct tag.
 	ErrMalformedLen = errors.New("malformed len")
-	// ErrMalformedLen is an error which will be returned by UndValidate and CheckUnd
+	// ErrMalformedLen is an error which will be returned by UndValidate and UndCheck
 	// if an input has malformed values option in `und` struct tag.
 	ErrMalformedValues = errors.New("malformed values")
 )

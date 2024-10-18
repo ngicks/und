@@ -10,65 +10,67 @@ import (
 )
 
 var (
-	// ErrNotStruct would be returned by UndValidate and CheckUnd
+	// ErrNotStruct would be returned by UndValidate and UndCheck
 	// if input is not a struct nor a pointer to a struct.
 	ErrNotStruct = errors.New("not struct")
 )
 var (
-	// ErrMultipleOption would be returned by UndValidate and CheckUnd
+	// ErrMultipleOption would be returned by UndValidate and UndCheck
 	// if input's `und` struct tags have multiple mutually exclusive options.
 	ErrMultipleOption = undtag.ErrMultipleOption
-	// ErrUnknownOption is an error value which will be returned by UndValidate and CheckUnd
+	// ErrUnknownOption is an error value which will be returned by UndValidate and UndCheck
 	// if an input has unknown options in `und` struct tag.
 	ErrUnknownOption = undtag.ErrUnknownOption
-	// ErrMalformedLen is an error which will be returned by UndValidate and CheckUnd
+	// ErrMalformedLen is an error which will be returned by UndValidate and UndCheck
 	// if an input has malformed len option in `und` struct tag.
 	ErrMalformedLen = undtag.ErrMalformedLen
-	// ErrMalformedLen is an error which will be returned by UndValidate and CheckUnd
+	// ErrMalformedLen is an error which will be returned by UndValidate and UndCheck
 	// if an input has malformed values option in `und` struct tag.
 	ErrMalformedValues = undtag.ErrMalformedValues
 )
 
 // UndValidator wraps the UndValidate method.
+//
+// UndValidate method is implemented on data container types, und.Und[T] and option.Option[T], etc.
 // It only validates its underlying T's compliance for constraints placed by `und` struct tag options.
-type ValidatorUnd interface {
-	ValidateUnd() error
+type UndValidator interface {
+	UndValidate() error
 }
 
-// CheckerUnd wraps the CheckUnd method
+// UndChecker wraps the UndCheck method
 // which is expected to be implemented on data container types like und.Und[T] and option.Option[T], etc.
 //
-// CheckUnd must checks if its internal data type conforms the constraint which ValidateUnd or CheckUnd would checks.
-type CheckerUnd interface {
-	CheckUnd() error
+// UndCheck must checks if its internal data type conforms the constraint which UndValidate or UndCheck would checks.
+type UndChecker interface {
+	UndCheck() error
 }
 
 type (
-	ElasticLike = structtag.ElasticLike
-	UndLike     = structtag.UndLike
-	OptionLike  = structtag.OptionLike
+	ElasticLike = undtag.ElasticLike
+	UndLike     = undtag.UndLike
+	OptionLike  = undtag.OptionLike
 )
 
 var (
-	elasticLike    = reflect.TypeFor[structtag.ElasticLike]()
-	undLikeTy      = reflect.TypeFor[structtag.UndLike]()
-	optionLikeTy   = reflect.TypeFor[structtag.OptionLike]()
-	validatorUndTy = reflect.TypeFor[ValidatorUnd]()
-	checkerUndTy   = reflect.TypeFor[CheckerUnd]()
+	elasticLike    = reflect.TypeFor[undtag.ElasticLike]()
+	undLikeTy      = reflect.TypeFor[undtag.UndLike]()
+	optionLikeTy   = reflect.TypeFor[undtag.OptionLike]()
+	validatorUndTy = reflect.TypeFor[UndValidator]()
+	checkerUndTy   = reflect.TypeFor[UndChecker]()
 )
 
-// ValidateUnd validates whether s is compliant to the constraint placed by `und` struct tag.
+// UndValidate validates whether s is compliant to the constraint placed by `und` struct tag.
 //
-// ValidateUnd only accepts struct or pointer to struct.
+// UndValidate only accepts struct or pointer to struct.
 //
 // Only fields whose struct tag contains `und`, and whose type is implementor of OptionLike, UndLike or ElasticLike, are validated.
-func ValidateUnd(s any) error {
+func UndValidate(s any) error {
 	rv := reflect.ValueOf(s)
 	return cacheValidator(rv.Type()).validate(rv)
 }
 
-// CheckUnd checks whether s is correctly configured with `und` struct tag option without validating it.
-func CheckUnd(s any) error {
+// UndCheck checks whether s is correctly configured with `und` struct tag option without validating it.
+func UndCheck(s any) error {
 	return cacheValidator(reflect.TypeOf(s)).check()
 }
 
@@ -246,14 +248,14 @@ func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) c
 				if err != nil {
 					return err
 				}
-				return fv.Interface().(ValidatorUnd).ValidateUnd()
+				return fv.Interface().(UndValidator).UndValidate()
 			}
 		}
 
 		if ft.Type.Implements(checkerUndTy) {
 			// keep it addressable. The type might implement it on pointer type.
 			fv := reflect.New(ft.Type).Elem()
-			err := fv.Interface().(CheckerUnd).CheckUnd()
+			err := fv.Interface().(UndChecker).UndCheck()
 			if err != nil {
 				return cachedValidator{rt: rt, err: fmt.Errorf("%s.%w", ft.Name, err)}
 			}

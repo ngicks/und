@@ -25,8 +25,8 @@ var (
 var (
 	_ option.Equality[Und[any]] = Und[any]{}
 	_ option.Cloner[Und[any]]   = Und[any]{}
-	_ validate.ValidatorUnd     = Und[any]{}
-	_ validate.CheckerUnd       = Und[any]{}
+	_ validate.UndValidator     = Und[any]{}
+	_ validate.UndChecker       = Und[any]{}
 )
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
@@ -131,12 +131,12 @@ func (u Und[T]) Clone() Und[T] {
 	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
 }
 
-func (u Und[T]) ValidateUnd() error {
-	return u.opt.Value().ValidateUnd()
+func (u Und[T]) UndValidate() error {
+	return u.opt.Value().UndValidate()
 }
 
-func (u Und[T]) CheckUnd() error {
-	return u.opt.CheckUnd()
+func (u Und[T]) UndCheck() error {
+	return u.opt.UndCheck()
 }
 
 // Value returns an internal value.
