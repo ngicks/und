@@ -112,6 +112,19 @@ func (u Und[T]) Equal(other Und[T]) bool {
 	return u.opt.Equal(other.opt)
 }
 
+// EqualFunc reports whether two Und values are equal.
+// EqualFunc checks state of both. If both state does not match, it returns false.
+// If both are "defined" state, then checks equality of their value by cmp,
+// then returns true if they are equal.
+func (u Und[T]) EqualFunc(other Und[T], cmp func(i, j T) bool) bool {
+	return u.opt.EqualFunc(
+		other.opt,
+		func(i, j option.Option[T]) bool {
+			return i.EqualFunc(j, cmp)
+		},
+	)
+}
+
 // Clone clones u.
 // This is only a copy-by-assign unless T implements Cloner[T].
 func (u Und[T]) Clone() Und[T] {

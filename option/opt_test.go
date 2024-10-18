@@ -63,6 +63,33 @@ func TestOption_Equal(t *testing.T) {
 		assert.Assert(t, Some(eq2{"foo", "bar"}).Equal(Some(eq2{"foo", "bar"})))
 		assert.Assert(t, !Some(eq2{"foo", "foo"}).Equal(Some(eq2{"foo", "bar"})))
 	})
+
+	t.Run("EqualFunc", func(t *testing.T) {
+		assert.Assert(
+			t,
+			Some([]bool{true, true}).
+				EqualFunc(
+					Some([]bool{true, true}),
+					slices.Equal,
+				),
+		)
+		assert.Assert(
+			t,
+			!Some([]bool{true, true}).
+				EqualFunc(
+					Some([]bool{true, true}),
+					func(i, j []bool) bool { return false },
+				),
+		)
+		assert.Assert(
+			t,
+			!Some([]bool{true, true}).
+				EqualFunc(
+					Some([]bool{true, false}),
+					slices.Equal,
+				),
+		)
+	})
 }
 
 type eq1 []bool

@@ -26,6 +26,15 @@ func (o Options[T]) Equal(opts Options[T]) bool {
 	)
 }
 
+func (o Options[T]) EqualFunc(opts Options[T], cmp func(i, j T) bool) bool {
+	return slices.EqualFunc(
+		o, opts,
+		func(o1, o2 Option[T]) bool {
+			return o1.EqualFunc(o2, cmp)
+		},
+	)
+}
+
 func (o Options[T]) Clone() Options[T] {
 	if o == nil {
 		return nil

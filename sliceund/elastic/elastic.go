@@ -109,6 +109,20 @@ func (e Elastic[T]) Equal(other Elastic[T]) bool {
 	return e.inner().Equal(other.inner())
 }
 
+// EqualFunc reports whether two Elastic values are equal.
+// EqualFunc checks state of both. If both state does not match, it returns false.
+// If both are "defined" and lengths of their internal value match,
+// it then checks equality of their value by cmp.
+// It returns true if they are equal.
+func (e Elastic[T]) EqualFunc(other Elastic[T], cmp func(i, j T) bool) bool {
+	return e.inner().EqualFunc(
+		other.inner(),
+		func(i, j option.Options[T]) bool {
+			return i.EqualFunc(j, cmp)
+		},
+	)
+}
+
 // Clone implements option.Cloner[Elastic[T]].
 //
 // Clone clones its internal option.Option slice by copy.

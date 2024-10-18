@@ -145,6 +145,17 @@ func equal[T any](t, u T) bool {
 	return any(t) == any(u) // may panic if T or dynamic type of T is uncomparable.
 }
 
+// EqualFunc tests o and other if both are Some or None.
+// If their state does not match, it returns false immediately.
+// If both have value, it tests equality of their values by cmp.
+func (o Option[T]) EqualFunc(other Option[T], cmp func(i, j T) bool) bool {
+	if !o.some || !other.some {
+		return o.some == other.some
+	}
+
+	return cmp(o.v, other.v)
+}
+
 func (o Option[T]) MarshalJSON() ([]byte, error) {
 	if o.IsNone() {
 		// same as bytes.Clone.

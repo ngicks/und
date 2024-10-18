@@ -22,57 +22,83 @@ func TestUnd(t *testing.T) {
 // Tests for.
 //
 // - Equal
+// - EqualFunc
 // - Map
 // - Unwrap()
 func TestUnd_Methods(t *testing.T) {
-	u1 := Defined("foo")
-	u1_2 := Defined("foo")
-	u2 := Defined("bar")
-	u3 := Null[string]()
-	u4 := Undefined[string]()
+	definedFoo := Defined("foo")
+	definedFoo2 := Defined("foo")
+	definedBar := Defined("bar")
+	null := Null[string]()
+	undefined := Undefined[string]()
 
 	t.Run("Equal", func(t *testing.T) {
-		assert.Assert(t, u1 == u1_2)
-		assert.Assert(t, u1 != u2)
-		assert.Assert(t, u3 == u3.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] { return o }))
-		assert.Assert(t, u3 != u4)
+		assert.Assert(t, definedFoo == definedFoo2)
+		assert.Assert(t, definedFoo != definedBar)
+		assert.Assert(t, null == null.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] { return o }))
+		assert.Assert(t, null != undefined)
 
 		for _, combo := range [][2]Und[string]{
-			{u1, u1_2},
-			{u2, u2},
-			{u3, u3},
-			{u4, u4},
+			{definedFoo, definedFoo2},
+			{definedBar, definedBar},
+			{null, null},
+			{undefined, undefined},
 		} {
 			assert.Assert(t, combo[0].Equal(combo[1]))
 		}
 
 		for _, combo := range [][2]Und[string]{
-			{u2, u3},
-			{u2, u4},
-			{u3, u4},
+			{definedBar, null},
+			{definedBar, undefined},
+			{null, undefined},
 		} {
 			assert.Assert(t, !combo[0].Equal(combo[1]))
+		}
+	})
+
+	t.Run("EqualFunc", func(t *testing.T) {
+		for _, combo := range [][2]Und[string]{
+			{definedFoo, definedFoo2},
+			{definedBar, definedBar},
+			{null, null},
+			{undefined, undefined},
+		} {
+			assert.Assert(t, combo[0].EqualFunc(combo[1], func(i, j string) bool { return i == j }))
+		}
+
+		for _, combo := range [][2]Und[string]{
+			{definedFoo, definedFoo2},
+			{definedBar, definedBar},
+		} {
+			assert.Assert(t, !combo[0].EqualFunc(combo[1], func(i, j string) bool { return i != j }))
+		}
+
+		for _, combo := range [][2]Und[string]{
+			{null, null},
+			{undefined, undefined},
+		} {
+			assert.Assert(t, combo[0].EqualFunc(combo[1], func(i, j string) bool { return i != j }))
 		}
 	})
 
 	t.Run("Map", func(t *testing.T) {
 		assert.Equal(
 			t,
-			u2.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+			definedBar.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 				return Defined(o.Value().Value() + o.Value().Value()).Unwrap()
 			}),
 			Defined("barbar"),
 		)
 		assert.Equal(
 			t,
-			u3.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+			null.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 				return Defined("aa").Unwrap()
 			}),
 			Defined("aa"),
 		)
 		assert.Equal(
 			t,
-			u4.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+			undefined.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 				return Defined("bb").Unwrap()
 			}),
 			Defined("bb"),
@@ -80,8 +106,8 @@ func TestUnd_Methods(t *testing.T) {
 	})
 
 	t.Run("Unwrap", func(t *testing.T) {
-		assert.Equal(t, u2.Unwrap(), option.Some(option.Some("bar")))
-		assert.Equal(t, u3.Unwrap(), option.Some(option.None[string]()))
-		assert.Equal(t, u4.Unwrap(), option.None[option.Option[string]]())
+		assert.Equal(t, definedBar.Unwrap(), option.Some(option.Some("bar")))
+		assert.Equal(t, null.Unwrap(), option.Some(option.None[string]()))
+		assert.Equal(t, undefined.Unwrap(), option.None[option.Option[string]]())
 	})
 }
