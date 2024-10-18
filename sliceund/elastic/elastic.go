@@ -109,6 +109,15 @@ func (e Elastic[T]) Equal(other Elastic[T]) bool {
 	return e.inner().Equal(other.inner())
 }
 
+func (e Elastic[T]) EqualFunc(other Elastic[T], cmp func(i, j T) bool) bool {
+	return e.inner().EqualFunc(
+		other.inner(),
+		func(i, j option.Options[T]) bool {
+			return i.EqualFunc(j, cmp)
+		},
+	)
+}
+
 // Clone implements option.Cloner[Elastic[T]].
 //
 // Clone clones its internal option.Option slice by copy.

@@ -112,6 +112,20 @@ func (u Und[T]) Equal(other Und[T]) bool {
 	return u.opt.Equal(other.opt)
 }
 
+// EqualFunc reports whether two Und values are equal. When both are defined using an equality
+// function on each pair of elements. If the lengths are different,
+// EqualFunc returns false. Otherwise, the elements are compared in
+// increasing index order, and the comparison stops at the first index
+// for which eq returns false.
+func (u Und[T]) EqualFunc(other Und[T], cmp func(i, j T) bool) bool {
+	return u.opt.EqualFunc(
+		other.opt,
+		func(i, j option.Option[T]) bool {
+			return i.EqualFunc(j, cmp)
+		},
+	)
+}
+
 // Clone clones u.
 // This is only a copy-by-assign unless T implements Cloner[T].
 func (u Und[T]) Clone() Und[T] {

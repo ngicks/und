@@ -205,6 +205,13 @@ func (u Und[T]) Equal(other Und[T]) bool {
 	return u[0].Equal(other[0])
 }
 
+func (u Und[T]) EqualFunc(other Und[T], cmp func(i, j T) bool) bool {
+	if u.IsUndefined() || other.IsUndefined() {
+		return u.IsUndefined() == other.IsUndefined()
+	}
+	return u[0].EqualFunc(other[0], cmp)
+}
+
 // Clone clones u.
 // This is only a copy-by-assign unless T implements Cloner[T].
 func (u Und[T]) Clone() Und[T] {
