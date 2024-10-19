@@ -180,6 +180,18 @@ type (
 	}
 )
 
+type (
+	validMap struct {
+		M map[string]option.Option[string] `und:"required"`
+	}
+	validSlice struct {
+		M []und.Und[string] `und:"required"`
+	}
+	validArray struct {
+		M [3]elastic.Elastic[string] `und:"required,len>=2"`
+	}
+)
+
 var (
 	valid = All{
 		OptRequired:       option.Some("foo"),
@@ -213,18 +225,18 @@ var (
 		ElaDefOrNullOrUnd: elastic.FromValue("barbar"),
 
 		ElaEqEq: elastic.FromValue("bazbaz"),
-		ElaGr:   elastic.FromValues([]string{"quxqux", "quuxquux"}),
+		ElaGr:   elastic.FromValues("quxqux", "quuxquux"),
 		ElaGrEq: elastic.FromValue("corgecorge"),
-		ElaLe:   elastic.FromValues([]string{}),
+		ElaLe:   elastic.FromValues[string](),
 		ElaLeEq: elastic.FromValue("graultgrault"),
 
-		ElaEqEquRequired: elastic.FromValues([]string{"foofoo", "barbar"}),
-		ElaEqEquNullish:  elastic.FromValues([]string{"foofoo", "barbar"}),
-		ElaEqEquDef:      elastic.FromValues([]string{"foofoo", "barbar"}),
-		ElaEqEquNull:     elastic.FromValues([]string{"foofoo", "barbar"}),
-		ElaEqEquUnd:      elastic.FromValues([]string{"foofoo", "barbar"}),
+		ElaEqEquRequired: elastic.FromValues("foofoo", "barbar"),
+		ElaEqEquNullish:  elastic.FromValues("foofoo", "barbar"),
+		ElaEqEquDef:      elastic.FromValues("foofoo", "barbar"),
+		ElaEqEquNull:     elastic.FromValues("foofoo", "barbar"),
+		ElaEqEquUnd:      elastic.FromValues("foofoo", "barbar"),
 
-		ElaEqEqNonNull: elastic.FromValues([]string{"a", "b", "c"}),
+		ElaEqEqNonNull: elastic.FromValues("a", "b", "c"),
 	}
 )
 
@@ -260,16 +272,16 @@ func TestValidate_all_invalid(t *testing.T) {
 		func(v All) All { v.ElaDefOrUnd = elastic.Null[string](); return v },
 		func(v All) All { v.ElaDefOrNull = elastic.Undefined[string](); return v },
 		func(v All) All { v.ElaNullOrUnd = fe; return v },
-		func(v All) All { v.ElaEqEq = elastic.FromValues([]string{}); return v },
+		func(v All) All { v.ElaEqEq = elastic.FromValues[string](); return v },
 		func(v All) All { v.ElaGr = fe; return v },
-		func(v All) All { v.ElaGrEq = elastic.FromValues([]string{}); return v },
+		func(v All) All { v.ElaGrEq = elastic.FromValues[string](); return v },
 		func(v All) All { v.ElaLe = fe; return v },
 		func(v All) All {
-			v.ElaLeEq = elastic.FromOptions([]option.Option[string]{option.None[string](), option.None[string]()})
+			v.ElaLeEq = elastic.FromOptions(option.None[string](), option.None[string]())
 			return v
 		},
 		func(v All) All {
-			v.ElaEqEqNonNull = elastic.FromOptions([]option.Option[string]{option.Some("a"), option.None[string](), option.Some("c")})
+			v.ElaEqEqNonNull = elastic.FromOptions(option.Some("a"), option.None[string](), option.Some("c"))
 			return v
 		},
 	} {
@@ -445,4 +457,74 @@ func TestValidate_recursion(t *testing.T) {
 			},
 		},
 	}) != nil)
+}
+
+func TestValidate_map(t *testing.T) {
+	v := validMap{}
+	var err error
+	err = validate.UndCheck(v)
+	assert.NilError(t, err)
+	err = validate.UndValidate(v)
+	assert.NilError(t, err)
+	v = validMap{
+		M: map[string]option.Option[string]{
+			"foo": option.Some("bar"),
+		},
+	}
+	err = validate.UndValidate(v)
+	assert.NilError(t, err)
+	v = validMap{
+		M: map[string]option.Option[string]{
+			"foo": option.Some("bar"),
+			"baz": option.None[string](),
+		},
+	}
+	err = validate.UndValidate(v)
+	assert.Assert(t, err != nil)
+}
+
+func TestValidate_slice(t *testing.T) {
+	v := validSlice{}
+	err := validate.UndCheck(v)
+	assert.NilError(t, err)
+	err = validate.UndValidate(v)
+	assert.NilError(t, err)
+	v = validSlice{
+		M: []und.Und[string]{},
+	}
+	err = validate.UndValidate(v)
+	assert.NilError(t, err)
+	v = validSlice{
+		M: []und.Und[string]{und.Defined("foo")},
+	}
+	err = validate.UndValidate(v)
+	assert.NilError(t, err)
+	v = validSlice{
+		M: []und.Und[string]{und.Defined("foo"), und.Null[string]()},
+	}
+	err = validate.UndValidate(v)
+	assert.Assert(t, err != nil)
+}
+
+func TestValidate_array(t *testing.T) {
+	v := validArray{}
+	err := validate.UndCheck(v)
+	assert.NilError(t, err)
+	err = validate.UndValidate(v)
+	assert.Assert(t, err != nil)
+	v = validArray{
+		M: [3]elastic.Elastic[string]{elastic.FromValue("foo")},
+	}
+	err = validate.UndValidate(v)
+	assert.Assert(t, err != nil)
+	v = validArray{
+		M: [3]elastic.Elastic[string]{elastic.FromValue("foo"), elastic.FromValue("foo"), elastic.FromValue("foo")},
+	}
+	err = validate.UndValidate(v)
+	assert.Assert(t, err != nil)
+	v = validArray{
+		M: [3]elastic.Elastic[string]{elastic.FromValues("foo", "bar"), elastic.FromValue("foo"), elastic.FromValue("foo")},
+	}
+	err = validate.UndValidate(v)
+	assert.Assert(t, err != nil)
 }

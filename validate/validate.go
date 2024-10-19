@@ -14,6 +14,7 @@ var (
 	// if input is not a struct nor a pointer to a struct.
 	ErrNotStruct = errors.New("not struct")
 )
+
 var (
 	// ErrMultipleOption would be returned by UndValidate and UndCheck
 	// if input's `und` struct tags have multiple mutually exclusive options.
@@ -63,7 +64,9 @@ var (
 //
 // UndValidate only accepts struct or pointer to struct.
 //
-// Only fields whose struct tag contains `und`, and whose type is implementor of OptionLike, UndLike or ElasticLike, are validated.
+// Only fields whose struct tag contains `und`, and whose type is implementor of OptionLike, UndLike, ElasticLike,
+// or array, slice, map whose value type are one of implementor,
+// are validated.
 func UndValidate(s any) error {
 	rv := reflect.ValueOf(s)
 	return cacheValidator(rv.Type()).validate(rv)
@@ -150,124 +153,162 @@ func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) c
 		isOptLike := ft.Type.Implements(optionLikeTy)
 		if !isElasticLike && !isUndLike && !isOptLike {
 			ftDeref := ft.Type
-			switch ftDeref.Kind() {
-			default:
-				continue
-			case reflect.Pointer:
+
+			if ftDeref.Kind() == reflect.Pointer {
 				ftDeref = ftDeref.Elem()
 				if ftDeref.Kind() != reflect.Struct {
+					// maybe we'll loosen this restriction
+					// then we could allow *map[K]V or *[]T fields to be validated.
 					continue
 				}
-			case reflect.Struct:
-			}
-			var (
-				subFieldValidator *cachedValidator
-				has               bool
-			)
-			if subFieldValidator, has = visited[ftDeref]; !has {
-				v := makeValidator(ft.Type, visited)
-				if v.err != nil {
-					return cachedValidator{
-						rt: rt,
-						v: []fieldValidator{{
-							i:        i,
-							validate: v.validate,
-						}},
-					}
-				}
-				subFieldValidator = &v
 			}
 
-			fieldValidators = append(fieldValidators, fieldValidator{
-				i: i,
-				validate: func(rv reflect.Value) error {
-					err := subFieldValidator.validate(rv)
+			subFieldValidator, has := visited[ftDeref]
+			var validateField func(fv reflect.Value) error
+			if !has {
+				switch ftDeref.Kind() {
+				default:
+					continue
+				case reflect.Struct:
+					v := makeValidator(ft.Type, visited)
+					if v.err != nil {
+						return cachedValidator{
+							rt: rt,
+							v: []fieldValidator{{
+								i:        i,
+								validate: v.validate,
+							}},
+						}
+					}
+					subFieldValidator = &v
+				case reflect.Array, reflect.Slice, reflect.Map:
+					elem := ftDeref.Elem()
+					isElasticLike := elem.Implements(elasticLike)
+					isUndLike := elem.Implements(undLikeTy)
+					isOptLike := elem.Implements(optionLikeTy)
+					hasTag, validator, err := makeFieldValidator(ft, isOptLike, isUndLike, isElasticLike)
+					if !hasTag {
+						continue
+					}
+					if err != nil {
+						return cachedValidator{rt: rt, err: err}
+					}
+					validateField = func(fv reflect.Value) error {
+						for i, v := range fv.Seq2() {
+							if err := validator(v); err != nil {
+								return fmt.Errorf("[%v].%w", i.Interface(), err)
+							}
+						}
+						return nil
+					}
+				}
+			}
+
+			if validateField == nil {
+				validateField = func(fv reflect.Value) error {
+					err := subFieldValidator.validate(fv)
 					if err != nil {
 						return fmt.Errorf("%s.%w", ft.Name, err)
 					}
 					return nil
-				},
+				}
+			}
+			fieldValidators = append(fieldValidators, fieldValidator{
+				i:        i,
+				validate: validateField,
 			})
 
 			continue
 		}
-
-		if ft.Type.Kind() == reflect.Pointer {
-			// When field is nil, what should we do? It it considered none or undefined?
-			// I don't have any idea on this. Just return an error.
-			return cachedValidator{rt: rt, err: fmt.Errorf("%s: pointer implementor field", ft.Name)}
-		}
-
-		tag := ft.Tag.Get(undtag.TagName)
-		if tag == "" {
+		hasTag, validator, err := makeFieldValidator(ft, isOptLike, isUndLike, isElasticLike)
+		if !hasTag {
 			continue
 		}
-		opt, err := undtag.ParseOption(tag)
 		if err != nil {
-			return cachedValidator{rt: rt, err: fmt.Errorf("%s: %w", ft.Name, err)}
+			return cachedValidator{rt: rt, err: err}
 		}
-
-		if !isElasticLike {
-			if opt.Len.IsSome() {
-				return cachedValidator{rt: rt, err: fmt.Errorf("%s: len on non elastic", ft.Name)}
-			}
-			if opt.Values.IsSome() {
-				return cachedValidator{rt: rt, err: fmt.Errorf("%s: values on non elastic", ft.Name)}
-			}
-		}
-
-		var validateOpt func(fv reflect.Value) error
-		switch {
-		case isElasticLike:
-			validateOpt = func(fv reflect.Value) error {
-				if !opt.ValidElastic(fv.Interface().(ElasticLike)) {
-					return fmt.Errorf("%s: input %s", ft.Name, opt)
-				}
-				return nil
-			}
-		case isUndLike:
-			validateOpt = func(fv reflect.Value) error {
-				if !opt.ValidUnd(fv.Interface().(UndLike)) {
-					return fmt.Errorf("%s: input %s", ft.Name, opt)
-				}
-				return nil
-			}
-		case isOptLike:
-			validateOpt = func(fv reflect.Value) error {
-				if !opt.ValidOpt(fv.Interface().(OptionLike)) {
-					return fmt.Errorf("%s: input %s", ft.Name, opt)
-				}
-				return nil
-			}
-		}
-
-		validate := validateOpt
-		if ft.Type.Implements(validatorUndTy) {
-			validate = func(fv reflect.Value) error {
-				err := validateOpt(fv)
-				if err != nil {
-					return err
-				}
-				return fv.Interface().(UndValidator).UndValidate()
-			}
-		}
-
-		if ft.Type.Implements(checkerUndTy) {
-			// keep it addressable. The type might implement it on pointer type.
-			fv := reflect.New(ft.Type).Elem()
-			err := fv.Interface().(UndChecker).UndCheck()
-			if err != nil {
-				return cachedValidator{rt: rt, err: fmt.Errorf("%s.%w", ft.Name, err)}
-			}
-		}
-
-		fieldValidators = append(fieldValidators, fieldValidator{
-			i:        i,
-			rt:       ft.Type,
-			validate: validate,
-		})
+		fieldValidators = append(
+			fieldValidators,
+			fieldValidator{
+				i:        i,
+				rt:       rt,
+				validate: validator,
+			},
+		)
 	}
 
 	*mainValidator = cachedValidator{rt: rt, v: fieldValidators}
 	return *mainValidator
+}
+
+func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticLike bool) (hasTag bool, validator func(fv reflect.Value) error, err error) {
+	if ft.Type.Kind() == reflect.Pointer {
+		// When field is nil, what should we do? It it considered none or undefined?
+		// I don't have any idea on this. Just return an error.
+		return false, nil, fmt.Errorf("%s: pointer implementor field", ft.Name)
+	}
+
+	tag := ft.Tag.Get(undtag.TagName)
+	if tag == "" {
+		return false, nil, nil
+	}
+	opt, err := undtag.ParseOption(tag)
+	if err != nil {
+		return true, nil, fmt.Errorf("%s: %w", ft.Name, err)
+	}
+
+	if !isElasticLike {
+		if opt.Len.IsSome() {
+			return true, nil, fmt.Errorf("%s: len on non elastic", ft.Name)
+		}
+		if opt.Values.IsSome() {
+			return true, nil, fmt.Errorf("%s: values on non elastic", ft.Name)
+		}
+	}
+
+	var validateOpt func(fv reflect.Value) error
+	switch {
+	case isElasticLike:
+		validateOpt = func(fv reflect.Value) error {
+			if !opt.ValidElastic(fv.Interface().(ElasticLike)) {
+				return fmt.Errorf("%s: input %s", ft.Name, opt)
+			}
+			return nil
+		}
+	case isUndLike:
+		validateOpt = func(fv reflect.Value) error {
+			if !opt.ValidUnd(fv.Interface().(UndLike)) {
+				return fmt.Errorf("%s: input %s", ft.Name, opt)
+			}
+			return nil
+		}
+	case isOptLike:
+		validateOpt = func(fv reflect.Value) error {
+			if !opt.ValidOpt(fv.Interface().(OptionLike)) {
+				return fmt.Errorf("%s: input %s", ft.Name, opt)
+			}
+			return nil
+		}
+	}
+
+	validate := validateOpt
+	if ft.Type.Implements(validatorUndTy) {
+		validate = func(fv reflect.Value) error {
+			err := validateOpt(fv)
+			if err != nil {
+				return err
+			}
+			return fv.Interface().(UndValidator).UndValidate()
+		}
+	}
+
+	if ft.Type.Implements(checkerUndTy) {
+		// keep it addressable. The type might implement it on pointer type.
+		fv := reflect.New(ft.Type).Elem()
+		err := fv.Interface().(UndChecker).UndCheck()
+		if err != nil {
+			return true, nil, fmt.Errorf("%s.%w", ft.Name, err)
+		}
+	}
+	return true, validate, nil
 }

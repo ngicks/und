@@ -172,8 +172,9 @@ func (s StateValidator) String() string {
 func ParseOption(s string) (UndOpt, error) {
 	org := s
 	var (
-		opt  string
-		opts UndOpt
+		opt         string
+		sawStateOpt bool
+		opts        UndOpt
 	)
 	for len(s) > 0 {
 		opt, s, _ = strings.Cut(s, ",")
@@ -185,6 +186,9 @@ func ParseOption(s string) (UndOpt, error) {
 			if err != nil {
 				return UndOpt{}, fmt.Errorf("%w: %w", ErrMalformedLen, err)
 			}
+			opts.States = opts.States.
+				Or(option.Some(StateValidator{})).
+				Map(func(v StateValidator) StateValidator { v.Def = true; return v })
 			opts.Len = option.Some(lenV)
 			continue
 		}
@@ -203,7 +207,7 @@ func ParseOption(s string) (UndOpt, error) {
 
 		switch opt {
 		case UndTagValueRequired, UndTagValueNullish:
-			if opts.States.IsSome() {
+			if sawStateOpt {
 				return UndOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
 			}
 		case UndTagValueDef, UndTagValueNull, UndTagValueUnd:
@@ -234,6 +238,8 @@ func ParseOption(s string) (UndOpt, error) {
 			}
 			return v
 		})
+
+		sawStateOpt = true
 	}
 
 	return opts, nil
@@ -295,12 +301,40 @@ func or[T, U any](t option.Option[T], u option.Option[U]) option.Option[struct{}
 }
 
 func (o UndOpt) ValidElastic(e ElasticLike) bool {
-	return option.MapOption(o.States, func(s StateValidator) bool {
-		return s.Valid(e)
-	}).Or(option.Some(false)).Value() || option.MapOption(or(o.Len, o.Values), func(_ struct{}) bool {
-		return option.MapOption(o.Len, func(s LenValidator) bool { return s.Valid(e) }).Or(option.Some(true)).Value() &&
-			option.MapOption(o.Values, func(s ValuesValidator) bool { return s.Valid(e) }).Or(option.Some(true)).Value()
-	}).Or(option.Some(false)).Value()
+	// there's possible many intersection
+	validState := option.MapOption(
+		o.States,
+		func(s StateValidator) bool {
+			return s.Valid(e)
+		},
+	).
+		Or(option.Some(true))
+	if !validState.Value() {
+		return false
+	}
+	return option.MapOption(
+		or(o.Len, o.Values),
+		func(_ struct{}) bool {
+			validLen := option.MapOption(
+				o.Len,
+				func(s LenValidator) bool { return s.Valid(e) },
+			).
+				Or(option.Some(true))
+			if !validLen.Value() {
+				return false
+			}
+
+			validValue := option.MapOption(
+				o.Values,
+				func(s ValuesValidator) bool {
+					return s.Valid(e)
+				},
+			).
+				Or(option.Some(true))
+
+			return validValue.Value()
+		},
+	).Or(option.Some(true)).Value()
 }
 
 type LenValidator struct {
