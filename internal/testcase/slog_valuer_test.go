@@ -36,14 +36,14 @@ func TestSlogValuer(t *testing.T) {
 		"undefined", elastic.Undefined[string](),
 		"null", elastic.Null[string](),
 		"defined", elastic.FromValue("foo"),
-		"multiple", elastic.FromPointers([]*string{nil, ptr("bar")}),
+		"multiple", elastic.FromPointers(nil, ptr("bar")),
 	)
 	logger.Info(
 		"elastic",
 		"undefined", sliceelastic.Undefined[string](),
 		"null", sliceelastic.Null[string](),
 		"defined", sliceelastic.FromValue("foo"),
-		"multiple", sliceelastic.FromPointers([]*string{nil, ptr("bar")}),
+		"multiple", sliceelastic.FromPointers(nil, ptr("bar")),
 	)
 
 	expected := []map[string]any{

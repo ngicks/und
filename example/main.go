@@ -48,9 +48,9 @@ func main() {
 	s1 := sample1{
 		Foo:  "foo",
 		Bar:  und.Defined(nested1{Bar: und.Defined("foo")}),
-		Baz:  elastic.FromValue(nested1{Baz: elastic.FromOptions([]option.Option[int]{option.Some(5), option.None[int](), option.Some(67)})}),
+		Baz:  elastic.FromValue(nested1{Baz: elastic.FromOptions(option.Some(5), option.None[int](), option.Some(67))}),
 		Qux:  sliceund.Defined(nested1{Qux: sliceund.Defined(float64(1.223))}),
-		Quux: sliceelastic.FromValue(nested1{Quux: sliceelastic.FromOptions([]option.Option[bool]{option.None[bool](), option.Some(true), option.Some(false)})}),
+		Quux: sliceelastic.FromValue(nested1{Quux: sliceelastic.FromOptions(option.None[bool](), option.Some(true), option.Some(false))}),
 	}
 
 	var (
@@ -97,9 +97,9 @@ func main() {
 	s2 := sample2{
 		Foo:  "foo",
 		Bar:  und.Defined(nested2{Bar: und.Defined("foo")}),
-		Baz:  elastic.FromValue(nested2{Baz: elastic.FromOptions([]option.Option[int]{option.Some(5), option.None[int](), option.Some(67)})}),
+		Baz:  elastic.FromValue(nested2{Baz: elastic.FromOptions(option.Some(5), option.None[int](), option.Some(67))}),
 		Qux:  sliceund.Defined(nested2{Qux: sliceund.Defined(float64(1.223))}),
-		Quux: sliceelastic.FromValue(nested2{Quux: sliceelastic.FromOptions([]option.Option[bool]{option.None[bool](), option.Some(true), option.Some(false)})}),
+		Quux: sliceelastic.FromValue(nested2{Quux: sliceelastic.FromOptions(option.None[bool](), option.Some(true), option.Some(false))}),
 	}
 
 	bin, err = json.MarshalIndent(s2, "", "    ")

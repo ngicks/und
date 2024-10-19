@@ -61,7 +61,7 @@ func clonerTetSet[T ~[]U, U int](t *testing.T, shouldDiffer bool) {
 	testCloner(
 		t,
 		shouldDiffer,
-		elastic.FromOptions(option.Options[T]{option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})}),
+		elastic.FromOptions(option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})),
 		func(a, b elastic.Elastic[T]) (bool, unsafe.Pointer, unsafe.Pointer) {
 			return testDifferenceOptions(a.Unwrap().Value(), b.Unwrap().Value())
 		},
@@ -69,7 +69,7 @@ func clonerTetSet[T ~[]U, U int](t *testing.T, shouldDiffer bool) {
 	testCloner(
 		t,
 		shouldDiffer,
-		sliceelastic.FromOptions(option.Options[T]{option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})}),
+		sliceelastic.FromOptions(option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})),
 		func(a, b sliceelastic.Elastic[T]) (bool, unsafe.Pointer, unsafe.Pointer) {
 			return testDifferenceOptions(a.Unwrap().Value(), b.Unwrap().Value())
 		},

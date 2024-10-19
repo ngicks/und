@@ -18,8 +18,8 @@ func TestElastic(t *testing.T) {
 	}
 	testcase.TestElastic_non_addressable(
 		t,
-		FromOptions(option.Options[string]{option.None[string]()}),
-		FromOptions(opts),
+		FromOptions(option.None[string]()),
+		FromOptions(opts...),
 		Null[string](),
 		Undefined[string](),
 		opts,
@@ -32,9 +32,9 @@ func TestElastic(t *testing.T) {
 //   - Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T]
 //   - Unwrap() und.Und[option.Options[T]]
 func TestElastic_Methods(t *testing.T) {
-	mixed1 := FromOptions([]option.Option[string]{option.Some("foo"), option.None[string](), option.Some("bar")})
-	mixed1_2 := FromOptions([]option.Option[string]{option.Some("foo"), option.None[string](), option.Some("bar")})
-	mixed2 := FromOptions([]option.Option[string]{option.None[string](), option.Some("bar")})
+	mixed1 := FromOptions(option.Some("foo"), option.None[string](), option.Some("bar"))
+	mixed1_2 := FromOptions(option.Some("foo"), option.None[string](), option.Some("bar"))
+	mixed2 := FromOptions(option.None[string](), option.Some("bar"))
 	null := Null[string]()
 	undefined := Undefined[string]()
 
@@ -99,7 +99,7 @@ func TestElastic_Methods(t *testing.T) {
 		assert.Assert(
 			t,
 			mixed1.Map(mapper).Equal(FromOptions(
-				[]option.Option[string]{option.Some("foofoo"), option.None[string](), option.Some("barbar")},
+				option.Some("foofoo"), option.None[string](), option.Some("barbar"),
 			)),
 		)
 		assert.Assert(

@@ -12,8 +12,9 @@ import (
 
 // portable methods that can be copied from github.com/ngicks/und/elastic into github.com/ngicks/und/sliceund/elastic
 
+// FromValue returns Elastic[T] with single some value.
 func FromValue[T any](t T) Elastic[T] {
-	return FromOptions(option.Options[T]{option.Some(t)})
+	return FromOptions(option.Some(t))
 }
 
 // FromPointer converts nil to undefined Elastic[T],
@@ -25,18 +26,18 @@ func FromPointer[T any](t *T) Elastic[T] {
 	return FromValue(*t)
 }
 
-// FromValues converts []T into an Elastic[T].
-func FromValues[T any](ts []T) Elastic[T] {
+// FromValues converts variadic T values into an Elastic[T].
+func FromValues[T any](ts ...T) Elastic[T] {
 	opts := make(option.Options[T], len(ts))
 	for i, value := range ts {
 		opts[i] = option.Some(value)
 	}
-	return FromOptions(opts)
+	return FromOptions(opts...)
 }
 
-// FromPointers converts []*T into an Elastic[T],
+// FromPointers converts variadic *T values into an Elastic[T],
 // treating nil as None[T], and non-nil as Some[T].
-func FromPointers[T any](ps []*T) Elastic[T] {
+func FromPointers[T any](ps ...*T) Elastic[T] {
 	opts := make(option.Options[T], len(ps))
 	for i, p := range ps {
 		if p == nil {
@@ -45,7 +46,7 @@ func FromPointers[T any](ps []*T) Elastic[T] {
 			opts[i] = option.Some(*p)
 		}
 	}
-	return FromOptions(opts)
+	return FromOptions(opts...)
 }
 
 // IsZero is an alias for IsUndefined.
@@ -79,7 +80,7 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 		// might be T is []U, and this fails
 		// since it should've been [[...data...],[...data...]]
 		if err == nil {
-			*e = FromOptions(t)
+			*e = FromOptions(t...)
 			return nil
 		}
 	}
@@ -89,7 +90,7 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	*e = FromOptions(option.Options[T]{t})
+	*e = FromOptions(t)
 	return nil
 }
 

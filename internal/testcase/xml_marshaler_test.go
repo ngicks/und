@@ -78,8 +78,8 @@ func TestXmlMarshaler(t *testing.T) {
 				option.Some(1),
 				und.Defined(1),
 				sliceund.Defined(1),
-				elastic.FromValues([]int{1, 2}),
-				sliceelastic.FromValues([]int{3, 4}),
+				elastic.FromValues(1, 2),
+				sliceelastic.FromValues(3, 4),
 			},
 		},
 		{
@@ -134,8 +134,8 @@ func TestXmlMarshaler_nested(t *testing.T) {
 				option.Some(nested{}),
 				und.Defined(nested{}),
 				sliceund.Defined(nested{}),
-				elastic.FromValues([]nested{{}, {}}),
-				sliceelastic.FromValues([]nested{{}, {}}),
+				elastic.FromValues([]nested{{}, {}}...),
+				sliceelastic.FromValues([]nested{{}, {}}...),
 			},
 		},
 		{
@@ -145,11 +145,11 @@ func TestXmlMarshaler_nested(t *testing.T) {
 				`<ela><sliceund>57</sliceund></ela><ela><ela>5</ela><ela>7</ela></ela>` +
 				`<sliceela><ela>5</ela><ela>7</ela></sliceela><sliceela><sliceela>65</sliceela></sliceela></test>`,
 			valueSet[nested]{
-				option.Some(nested{SliceEla: sliceelastic.FromValues([]int{5, 5, 5})}),
+				option.Some(nested{SliceEla: sliceelastic.FromValues(5, 5, 5)}),
 				und.Defined(nested{Opt: option.Some(444)}),
 				sliceund.Defined(nested{Und: und.Defined(789)}),
-				elastic.FromValues([]nested{{SliceUnd: sliceund.Defined(57)}, {Ela: elastic.FromValues([]int{5, 7})}}),
-				sliceelastic.FromValues([]nested{{Ela: elastic.FromValues([]int{5, 7})}, {SliceEla: sliceelastic.FromValue(65)}}),
+				elastic.FromValues([]nested{{SliceUnd: sliceund.Defined(57)}, {Ela: elastic.FromValues(5, 7)}}...),
+				sliceelastic.FromValues([]nested{{Ela: elastic.FromValues(5, 7)}, {SliceEla: sliceelastic.FromValue(65)}}...),
 			},
 		},
 	} {

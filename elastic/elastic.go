@@ -66,9 +66,9 @@ func Undefined[T any]() Elastic[T] {
 	}
 }
 
-// FromOptions converts slice of option.Option[T] into Elastic[T].
+// FromOptions converts variadic option.Option[T] values into Elastic[T].
 // options is retained by the returned value.
-func FromOptions[Opts ~[]option.Option[T], T any](options Opts) Elastic[T] {
+func FromOptions[T any](options ...option.Option[T]) Elastic[T] {
 	return Elastic[T]{
 		v: und.Defined(option.Options[T](options)),
 	}
@@ -240,7 +240,7 @@ func (e *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error 
 	}
 
 	if len(e.inner().Value()) == 0 {
-		*e = FromOptions(t)
+		*e = FromOptions(t...)
 	} else {
 		*e = e.Map(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
 			return u.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
