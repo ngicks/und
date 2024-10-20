@@ -218,6 +218,11 @@ func TestOption_methods(t *testing.T) {
 		assert.Equal(t, n.MapOr("nah", func(s string) string { return "bbbb" }), "nah")
 	})
 
+	t.Run("MapOrOpt", func(t *testing.T) {
+		assert.Equal(t, s.MapOrOpt("nah", func(t string) string { return "bbb" }), Some("bbb"))
+		assert.Equal(t, n.MapOrOpt("nah", func(s string) string { return "bbbb" }), Some("nah"))
+	})
+
 	t.Run("MapOrElseOption", func(t *testing.T) {
 		assert.Equal(t, MapOrElseOption(s, func() int { return 123 }, func(t string) int { return len(t) }), 3)
 		assert.Equal(t, MapOrElseOption(n, func() int { return 123 }, func(t string) int { return len(t) + 4 }), 123)
@@ -226,6 +231,11 @@ func TestOption_methods(t *testing.T) {
 	t.Run("MapOrElse", func(t *testing.T) {
 		assert.Equal(t, s.MapOrElse(func() string { return "nah" }, func(t string) string { return "bbb" }), "bbb")
 		assert.Equal(t, n.MapOrElse(func() string { return "nah" }, func(s string) string { return "bbbb" }), "nah")
+	})
+
+	t.Run("MapOrElseOpt", func(t *testing.T) {
+		assert.Equal(t, s.MapOrElseOpt(func() string { return "nah" }, func(t string) string { return "bbb" }), Some("bbb"))
+		assert.Equal(t, n.MapOrElseOpt(func() string { return "nah" }, func(s string) string { return "bbbb" }), Some("nah"))
 	})
 
 	t.Run("Or", func(t *testing.T) {
