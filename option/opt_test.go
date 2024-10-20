@@ -1,6 +1,7 @@
 package option
 
 import (
+	"database/sql"
 	"encoding/json"
 	"slices"
 	"testing"
@@ -15,6 +16,37 @@ var (
 	america, _ = time.LoadLocation("America/Anguilla")
 	japan, _   = time.LoadLocation("Asia/Tokyo")
 )
+
+func TestOption_new_functions(t *testing.T) {
+	num := 15
+	{
+		some := FromPointer(&num)
+		assert.Assert(t, some.IsSome())
+		assert.Equal(t, 15, some.Value())
+
+		none := FromPointer((*int)(nil))
+		assert.Assert(t, none.IsNone())
+		assert.Equal(t, 0, none.Value())
+	}
+	{
+		some := WrapPointer(&num)
+		assert.Assert(t, some.IsSome())
+		assert.Equal(t, &num, some.Value())
+
+		none := WrapPointer((*int)(nil))
+		assert.Assert(t, none.IsNone())
+		assert.Equal(t, (*int)(nil), none.Value())
+	}
+	{
+		some := FromSqlNull(sql.Null[int]{Valid: true, V: 15})
+		assert.Assert(t, some.IsSome())
+		assert.Equal(t, 15, some.Value())
+
+		none := FromSqlNull(sql.Null[int]{Valid: false, V: 15})
+		assert.Assert(t, none.IsNone())
+		assert.Equal(t, 0, none.Value())
+	}
+}
 
 func TestOption_Equal(t *testing.T) {
 	t.Run("comparable", func(t *testing.T) {

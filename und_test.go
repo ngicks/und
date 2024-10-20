@@ -1,6 +1,7 @@
 package und
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/ngicks/und/internal/testcase"
@@ -17,6 +18,65 @@ func TestUnd(t *testing.T) {
 		155,
 		"155",
 	)
+}
+
+// Tests for New-like function, e.g. FromPointer, WrapPointer
+func TestUnd_new_functions(t *testing.T) {
+	num := 15
+	t.Run("FromPointer", func(t *testing.T) {
+		fromNonNil := FromPointer(&num)
+		assert.Equal(t, 15, fromNonNil.Value())
+		assert.Equal(t, false, fromNonNil.IsUndefined())
+		assert.Equal(t, false, fromNonNil.IsNull())
+		assert.Equal(t, true, fromNonNil.IsDefined())
+		fromNil := FromPointer((*int)(nil))
+		assert.Equal(t, 0, fromNil.Value())
+		assert.Equal(t, true, fromNil.IsUndefined())
+		assert.Equal(t, false, fromNil.IsNull())
+		assert.Equal(t, false, fromNil.IsDefined())
+	})
+	t.Run("WrapPointer", func(t *testing.T) {
+		fromNonNil := WrapPointer(&num)
+		assert.Equal(t, &num, fromNonNil.Value())
+		assert.Equal(t, false, fromNonNil.IsUndefined())
+		assert.Equal(t, false, fromNonNil.IsNull())
+		assert.Equal(t, true, fromNonNil.IsDefined())
+		fromNil := WrapPointer((*int)(nil))
+		assert.Equal(t, (*int)(nil), fromNil.Value())
+		assert.Equal(t, true, fromNil.IsUndefined())
+		assert.Equal(t, false, fromNil.IsNull())
+		assert.Equal(t, false, fromNil.IsDefined())
+	})
+	t.Run("FromOption", func(t *testing.T) {
+		undefined := FromOption(option.None[option.Option[int]]())
+		assert.Equal(t, 0, undefined.Value())
+		assert.Equal(t, true, undefined.IsUndefined())
+		assert.Equal(t, false, undefined.IsNull())
+		assert.Equal(t, false, undefined.IsDefined())
+		null := FromOption(option.Some(option.None[int]()))
+		assert.Equal(t, 0, null.Value())
+		assert.Equal(t, false, null.IsUndefined())
+		assert.Equal(t, true, null.IsNull())
+		assert.Equal(t, false, null.IsDefined())
+		defined := FromOption(option.Some(option.Some(num)))
+		assert.Equal(t, num, defined.Value())
+		assert.Equal(t, false, defined.IsUndefined())
+		assert.Equal(t, false, defined.IsNull())
+		assert.Equal(t, true, defined.IsDefined())
+	})
+	t.Run("FromSqlNull", func(t *testing.T) {
+		null := FromSqlNull(sql.Null[int]{Valid: false, V: 15})
+		assert.Equal(t, 0, null.Value())
+		assert.Equal(t, false, null.IsUndefined())
+		assert.Equal(t, true, null.IsNull())
+		assert.Equal(t, false, null.IsDefined())
+
+		defined := FromSqlNull(sql.Null[int]{Valid: true, V: 15})
+		assert.Equal(t, 15, defined.Value())
+		assert.Equal(t, false, defined.IsUndefined())
+		assert.Equal(t, false, defined.IsNull())
+		assert.Equal(t, true, defined.IsDefined())
+	})
 }
 
 // Tests for.

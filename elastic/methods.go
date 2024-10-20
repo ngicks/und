@@ -19,11 +19,24 @@ func FromValue[T any](t T) Elastic[T] {
 
 // FromPointer converts nil to undefined Elastic[T],
 // or defined one whose internal value is dereferenced t.
+//
+// If you need to keep t as pointer, use [WrapPointer] instead.
 func FromPointer[T any](t *T) Elastic[T] {
 	if t == nil {
 		return Undefined[T]()
 	}
 	return FromValue(*t)
+}
+
+// WrapPointer converts *T into Elastic[*T].
+// The elastic value is defined if t is non nil, undefined otherwise.
+//
+// If you want t to be dereferenced, use [FromPointer] instead.
+func WrapPointer[T any](t *T) Elastic[*T] {
+	if t == nil {
+		return Undefined[*T]()
+	}
+	return FromValue(t)
 }
 
 // FromValues converts variadic T values into an Elastic[T].
@@ -37,14 +50,24 @@ func FromValues[T any](ts ...T) Elastic[T] {
 
 // FromPointers converts variadic *T values into an Elastic[T],
 // treating nil as None[T], and non-nil as Some[T].
+//
+// If you need to keep t-s as pointer, use [WrapPointers] instead.
 func FromPointers[T any](ps ...*T) Elastic[T] {
 	opts := make(option.Options[T], len(ps))
 	for i, p := range ps {
-		if p == nil {
-			opts[i] = option.None[T]()
-		} else {
-			opts[i] = option.Some(*p)
-		}
+		opts[i] = option.FromPointer(p)
+	}
+	return FromOptions(opts...)
+}
+
+// FromPointers converts variadic *T values into an Elastic[*T],
+// treating nil as None[*T], and non-nil as Some[*T].
+//
+// If you need t-s to be dereferenced, use [FromPointers] instead.
+func WrapPointers[T any](ps ...*T) Elastic[*T] {
+	opts := make(option.Options[*T], len(ps))
+	for i, p := range ps {
+		opts[i] = option.WrapPointer(p)
 	}
 	return FromOptions(opts...)
 }

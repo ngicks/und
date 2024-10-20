@@ -57,6 +57,29 @@ func FromSqlNull[T any](v sql.Null[T]) Option[T] {
 	return Some(v.V)
 }
 
+// FromPointer converts *T into Option[T].
+// If v is nil, it returns a none Option.
+// Otherwise, it returns some Option whose value is the dereferenced v.
+//
+// If you need to keep t as pointer, use [WrapPointer] instead.
+func FromPointer[T any](t *T) Option[T] {
+	if t != nil {
+		return Some(*t)
+	}
+	return None[T]()
+}
+
+// WrapPointer converts *T into Option[*T].
+// The option is some if t is non nil, none otherwise.
+//
+// If you want t to be dereferenced, use [FromPointer] instead.
+func WrapPointer[T any](t *T) Option[*T] {
+	if t != nil {
+		return Some(t)
+	}
+	return None[*T]()
+}
+
 func (o Option[T]) IsZero() bool {
 	return o.IsNone()
 }

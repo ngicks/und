@@ -65,11 +65,24 @@ func Undefined[T any]() Und[T] {
 // FromPointer converts *T into Und[T].
 // If v is nil, it returns an undefined Und.
 // Otherwise, it returns Defined[T] whose value is the dereferenced v.
+//
+// If you need to keep t as pointer, use [WrapPointer] instead.
 func FromPointer[T any](v *T) Und[T] {
 	if v == nil {
 		return Undefined[T]()
 	}
 	return Defined(*v)
+}
+
+// WrapPointer converts *T into Und[*T].
+// The und value is defined if t is non nil, undefined otherwise.
+//
+// If you want t to be dereferenced, use [FromPointer] instead.
+func WrapPointer[T any](t *T) Und[*T] {
+	if t == nil {
+		return Undefined[*T]()
+	}
+	return Defined(t)
 }
 
 // FromOptions converts opt into an Und[T].
