@@ -7,6 +7,14 @@ import (
 )
 
 func TestOption_get(t *testing.T) {
+	t.Run("FromOk", func(t *testing.T) {
+		ok := FromOk(15, true)
+		assert.Assert(t, ok.IsSome())
+		assert.Equal(t, 15, ok.Value())
+		notOK := FromOk(15, false)
+		assert.Assert(t, notOK.IsNone())
+		assert.Equal(t, 0, notOK.Value())
+	})
 	t.Run("GetMap", func(t *testing.T) {
 		m := map[string]int{
 			"foo": 0,
