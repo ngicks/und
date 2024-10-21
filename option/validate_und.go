@@ -29,3 +29,10 @@ func (o Option[T]) UndCheck() error {
 	}
 	return err
 }
+
+func UndValidate[T validate.UndValidator](o Option[T]) error {
+	if o.IsNone() {
+		return nil
+	}
+	return o.Value().UndValidate()
+}
