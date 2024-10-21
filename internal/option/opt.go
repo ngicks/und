@@ -57,6 +57,29 @@ func FromSqlNull[T any](v sql.Null[T]) Option[T] {
 	return Some(v.V)
 }
 
+// FromPointer converts *T into Option[T].
+// If v is nil, it returns a none Option.
+// Otherwise, it returns some Option whose value is the dereferenced v.
+//
+// If you need to keep t as pointer, use [WrapPointer] instead.
+func FromPointer[T any](t *T) Option[T] {
+	if t != nil {
+		return Some(*t)
+	}
+	return None[T]()
+}
+
+// WrapPointer converts *T into Option[*T].
+// The option is some if t is non nil, none otherwise.
+//
+// If you want t to be dereferenced, use [FromPointer] instead.
+func WrapPointer[T any](t *T) Option[*T] {
+	if t != nil {
+		return Some(t)
+	}
+	return None[*T]()
+}
+
 func (o Option[T]) IsZero() bool {
 	return o.IsNone()
 }
@@ -145,6 +168,17 @@ func equal[T any](t, u T) bool {
 	return any(t) == any(u) // may panic if T or dynamic type of T is uncomparable.
 }
 
+// EqualFunc tests o and other if both are Some or None.
+// If their state does not match, it returns false immediately.
+// If both have value, it tests equality of their values by cmp.
+func (o Option[T]) EqualFunc(other Option[T], cmp func(i, j T) bool) bool {
+	if !o.some || !other.some {
+		return o.some == other.some
+	}
+
+	return cmp(o.v, other.v)
+}
+
 func (o Option[T]) MarshalJSON() ([]byte, error) {
 	if o.IsNone() {
 		// same as bytes.Clone.
@@ -161,6 +195,9 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
+	// not gonna call like json.Unmarshal(data, &o.v)
+	// since it could be half-baked result if unmarshaling fails at some point.
+	// o's state must stay valid.
 	var v T
 	err := json.Unmarshal(data, &v)
 	if err != nil {
@@ -306,6 +343,11 @@ func (o Option[T]) MapOr(defaultValue T, f func(T) T) T {
 	return MapOrOption(o, defaultValue, f)
 }
 
+// MapOrOpt is like [Option.MapOr] but wraps the returned value into some Option.
+func (o Option[T]) MapOrOpt(defaultValue T, f func(T) T) Option[T] {
+	return Some(MapOrOption(o, defaultValue, f))
+}
+
 // MapOrElseOption returns value o's value applied by f if o is some.
 // Otherwise it returns a defaultFn result.
 func MapOrElseOption[T, U any](o Option[T], defaultFn func() U, f func(T) U) U {
@@ -319,6 +361,11 @@ func MapOrElseOption[T, U any](o Option[T], defaultFn func() U, f func(T) U) U {
 // Otherwise it returns a defaultFn result.
 func (o Option[T]) MapOrElse(defaultFn func() T, f func(T) T) T {
 	return MapOrElseOption(o, defaultFn, f)
+}
+
+// MapOrElseOpt is like [Option.MapOrElse] but wraps the returned value into some Option.
+func (o Option[T]) MapOrElseOpt(defaultFn func() T, f func(T) T) Option[T] {
+	return Some(MapOrElseOption(o, defaultFn, f))
 }
 
 // Or returns o if o is some, otherwise u.

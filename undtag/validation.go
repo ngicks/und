@@ -118,10 +118,38 @@ type OptionLike interface {
 	IsSome() bool
 }
 
+type UndOptExport struct {
+	States *StateValidator
+	Len    *LenValidator
+	Values *ValuesValidator
+}
+
+func (o UndOptExport) Into() UndOpt {
+	// the outer code can not initialize UndOpt itself since it uses internal package.
+	// Export type can not rely on Option like types.
+	return UndOpt{
+		states: option.FromPointer(o.States),
+		len:    option.FromPointer(o.Len),
+		values: option.FromPointer(o.Values),
+	}
+}
+
 type UndOpt struct {
-	States option.Option[StateValidator]
-	Len    option.Option[LenValidator]
-	Values option.Option[ValuesValidator]
+	states option.Option[StateValidator]
+	len    option.Option[LenValidator]
+	values option.Option[ValuesValidator]
+}
+
+func (u UndOpt) States() option.Option[StateValidator] {
+	return u.states
+}
+
+func (u UndOpt) Len() option.Option[LenValidator] {
+	return u.len
+}
+
+func (u UndOpt) Values() option.Option[ValuesValidator] {
+	return u.values
 }
 
 type StateValidator struct {
@@ -179,29 +207,29 @@ func ParseOption(s string) (UndOpt, error) {
 	for len(s) > 0 {
 		opt, s, _ = strings.Cut(s, ",")
 		if strings.HasPrefix(opt, UndTagValueLen) {
-			if opts.Len.IsSome() {
+			if opts.len.IsSome() {
 				return UndOpt{}, fmt.Errorf("%w: %s", ErrMultipleOption, org)
 			}
 			lenV, err := ParseLen(opt)
 			if err != nil {
 				return UndOpt{}, fmt.Errorf("%w: %w", ErrMalformedLen, err)
 			}
-			opts.States = opts.States.
+			opts.states = opts.states.
 				Or(option.Some(StateValidator{})).
 				Map(func(v StateValidator) StateValidator { v.Def = true; return v })
-			opts.Len = option.Some(lenV)
+			opts.len = option.Some(lenV)
 			continue
 		}
 
 		if strings.HasPrefix(opt, UndTagValueValues) {
-			if opts.Values.IsSome() {
+			if opts.values.IsSome() {
 				return UndOpt{}, fmt.Errorf("%w: %s", ErrMultipleOption, org)
 			}
 			valuesV, err := ParseValues(opt)
 			if err != nil {
 				return UndOpt{}, fmt.Errorf("%w: %w", ErrMalformedValues, err)
 			}
-			opts.Values = option.Some(valuesV)
+			opts.values = option.Some(valuesV)
 			continue
 		}
 
@@ -211,7 +239,7 @@ func ParseOption(s string) (UndOpt, error) {
 				return UndOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
 			}
 		case UndTagValueDef, UndTagValueNull, UndTagValueUnd:
-			if opts.States.IsSomeAnd(func(s StateValidator) bool {
+			if opts.states.IsSomeAnd(func(s StateValidator) bool {
 				return s.filled || opt == UndTagValueDef && s.Def || opt == UndTagValueNull && s.Null || opt == UndTagValueUnd && s.Und
 			}) {
 				return UndOpt{}, fmt.Errorf("%w: und tag contains multiple mutually exclusive options, tag = %s", ErrMultipleOption, org)
@@ -220,7 +248,7 @@ func ParseOption(s string) (UndOpt, error) {
 			return UndOpt{}, ErrUnknownOption
 		}
 
-		opts.States = opts.States.Or(option.Some(StateValidator{})).Map(func(v StateValidator) StateValidator {
+		opts.states = opts.states.Or(option.Some(StateValidator{})).Map(func(v StateValidator) StateValidator {
 			switch opt {
 			case UndTagValueRequired:
 				v.filled = true
@@ -256,21 +284,21 @@ func (o UndOpt) String() string {
 		_, _ = builder.WriteString(ss)
 	}
 
-	if o.States.IsSome() {
-		appendStr(o.States.Value())
+	if o.states.IsSome() {
+		appendStr(o.states.Value())
 	}
-	if o.Len.IsSome() {
-		appendStr(o.Len.Value())
+	if o.len.IsSome() {
+		appendStr(o.len.Value())
 	}
-	if o.Values.IsSome() {
-		appendStr(o.Values.Value())
+	if o.values.IsSome() {
+		appendStr(o.values.Value())
 	}
 
 	return builder.String()
 }
 
 func (o UndOpt) ValidOpt(opt OptionLike) bool {
-	return o.States.IsSomeAnd(func(s StateValidator) bool {
+	return o.states.IsSomeAnd(func(s StateValidator) bool {
 		switch {
 		case opt.IsSome():
 			return s.Def
@@ -281,7 +309,7 @@ func (o UndOpt) ValidOpt(opt OptionLike) bool {
 }
 
 func (o UndOpt) ValidUnd(u UndLike) bool {
-	return o.States.IsSomeAnd(func(s StateValidator) bool {
+	return o.states.IsSomeAnd(func(s StateValidator) bool {
 		switch {
 		case u.IsDefined():
 			return s.Def
@@ -303,7 +331,7 @@ func or[T, U any](t option.Option[T], u option.Option[U]) option.Option[struct{}
 func (o UndOpt) ValidElastic(e ElasticLike) bool {
 	// there's possible many intersection
 	validState := option.MapOption(
-		o.States,
+		o.states,
 		func(s StateValidator) bool {
 			return s.Valid(e)
 		},
@@ -313,10 +341,10 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 		return false
 	}
 	return option.MapOption(
-		or(o.Len, o.Values),
+		or(o.len, o.values),
 		func(_ struct{}) bool {
 			validLen := option.MapOption(
-				o.Len,
+				o.len,
 				func(s LenValidator) bool { return s.Valid(e) },
 			).
 				Or(option.Some(true))
@@ -325,7 +353,7 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 			}
 
 			validValue := option.MapOption(
-				o.Values,
+				o.values,
 				func(s ValuesValidator) bool {
 					return s.Valid(e)
 				},

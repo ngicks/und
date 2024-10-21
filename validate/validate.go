@@ -258,10 +258,10 @@ func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticL
 	}
 
 	if !isElasticLike {
-		if opt.Len.IsSome() {
+		if opt.Len().IsSome() {
 			return true, nil, fmt.Errorf("%s: len on non elastic", ft.Name)
 		}
-		if opt.Values.IsSome() {
+		if opt.Values().IsSome() {
 			return true, nil, fmt.Errorf("%s: values on non elastic", ft.Name)
 		}
 	}
