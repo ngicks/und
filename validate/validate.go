@@ -4,10 +4,74 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/ngicks/und/undtag"
 )
+
+type fieldSelectorType int
+
+const (
+	fieldSelectorTypeDot = fieldSelectorType(iota)
+	fieldSelectorTypeIndex
+)
+
+type fieldSelector struct {
+	ty       fieldSelectorType
+	selector string
+}
+
+type ValidationError struct {
+	fieldChain []fieldSelector
+	err        error
+}
+
+func NewValidationError(err error) *ValidationError {
+	return &ValidationError{err: err}
+}
+
+func AppendValidationErrorDot(err error, selector string) error {
+	vErr, ok := err.(*ValidationError)
+	if !ok {
+		return &ValidationError{err: err, fieldChain: []fieldSelector{{fieldSelectorTypeDot, selector}}}
+	}
+	vErr.fieldChain = append(vErr.fieldChain, fieldSelector{fieldSelectorTypeDot, selector})
+	return vErr
+}
+
+func AppendValidationErrorIndex(err error, selector string) error {
+	vErr, ok := err.(*ValidationError)
+	if !ok {
+		return &ValidationError{err: err, fieldChain: []fieldSelector{{fieldSelectorTypeIndex, selector}}}
+	}
+	vErr.fieldChain = append(vErr.fieldChain, fieldSelector{fieldSelectorTypeIndex, selector})
+	return vErr
+}
+
+func (e *ValidationError) Unwrap() error {
+	return e.err
+}
+
+func (e *ValidationError) Error() string {
+	var builder strings.Builder
+	builder.WriteString("validation failed at ")
+	for _, f := range slices.Backward(e.fieldChain) {
+		switch f.ty {
+		case fieldSelectorTypeDot:
+			builder.WriteByte('.')
+			builder.WriteString(f.selector)
+		case fieldSelectorTypeIndex:
+			builder.WriteByte('[')
+			builder.WriteString(f.selector)
+			builder.WriteByte(']')
+		}
+	}
+	builder.WriteString(": ")
+	builder.WriteString(e.err.Error())
+	return builder.String()
+}
 
 var (
 	// ErrNotStruct would be returned by UndValidate and UndCheck
@@ -194,9 +258,9 @@ func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) c
 						return cachedValidator{rt: rt, err: err}
 					}
 					validateField = func(fv reflect.Value) error {
-						for i, v := range fv.Seq2() {
+						for k, v := range fv.Seq2() {
 							if err := validator(v); err != nil {
-								return fmt.Errorf("[%v].%w", i.Interface(), err)
+								return AppendValidationErrorIndex(err, fmt.Sprintf("%v", k.Interface()))
 							}
 						}
 						return nil
@@ -208,7 +272,7 @@ func makeValidator(rt reflect.Type, visited map[reflect.Type]*cachedValidator) c
 				validateField = func(fv reflect.Value) error {
 					err := subFieldValidator.validate(fv)
 					if err != nil {
-						return fmt.Errorf("%s.%w", ft.Name, err)
+						return AppendValidationErrorDot(err, ft.Name)
 					}
 					return nil
 				}
@@ -245,7 +309,7 @@ func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticL
 	if ft.Type.Kind() == reflect.Pointer {
 		// When field is nil, what should we do? It it considered none or undefined?
 		// I don't have any idea on this. Just return an error.
-		return false, nil, fmt.Errorf("%s: pointer implementor field", ft.Name)
+		return false, nil, AppendValidationErrorDot(fmt.Errorf("pointer implementor field"), ft.Name)
 	}
 
 	tag := ft.Tag.Get(undtag.TagName)
@@ -254,15 +318,15 @@ func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticL
 	}
 	opt, err := undtag.ParseOption(tag)
 	if err != nil {
-		return true, nil, fmt.Errorf("%s: %w", ft.Name, err)
+		return true, nil, AppendValidationErrorDot(err, ft.Name)
 	}
 
 	if !isElasticLike {
 		if opt.Len().IsSome() {
-			return true, nil, fmt.Errorf("%s: len on non elastic", ft.Name)
+			return true, nil, AppendValidationErrorDot(fmt.Errorf("len on non elastic"), ft.Name)
 		}
 		if opt.Values().IsSome() {
-			return true, nil, fmt.Errorf("%s: values on non elastic", ft.Name)
+			return true, nil, AppendValidationErrorDot(fmt.Errorf("values on non elastic"), ft.Name)
 		}
 	}
 
@@ -271,21 +335,21 @@ func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticL
 	case isElasticLike:
 		validateOpt = func(fv reflect.Value) error {
 			if !opt.ValidElastic(fv.Interface().(ElasticLike)) {
-				return fmt.Errorf("%s: input %s", ft.Name, opt)
+				return AppendValidationErrorDot(fmt.Errorf("input %s", opt), ft.Name)
 			}
 			return nil
 		}
 	case isUndLike:
 		validateOpt = func(fv reflect.Value) error {
 			if !opt.ValidUnd(fv.Interface().(UndLike)) {
-				return fmt.Errorf("%s: input %s", ft.Name, opt)
+				return AppendValidationErrorDot(fmt.Errorf("input %s", opt), ft.Name)
 			}
 			return nil
 		}
 	case isOptLike:
 		validateOpt = func(fv reflect.Value) error {
 			if !opt.ValidOpt(fv.Interface().(OptionLike)) {
-				return fmt.Errorf("%s: input %s", ft.Name, opt)
+				return AppendValidationErrorDot(fmt.Errorf("input %s", opt), ft.Name)
 			}
 			return nil
 		}
@@ -307,7 +371,7 @@ func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticL
 		fv := reflect.New(ft.Type).Elem()
 		err := fv.Interface().(UndChecker).UndCheck()
 		if err != nil {
-			return true, nil, fmt.Errorf("%s.%w", ft.Name, err)
+			return true, nil, AppendValidationErrorDot(err, ft.Name)
 		}
 	}
 	return true, validate, nil

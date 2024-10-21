@@ -135,6 +135,8 @@ func (o UndOptExport) Into() UndOpt {
 }
 
 type UndOpt struct {
+	// TODO: warn user about use of internal package?
+	// I suspect they don't realize these are actually vendored internal option package.
 	states option.Option[StateValidator]
 	len    option.Option[LenValidator]
 	values option.Option[ValuesValidator]
