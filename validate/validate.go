@@ -105,6 +105,19 @@ func (e *ValidationError) Error() string {
 	return builder.String()
 }
 
+// Pointer returns rfc6901 compliant json pointer
+func (e *ValidationError) Pointer() string {
+	var builder strings.Builder
+	for _, f := range slices.Backward(e.fieldChain) {
+		builder.WriteByte('/')
+		sel := f.selector
+		sel = strings.ReplaceAll(sel, "~", "~0")
+		sel = strings.ReplaceAll(sel, "/", "~1")
+		builder.WriteString(sel)
+	}
+	return builder.String()
+}
+
 var (
 	// ErrNotStruct would be returned by UndValidate and UndCheck
 	// if input is not a struct nor a pointer to a struct.

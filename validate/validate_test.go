@@ -1,6 +1,7 @@
 package validate_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ngicks/und"
@@ -552,3 +553,14 @@ func TestReportState(t *testing.T) {
 	assert.Equal(t, "defined, len=2, has null=true", validate.ReportState(elastic.FromOptions(option.Some("foo"), option.None[string]())))
 }
 
+func TestValidationError(t *testing.T) {
+	err := fmt.Errorf("foo")
+	err = validate.AppendValidationErrorDot(err, "C")
+	err = validate.AppendValidationErrorDot(err, "B")
+	err = validate.AppendValidationErrorDot(err, "~")
+	err = validate.AppendValidationErrorDot(err, "N/N")
+	err = validate.AppendValidationErrorIndex(err, "5")
+	err = validate.AppendValidationErrorDot(err, "A")
+	assert.Equal(t, "validation failed at .A[5].N/N.~.B.C: foo", err.Error())
+	assert.Equal(t, "/A/5/N~1N/~0/B/C", err.(*validate.ValidationError).Pointer())
+}
