@@ -422,11 +422,11 @@ func (v LenValidator) Valid(e ElasticLike) bool {
 type lenOp int
 
 const (
-	LenOpEqEq = iota + 1 // ==
-	LenOpGr              // >
-	LenOpGrEq            // >=
-	LenOpLe              // <
-	LenOpLeEq            // <=
+	LenOpEqEq = lenOp(iota + 1) // ==
+	LenOpGr                     // >
+	LenOpGrEq                   // >=
+	LenOpLe                     // <
+	LenOpLeEq                   // <=
 )
 
 func (o lenOp) len() int {
