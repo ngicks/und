@@ -539,3 +539,16 @@ func TestValidate_elasticTag(t *testing.T) {
 	}
 	assert.NilError(t, validate.UndValidate(e))
 }
+
+func TestReportState(t *testing.T) {
+	assert.Equal(t, "", validate.ReportState(""))
+	assert.Equal(t, "some", validate.ReportState(option.Some(10)))
+	assert.Equal(t, "none", validate.ReportState(option.None[int]()))
+	assert.Equal(t, "undefined", validate.ReportState(und.Undefined[int]()))
+	assert.Equal(t, "null", validate.ReportState(und.Null[int]()))
+	assert.Equal(t, "defined", validate.ReportState(und.Defined(10)))
+	assert.Equal(t, "undefined", validate.ReportState(elastic.Undefined[int]()))
+	assert.Equal(t, "null", validate.ReportState(elastic.Null[int]()))
+	assert.Equal(t, "defined, len=2, has null=true", validate.ReportState(elastic.FromOptions(option.Some("foo"), option.None[string]())))
+}
+
