@@ -172,7 +172,7 @@ func (s StateValidator) Valid(u UndLike) bool {
 	}
 }
 
-func (s StateValidator) String() string {
+func (s StateValidator) Describe() string {
 	if s.filled {
 		if s.Def {
 			return "is " + UndTagValueRequired
@@ -275,11 +275,11 @@ func ParseOption(s string) (UndOpt, error) {
 	return opts, nil
 }
 
-func (o UndOpt) String() string {
+func (o UndOpt) Describe() string {
 	var builder strings.Builder
 
-	appendStr := func(s fmt.Stringer) {
-		ss := s.String()
+	appendStr := func(s interface{ Describe() string }) {
+		ss := s.Describe()
 		if builder.Len() > 0 && len(ss) > 0 {
 			_, _ = builder.WriteString(", and ")
 		}
@@ -408,7 +408,7 @@ func ParseLen(s string) (LenValidator, error) {
 	return v, nil
 }
 
-func (v LenValidator) String() string {
+func (v LenValidator) Describe() string {
 	return "must have length of " + v.Op.String() + " " + strconv.FormatInt(int64(v.Len), 10)
 }
 
@@ -498,7 +498,7 @@ func (v ValuesValidator) Valid(e ElasticLike) bool {
 	return true
 }
 
-func (v ValuesValidator) String() string {
+func (v ValuesValidator) Describe() string {
 	switch {
 	case v.Nonnull:
 		return "must not contain null"
