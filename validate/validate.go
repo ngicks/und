@@ -28,6 +28,38 @@ type ValidationError struct {
 	err        error
 }
 
+func ReportState(v any) string {
+	if i, ok := v.(ElasticLike); ok {
+		switch {
+		case i.IsUndefined():
+			return "undefined"
+		case i.IsNull():
+			return "null"
+		default:
+			return fmt.Sprintf("defined, len=%d, has null=%t", i.Len(), i.HasNull())
+		}
+	}
+	if i, ok := v.(UndLike); ok {
+		switch {
+		case i.IsUndefined():
+			return "undefined"
+		case i.IsNull():
+			return "null"
+		default:
+			return "defined"
+		}
+	}
+	if i, ok := v.(OptionLike); ok {
+		if i.IsSome() {
+			return "some"
+		} else {
+			return "none"
+		}
+	}
+
+	return ""
+}
+
 func NewValidationError(err error) *ValidationError {
 	return &ValidationError{err: err}
 }
@@ -335,21 +367,21 @@ func makeFieldValidator(ft reflect.StructField, isOptLike, isUndLike, isElasticL
 	case isElasticLike:
 		validateOpt = func(fv reflect.Value) error {
 			if !opt.ValidElastic(fv.Interface().(ElasticLike)) {
-				return AppendValidationErrorDot(fmt.Errorf("input %s", opt), ft.Name)
+				return AppendValidationErrorDot(fmt.Errorf("input %s", opt.Describe()), ft.Name)
 			}
 			return nil
 		}
 	case isUndLike:
 		validateOpt = func(fv reflect.Value) error {
 			if !opt.ValidUnd(fv.Interface().(UndLike)) {
-				return AppendValidationErrorDot(fmt.Errorf("input %s", opt), ft.Name)
+				return AppendValidationErrorDot(fmt.Errorf("input %s", opt.Describe()), ft.Name)
 			}
 			return nil
 		}
 	case isOptLike:
 		validateOpt = func(fv reflect.Value) error {
 			if !opt.ValidOpt(fv.Interface().(OptionLike)) {
-				return AppendValidationErrorDot(fmt.Errorf("input %s", opt), ft.Name)
+				return AppendValidationErrorDot(fmt.Errorf("input %s", opt.Describe()), ft.Name)
 			}
 			return nil
 		}
