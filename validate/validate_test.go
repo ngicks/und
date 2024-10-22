@@ -528,3 +528,14 @@ func TestValidate_array(t *testing.T) {
 	err = validate.UndValidate(v)
 	assert.Assert(t, err != nil)
 }
+
+type elasticTag struct {
+	F elastic.Elastic[string] `und:"null,len==3"`
+}
+
+func TestValidate_elasticTag(t *testing.T) {
+	e := elasticTag{
+		F: elastic.Null[string](),
+	}
+	assert.NilError(t, validate.UndValidate(e))
+}

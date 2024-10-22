@@ -342,6 +342,9 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 	if !validState.Value() {
 		return false
 	}
+	if !e.IsDefined() {
+		return true
+	}
 	return option.MapOption(
 		or(o.len, o.values),
 		func(_ struct{}) bool {
