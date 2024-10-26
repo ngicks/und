@@ -210,9 +210,9 @@ func TestOption_methods(t *testing.T) {
 		sn := Some(None[float64]())
 		nn := None[Option[float64]]()
 
-		assert.Equal(t, FlattenOption(ss), Some(float64(1.22)))
-		assert.Equal(t, FlattenOption(sn), None[float64]())
-		assert.Equal(t, FlattenOption(nn), None[float64]())
+		assert.Equal(t, Flatten(ss), Some(float64(1.22)))
+		assert.Equal(t, Flatten(sn), None[float64]())
+		assert.Equal(t, Flatten(nn), None[float64]())
 	})
 
 	t.Run("Get", func(t *testing.T) {
@@ -231,8 +231,8 @@ func TestOption_methods(t *testing.T) {
 	})
 
 	t.Run("MapOption", func(t *testing.T) {
-		assert.Equal(t, MapOption(s, func(o string) int { return len(o) }), Some(3))
-		assert.Equal(t, MapOption(n, func(o string) bool { return true }), None[bool]())
+		assert.Equal(t, Map(s, func(o string) int { return len(o) }), Some(3))
+		assert.Equal(t, Map(n, func(o string) bool { return true }), None[bool]())
 	})
 
 	t.Run("Map", func(t *testing.T) {
@@ -241,8 +241,8 @@ func TestOption_methods(t *testing.T) {
 	})
 
 	t.Run("MapOrOption", func(t *testing.T) {
-		assert.Equal(t, MapOrOption(s, 123, func(t string) int { return len(t) }), 3)
-		assert.Equal(t, MapOrOption(n, 123, func(t string) int { return len(t) + 4 }), 123)
+		assert.Equal(t, MapOr(s, 123, func(t string) int { return len(t) }), 3)
+		assert.Equal(t, MapOr(n, 123, func(t string) int { return len(t) + 4 }), 123)
 	})
 
 	t.Run("MapOr", func(t *testing.T) {
@@ -256,8 +256,8 @@ func TestOption_methods(t *testing.T) {
 	})
 
 	t.Run("MapOrElseOption", func(t *testing.T) {
-		assert.Equal(t, MapOrElseOption(s, func() int { return 123 }, func(t string) int { return len(t) }), 3)
-		assert.Equal(t, MapOrElseOption(n, func() int { return 123 }, func(t string) int { return len(t) + 4 }), 123)
+		assert.Equal(t, MapOrElse(s, func() int { return 123 }, func(t string) int { return len(t) }), 3)
+		assert.Equal(t, MapOrElse(n, func() int { return 123 }, func(t string) int { return len(t) + 4 }), 123)
 	})
 
 	t.Run("MapOrElse", func(t *testing.T) {

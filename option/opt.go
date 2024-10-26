@@ -301,8 +301,8 @@ func (o Option[T]) Filter(pred func(t T) bool) Option[T] {
 	return None[T]()
 }
 
-// FlattenOption converts Option[Option[T]] into Option[T].
-func FlattenOption[T any](o Option[Option[T]]) Option[T] {
+// Flatten converts Option[Option[T]] into Option[T].
+func Flatten[T any](o Option[Option[T]]) Option[T] {
 	if o.IsNone() {
 		return None[T]()
 	}
@@ -313,9 +313,9 @@ func FlattenOption[T any](o Option[Option[T]]) Option[T] {
 	return v
 }
 
-// MapOption returns Some[U] whose inner value is o's value mapped by f if o is Some.
+// Map returns Some[U] whose inner value is o's value mapped by f if o is Some.
 // Otherwise it returns None[U].
-func MapOption[T, U any](o Option[T], f func(T) U) Option[U] {
+func Map[T, U any](o Option[T], f func(T) U) Option[U] {
 	if o.IsSome() {
 		return Some(f(o.Value()))
 	}
@@ -325,12 +325,12 @@ func MapOption[T, U any](o Option[T], f func(T) U) Option[U] {
 // Map returns Option[T] whose inner value is o's value mapped by f if o is some.
 // Otherwise it returns None[T].
 func (o Option[T]) Map(f func(v T) T) Option[T] {
-	return MapOption(o, f)
+	return Map(o, f)
 }
 
-// MapOrOption returns o's value applied by f if o is some.
+// MapOr returns o's value applied by f if o is some.
 // Otherwise it returns defaultValue.
-func MapOrOption[T, U any](o Option[T], defaultValue U, f func(T) U) U {
+func MapOr[T, U any](o Option[T], defaultValue U, f func(T) U) U {
 	if o.IsNone() {
 		return defaultValue
 	}
@@ -340,17 +340,17 @@ func MapOrOption[T, U any](o Option[T], defaultValue U, f func(T) U) U {
 // MapOr returns value o's value applied by f if o is some.
 // Otherwise it returns defaultValue.
 func (o Option[T]) MapOr(defaultValue T, f func(T) T) T {
-	return MapOrOption(o, defaultValue, f)
+	return MapOr(o, defaultValue, f)
 }
 
 // MapOrOpt is like [Option.MapOr] but wraps the returned value into some Option.
 func (o Option[T]) MapOrOpt(defaultValue T, f func(T) T) Option[T] {
-	return Some(MapOrOption(o, defaultValue, f))
+	return Some(MapOr(o, defaultValue, f))
 }
 
-// MapOrElseOption returns value o's value applied by f if o is some.
+// MapOrElse returns value o's value applied by f if o is some.
 // Otherwise it returns a defaultFn result.
-func MapOrElseOption[T, U any](o Option[T], defaultFn func() U, f func(T) U) U {
+func MapOrElse[T, U any](o Option[T], defaultFn func() U, f func(T) U) U {
 	if o.IsNone() {
 		return defaultFn()
 	}
@@ -360,12 +360,12 @@ func MapOrElseOption[T, U any](o Option[T], defaultFn func() U, f func(T) U) U {
 // MapOrElse returns value o's value applied by f if o is some.
 // Otherwise it returns a defaultFn result.
 func (o Option[T]) MapOrElse(defaultFn func() T, f func(T) T) T {
-	return MapOrElseOption(o, defaultFn, f)
+	return MapOrElse(o, defaultFn, f)
 }
 
 // MapOrElseOpt is like [Option.MapOrElse] but wraps the returned value into some Option.
 func (o Option[T]) MapOrElseOpt(defaultFn func() T, f func(T) T) Option[T] {
-	return Some(MapOrElseOption(o, defaultFn, f))
+	return Some(MapOrElse(o, defaultFn, f))
 }
 
 // Or returns o if o is some, otherwise u.

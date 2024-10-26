@@ -12,7 +12,7 @@ var (
 )
 
 func (o Option[T]) UndValidate() error {
-	return MapOrOption(o, nil, func(t T) error {
+	return MapOr(o, nil, func(t T) error {
 		err := validate.UndValidate(t)
 		if errors.Is(err, validate.ErrNotStruct) {
 			return nil

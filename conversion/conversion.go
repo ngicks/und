@@ -89,7 +89,7 @@ func LenNAtLeastSlice[Opts ~[]T, T any](n int, u sliceund.Und[Opts]) sliceund.Un
 }
 
 func nonNullMapper[Opts ~[]option.Option[T], T any](o option.Option[Opts]) option.Option[[]T] {
-	return option.MapOption(o, func(s Opts) []T {
+	return option.Map(o, func(s Opts) []T {
 		r := make([]T, len(s), cap(s)) // in case it matters
 		for i, v := range s {
 			r[i] = v.Value()
@@ -99,21 +99,21 @@ func nonNullMapper[Opts ~[]option.Option[T], T any](o option.Option[Opts]) optio
 }
 
 func NonNull[Opts ~[]option.Option[T], T any](u und.Und[Opts]) und.Und[[]T] {
-	return und.FromOption(option.MapOption(u.Unwrap(), nonNullMapper[Opts]))
+	return und.FromOption(option.Map(u.Unwrap(), nonNullMapper[Opts]))
 }
 
 func NonNullSlice[Opts ~[]option.Option[T], T any](u sliceund.Und[Opts]) sliceund.Und[[]T] {
-	return sliceund.FromOption(option.MapOption(u.Unwrap(), nonNullMapper[Opts]))
+	return sliceund.FromOption(option.Map(u.Unwrap(), nonNullMapper[Opts]))
 }
 
 func unwrapLen1Mapper[T any](o option.Option[[1]T]) option.Option[T] {
-	return option.MapOption(o, func(v [1]T) T { return v[0] })
+	return option.Map(o, func(v [1]T) T { return v[0] })
 }
 
 func UnwrapLen1[T any](u und.Und[[1]T]) und.Und[T] {
-	return und.FromOption(option.MapOption(u.Unwrap(), unwrapLen1Mapper))
+	return und.FromOption(option.Map(u.Unwrap(), unwrapLen1Mapper))
 }
 
 func UnwrapLen1Slice[T any](u sliceund.Und[[1]T]) sliceund.Und[T] {
-	return sliceund.FromOption(option.MapOption(u.Unwrap(), unwrapLen1Mapper))
+	return sliceund.FromOption(option.Map(u.Unwrap(), unwrapLen1Mapper))
 }

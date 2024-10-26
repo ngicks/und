@@ -77,7 +77,7 @@ func OptionOptionElasticSlice[T any](null bool, o option.Option[[]option.Option[
 }
 
 func nonNullToUndMapper[T any](o option.Option[[]T]) option.Option[[]option.Option[T]] {
-	return option.MapOption(o, func(s []T) []option.Option[T] {
+	return option.Map(o, func(s []T) []option.Option[T] {
 		r := make([]option.Option[T], len(s), cap(s)) // in case it matters
 		for i, v := range s {
 			r[i] = option.Some(v)
@@ -87,23 +87,23 @@ func nonNullToUndMapper[T any](o option.Option[[]T]) option.Option[[]option.Opti
 }
 
 func Nullify[T any](u und.Und[[]T]) und.Und[[]option.Option[T]] {
-	return und.FromOption(option.MapOption(u.Unwrap(), nonNullToUndMapper))
+	return und.FromOption(option.Map(u.Unwrap(), nonNullToUndMapper))
 }
 
 func NullifySlice[Opts ~[]option.Option[T], T any](u sliceund.Und[[]T]) sliceund.Und[[]option.Option[T]] {
-	return sliceund.FromOption(option.MapOption(u.Unwrap(), nonNullToUndMapper))
+	return sliceund.FromOption(option.Map(u.Unwrap(), nonNullToUndMapper))
 }
 
 func wrapLen1Mapper[T any](o option.Option[T]) option.Option[[1]T] {
-	return option.MapOption(o, func(t T) [1]T {
+	return option.Map(o, func(t T) [1]T {
 		return [1]T{t}
 	})
 }
 
 func WrapLen1[T any](u und.Und[T]) und.Und[[1]T] {
-	return und.FromOption(option.MapOption(u.Unwrap(), wrapLen1Mapper))
+	return und.FromOption(option.Map(u.Unwrap(), wrapLen1Mapper))
 }
 
 func WrapLen1Slice[T any](u sliceund.Und[T]) sliceund.Und[[1]T] {
-	return sliceund.FromOption(option.MapOption(u.Unwrap(), wrapLen1Mapper))
+	return sliceund.FromOption(option.Map(u.Unwrap(), wrapLen1Mapper))
 }

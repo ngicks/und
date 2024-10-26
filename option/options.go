@@ -53,7 +53,7 @@ func (o Options[T]) Clone() Options[T] {
 
 func (o Options[T]) UndValidate() error {
 	for i, oo := range o {
-		err := MapOrOption(oo, nil, func(t T) error {
+		err := MapOr(oo, nil, func(t T) error {
 			return validate.UndValidate(t)
 		})
 		if err != nil {
