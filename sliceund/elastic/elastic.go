@@ -71,14 +71,14 @@ func FromOptions[T any](options ...option.Option[T]) Elastic[T] {
 // FromUnd converts sliceund.Und[option.Options[T]] into Elastic[T].
 //
 // u is retained by the returned value.
-func FromUnd[T any](u sliceund.Und[option.Options[T]]) Elastic[T] {
+func FromUnd[T any, Opts ~[]option.Option[T]](u sliceund.Und[Opts]) Elastic[T] {
 	switch {
 	case u.IsUndefined():
 		return Undefined[T]()
 	case u.IsNull():
 		return Null[T]()
 	default:
-		return FromOptions(u.Value()...)
+		return Elastic[T](sliceund.Map(u, func(o Opts) option.Options[T] { return option.Options[T](o) }))
 	}
 }
 
