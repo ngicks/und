@@ -90,7 +90,7 @@ func Nullify[T any](u und.Und[[]T]) und.Und[[]option.Option[T]] {
 	return und.FromOption(option.Map(u.Unwrap(), nonNullToUndMapper))
 }
 
-func NullifySlice[Opts ~[]option.Option[T], T any](u sliceund.Und[[]T]) sliceund.Und[[]option.Option[T]] {
+func NullifySlice[T any](u sliceund.Und[[]T]) sliceund.Und[[]option.Option[T]] {
 	return sliceund.FromOption(option.Map(u.Unwrap(), nonNullToUndMapper))
 }
 
