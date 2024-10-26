@@ -3,7 +3,9 @@ package elastic
 import (
 	"encoding/json"
 	"encoding/xml"
+	"iter"
 	"log/slog"
+	"slices"
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
@@ -130,4 +132,28 @@ func (e Elastic[T]) MarshalXML(enc *xml.Encoder, start xml.StartElement) error {
 // LogValue implements slog.LogValuer.
 func (e Elastic[T]) LogValue() slog.Value {
 	return e.Unwrap().LogValue()
+}
+
+// Map returns a new Elastic value whose internal value is mapped by f.
+//
+// Be cautious that f will only be applied to some value; null values remain as null.
+func Map[T, U any](e Elastic[T], f func(t T) U) Elastic[U] {
+	switch {
+	case e.IsUndefined():
+		return Undefined[U]()
+	case e.IsNull():
+		return Null[U]()
+	default:
+		return FromOptionSeq(mapSeq(f, slices.Values(e.Unwrap().Value())))
+	}
+}
+
+func mapSeq[T, U any](f func(T) U, seq iter.Seq[option.Option[T]]) iter.Seq[option.Option[U]] {
+	return func(yield func(option.Option[U]) bool) {
+		for opt := range seq {
+			if !yield(option.Map(opt, f)) {
+				return
+			}
+		}
+	}
 }
