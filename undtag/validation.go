@@ -142,63 +142,6 @@ type UndOpt struct {
 	values option.Option[ValuesValidator]
 }
 
-func (u UndOpt) States() option.Option[StateValidator] {
-	return u.states
-}
-
-func (u UndOpt) Len() option.Option[LenValidator] {
-	return u.len
-}
-
-func (u UndOpt) Values() option.Option[ValuesValidator] {
-	return u.values
-}
-
-type StateValidator struct {
-	filled bool
-	Def    bool
-	Null   bool
-	Und    bool
-}
-
-func (s StateValidator) Valid(u UndLike) bool {
-	switch {
-	case u.IsDefined():
-		return s.Def
-	case u.IsNull():
-		return s.Null
-	default: // case u.IsUndefined():
-		return s.Und
-	}
-}
-
-func (s StateValidator) Describe() string {
-	if s.filled {
-		if s.Def {
-			return "is " + UndTagValueRequired
-		} else {
-			return "is " + UndTagValueNullish
-		}
-	}
-	var builder strings.Builder
-	if s.Def {
-		builder.WriteString("defined")
-	}
-	if s.Null {
-		if builder.Len() > 0 {
-			builder.WriteString(" or ")
-		}
-		builder.WriteString("null")
-	}
-	if s.Und {
-		if builder.Len() > 0 {
-			builder.WriteString(" or ")
-		}
-		builder.WriteString("undefined")
-	}
-	return "must be " + builder.String()
-}
-
 func ParseOption(s string) (UndOpt, error) {
 	org := s
 	var (
@@ -273,6 +216,18 @@ func ParseOption(s string) (UndOpt, error) {
 	}
 
 	return opts, nil
+}
+
+func (u UndOpt) States() option.Option[StateValidator] {
+	return u.states
+}
+
+func (u UndOpt) Len() option.Option[LenValidator] {
+	return u.len
+}
+
+func (u UndOpt) Values() option.Option[ValuesValidator] {
+	return u.values
 }
 
 func (o UndOpt) Describe() string {
@@ -368,6 +323,51 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 			return validValue.Value()
 		},
 	).Or(option.Some(true)).Value()
+}
+
+type StateValidator struct {
+	filled bool
+	Def    bool
+	Null   bool
+	Und    bool
+}
+
+func (s StateValidator) Valid(u UndLike) bool {
+	switch {
+	case u.IsDefined():
+		return s.Def
+	case u.IsNull():
+		return s.Null
+	default: // case u.IsUndefined():
+		return s.Und
+	}
+}
+
+func (s StateValidator) Describe() string {
+	if s.filled {
+		if s.Def {
+			return "is " + UndTagValueRequired
+		} else {
+			return "is " + UndTagValueNullish
+		}
+	}
+	var builder strings.Builder
+	if s.Def {
+		builder.WriteString("defined")
+	}
+	if s.Null {
+		if builder.Len() > 0 {
+			builder.WriteString(" or ")
+		}
+		builder.WriteString("null")
+	}
+	if s.Und {
+		if builder.Len() > 0 {
+			builder.WriteString(" or ")
+		}
+		builder.WriteString("undefined")
+	}
+	return "must be " + builder.String()
 }
 
 type LenValidator struct {
