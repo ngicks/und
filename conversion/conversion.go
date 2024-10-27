@@ -117,3 +117,11 @@ func UnwrapLen1[T any](u und.Und[[1]T]) und.Und[T] {
 func UnwrapLen1Slice[T any](u sliceund.Und[[1]T]) sliceund.Und[T] {
 	return sliceund.FromOption(option.Map(u.Unwrap(), unwrapLen1Mapper))
 }
+
+func ToRaw[T interface{ UndRaw() U }, U any](t T) U {
+	return t.UndRaw()
+}
+
+func ToPlain[T interface{ UndPlain() U }, U any](t T) U {
+	return t.UndPlain()
+}
