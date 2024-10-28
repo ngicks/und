@@ -12,11 +12,11 @@ import (
 
 type UndLike = undtag.UndLike
 
-func UndNullish[T UndLike](t T) option.Option[*struct{}] {
+func UndNullish[T UndLike](t T) option.Option[Empty] {
 	if t.IsNull() {
-		return option.Some[*struct{}](nil)
+		return option.Some[Empty](nil)
 	}
-	return option.None[*struct{}]()
+	return option.None[Empty]()
 }
 
 func UnwrapElastic[T any](e elastic.Elastic[T]) und.Und[[]option.Option[T]] {

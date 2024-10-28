@@ -8,14 +8,14 @@ import (
 	sliceelastic "github.com/ngicks/und/sliceund/elastic"
 )
 
-func NullishUnd[T any](o option.Option[*struct{}]) und.Und[T] {
+func NullishUnd[T any](o option.Option[Empty]) und.Und[T] {
 	if o.IsSome() {
 		return und.Null[T]()
 	}
 	return und.Undefined[T]()
 }
 
-func NullishUndSlice[T any](o option.Option[*struct{}]) sliceund.Und[T] {
+func NullishUndSlice[T any](o option.Option[Empty]) sliceund.Und[T] {
 	if o.IsSome() {
 		return sliceund.Null[T]()
 	}
@@ -42,14 +42,14 @@ func OptionUndSlice[T any](null bool, o option.Option[T]) sliceund.Und[T] {
 	return sliceund.Undefined[T]()
 }
 
-func NullishElastic[T any](o option.Option[*struct{}]) elastic.Elastic[T] {
+func NullishElastic[T any](o option.Option[Empty]) elastic.Elastic[T] {
 	if o.IsSome() {
 		return elastic.Null[T]()
 	}
 	return elastic.Undefined[T]()
 }
 
-func NullishElasticSlice[T any](o option.Option[*struct{}]) sliceelastic.Elastic[T] {
+func NullishElasticSlice[T any](o option.Option[Empty]) sliceelastic.Elastic[T] {
 	if o.IsSome() {
 		return sliceelastic.Null[T]()
 	}
