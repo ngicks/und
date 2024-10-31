@@ -87,6 +87,9 @@ const (
 )
 
 var (
+	// ErrEmptyOption would be returned by [ParseOption]
+	// if input's `und` struct tag have no option specified.
+	ErrEmptyOption = errors.New("empty option")
 	// ErrMultipleOption would be returned by UndValidate and UndCheck
 	// if input's `und` struct tags have multiple mutually exclusive options.
 	ErrMultipleOption = errors.New("multiple option")
@@ -143,6 +146,9 @@ type UndOpt struct {
 }
 
 func ParseOption(s string) (UndOpt, error) {
+	if s == "" {
+		return UndOpt{}, fmt.Errorf("empty option")
+	}
 	org := s
 	var (
 		opt         string
