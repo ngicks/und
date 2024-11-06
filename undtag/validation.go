@@ -147,7 +147,7 @@ type UndOpt struct {
 
 func ParseOption(s string) (UndOpt, error) {
 	if s == "" {
-		return UndOpt{}, fmt.Errorf("empty option")
+		return UndOpt{}, ErrEmptyOption
 	}
 	org := s
 	var (
