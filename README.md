@@ -2,17 +2,11 @@
 
 Types to interoperate with applications that make full use of JSON.
 
-## Before v1
+## Note: dependency of github.com/go-json-experiment/json will be dropped when Go 1.24 is released
 
-und expects no breaking change except for `MarshalJSONV2` and `UnmarshalJSONV2` methods.
-
-Normally those methods are not used directly by users, so this expected breakage should not incur visible effects for most of them.
-
-- und waits for release of `encoding/json/v2`
-  - und depends on `github.com/go-json-experiment/json` which is an experimental `encoding/json/v2` implementation.
-  - Types defined in this module implement `json.MarshalerV2` and `json.UnmarshalerV2`.
-  - Eventually the dependency would be swapped to `encoding/json/v2` and those methods would be changed to use `v2`,
-  - or erased completely if `v2` decides not to continue to use that names.
+`json:"omitzero"` will be added to Go at Go 1.24.
+The dependency of github.com/go-json-experiment/json is no longer necessary since you can omit both the double-option und type and 
+the slice-option und type just using `encoding/json` with `json:",omitzero"` option.
 
 ## Example
 
