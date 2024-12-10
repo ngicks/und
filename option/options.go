@@ -35,6 +35,17 @@ func (o Options[T]) EqualFunc(opts Options[T], cmp func(i, j T) bool) bool {
 	)
 }
 
+func (o Options[T]) CloneFunc(cloneT func(T) T) Options[T] {
+	if o == nil { // in case it matters.
+		return nil
+	}
+	opts := make(Options[T], len(o))
+	for i, v := range o {
+		opts[i] = v.CloneFunc(cloneT)
+	}
+	return opts
+}
+
 func (o Options[T]) Clone() Options[T] {
 	if o == nil {
 		return nil

@@ -138,6 +138,14 @@ func (u Und[T]) EqualFunc(other Und[T], cmp func(i, j T) bool) bool {
 	)
 }
 
+func (u Und[T]) CloneFunc(cloneT func(T) T) Und[T] {
+	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] {
+		return o.CloneFunc(func(o option.Option[T]) option.Option[T] {
+			return o.CloneFunc(cloneT)
+		})
+	})
+}
+
 // Clone clones u.
 // This is only a copy-by-assign unless T implements Cloner[T].
 func (u Und[T]) Clone() Und[T] {

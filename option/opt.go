@@ -121,6 +121,12 @@ func (o Option[T]) Pointer() *T {
 	return &t
 }
 
+func (o Option[T]) CloneFunc(cloneT func(T) T) Option[T] {
+	return o.Map(func(t T) T {
+		return cloneT(t)
+	})
+}
+
 func (o Option[T]) Clone() Option[T] {
 	return o.Map(func(v T) T {
 		if cloner, ok := any(v).(Cloner[T]); ok {
