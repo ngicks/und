@@ -15,6 +15,14 @@ func TestOption_get(t *testing.T) {
 		assert.Assert(t, notOK.IsNone())
 		assert.Equal(t, 0, notOK.Value())
 	})
+	t.Run("Assert", func(t *testing.T) {
+		ok := Assert[int](any(15))
+		assert.Assert(t, ok.IsSome())
+		assert.Equal(t, 15, ok.Value())
+		notOK := Assert[string](any(15))
+		assert.Assert(t, notOK.IsNone())
+		assert.Equal(t, "", notOK.Value())
+	})
 	t.Run("GetMap", func(t *testing.T) {
 		m := map[string]int{
 			"foo": 0,
