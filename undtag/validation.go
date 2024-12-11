@@ -415,7 +415,7 @@ func ParseLen(s string) (LenValidator, error) {
 }
 
 func (v LenValidator) Describe() string {
-	return "must have length of " + v.Op.String() + " " + strconv.FormatInt(int64(v.Len), 10)
+	return "defined or must have length of " + v.Op.String() + " " + strconv.FormatInt(int64(v.Len), 10)
 }
 
 func (v LenValidator) Valid(e ElasticLike) bool {
