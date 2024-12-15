@@ -2,19 +2,21 @@
 
 Types to interoperate with applications that make full use of JSON.
 
-## Note: dependency of github.com/go-json-experiment/json will be dropped when Go 1.24 is released
-
-`json:"omitzero"` will be added to Go at Go 1.24.
-The dependency of github.com/go-json-experiment/json is no longer necessary since you can omit both the double-option und type and 
-the slice-option und type just using `encoding/json` with `json:",omitzero"` option.
-
 ## Example
 
-run example by `go run github.com/ngicks/und/example@v1.0.0-alpha4`.
+run example by
 
-You'll see zero value fields whose type is defined under this module are omitted by jsonv2(`github.com/go-json-experiment/json`) with `omitzero` json option.
+Note: this will be fixed after Go 1.24 is released.
 
-Also types defined under `sliceund` and `sliceund/elastic` are omitted by `encoding/json` v1 if zero, with `omitempty` struct tag option.
+```
+go install golang.org/dl/go1.24rc1@latest
+go1.24rc1 download
+go1.24rc1 run github.com/ngicks/und/example@77f793d0c981807e245c2d3c96dd5b4e3f0f6656
+```
+
+As you can see, types defined in ./ (package `und`) and ./elastic (package `elastic`) can be omitted with `json:",omitzero"` option for Go 1.24 or later version.
+
+For Go 1.23 or earlier version of it, you can also use types under ./sliceund (package `sliceund`) or ./sliceund/elastic (package `elastic`) with `json:",omitempty"` option.
 
 ```go
 package main
@@ -27,8 +29,6 @@ import (
 	"github.com/ngicks/und/elastic"
 	"github.com/ngicks/und/option"
 
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und/sliceund"
 	sliceelastic "github.com/ngicks/und/sliceund/elastic"
 )
@@ -67,102 +67,102 @@ func main() {
 	s1 := sample1{
 		Foo:  "foo",
 		Bar:  und.Defined(nested1{Bar: und.Defined("foo")}),
-		Baz:  elastic.FromValue(nested1{Baz: elastic.FromOptions([]option.Option[int]{option.Some(5), option.None[int](), option.Some(67)})}),
+		Baz:  elastic.FromValue(nested1{Baz: elastic.FromOptions(option.Some(5), option.None[int](), option.Some(67))}),
 		Qux:  sliceund.Defined(nested1{Qux: sliceund.Defined(float64(1.223))}),
-		Quux: sliceelastic.FromValue(nested1{Quux: sliceelastic.FromOptions([]option.Option[bool]{option.None[bool](), option.Some(true), option.Some(false)})}),
+		Quux: sliceelastic.FromValue(nested1{Quux: sliceelastic.FromOptions(option.None[bool](), option.Some(true), option.Some(false))}),
 	}
 
 	var (
 		bin []byte
 		err error
 	)
-	bin, err = jsonv2.Marshal(s1, jsontext.WithIndent("    "))
+	bin, err = json.MarshalIndent(s1, "", "    ")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("marshaled by v2=\n%s\n", bin)
-	// see? undefined (=zero value) fields are omitted.
+	fmt.Printf("marshaled by with omitzero =\n%s\n", bin)
+	// see? undefined (=zero value) fields are omitted with json:",omitzero" option.
+	// ,omitzero is introduced in Go 1.24. For earlier version Go, see example of sample2 below.
 	/*
-	   marshaled by v2=
-	   {
-	       "Foo": "foo",
-	       "Bar": {
-	           "Bar": "foo"
-	       },
-	       "Baz": [
-	           {
-	               "Baz": [
-	                   5,
-	                   null,
-	                   67
-	               ]
-	           }
-	       ],
-	       "Qux": {
-	           "Qux": 1.223
-	       },
-	       "Quux": [
-	           {
-	               "Quux": [
-	                   null,
-	                   true,
-	                   false
-	               ]
-	           }
-	       ]
-	   }
+		marshaled by with omitzero =
+		{
+		    "Foo": "foo",
+		    "Bar": {
+		        "Bar": "foo"
+		    },
+		    "Baz": [
+		        {
+		            "Baz": [
+		                5,
+		                null,
+		                67
+		            ]
+		        }
+		    ],
+		    "Qux": {
+		        "Qux": 1.223
+		    },
+		    "Quux": [
+		        {
+		            "Quux": [
+		                null,
+		                true,
+		                false
+		            ]
+		        }
+		    ]
+		}
 	*/
 
 	s2 := sample2{
 		Foo:  "foo",
 		Bar:  und.Defined(nested2{Bar: und.Defined("foo")}),
-		Baz:  elastic.FromValue(nested2{Baz: elastic.FromOptions([]option.Option[int]{option.Some(5), option.None[int](), option.Some(67)})}),
+		Baz:  elastic.FromValue(nested2{Baz: elastic.FromOptions(option.Some(5), option.None[int](), option.Some(67))}),
 		Qux:  sliceund.Defined(nested2{Qux: sliceund.Defined(float64(1.223))}),
-		Quux: sliceelastic.FromValue(nested2{Quux: sliceelastic.FromOptions([]option.Option[bool]{option.None[bool](), option.Some(true), option.Some(false)})}),
+		Quux: sliceelastic.FromValue(nested2{Quux: sliceelastic.FromOptions(option.None[bool](), option.Some(true), option.Some(false))}),
 	}
 
 	bin, err = json.MarshalIndent(s2, "", "    ")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("marshaled by v1=\n%s\n", bin)
-	// You see. Types defined under ./sliceund/ can be omitted by encoding/json.
-	// Types defined in ./ and ./elastic cannot be omitted by it.
+	fmt.Printf("marshaled with omitempty =\n%s\n", bin)
+	// You see. Types defined under ./sliceund/ can be omitted by encoding/json@go1.23 or earlier.
 	/*
-	   marshaled by v1=
-	   	{
-	   	    "Foo": "foo",
-	   	    "Bar": {
-	   	        "Bar": "foo",
-	   	        "Baz": null
-	   	    },
-	   	    "Baz": [
-	   	        {
-	   	            "Bar": null,
-	   	            "Baz": [
-	   	                5,
-	   	                null,
-	   	                67
-	   	            ]
-	   	        }
-	   	    ],
-	   	    "Qux": {
-	   	        "Bar": null,
-	   	        "Baz": null,
-	   	        "Qux": 1.223
-	   	    },
-	   	    "Quux": [
-	   	        {
-	   	            "Bar": null,
-	   	            "Baz": null,
-	   	            "Quux": [
-	   	                null,
-	   	                true,
-	   	                false
-	   	            ]
-	   	        }
-	   	    ]
-	   	}
+		marshaled with omitempty =
+		{
+		    "Foo": "foo",
+		    "Bar": {
+		        "Bar": "foo",
+		        "Baz": null
+		    },
+		    "Baz": [
+		        {
+		            "Bar": null,
+		            "Baz": [
+		                5,
+		                null,
+		                67
+		            ]
+		        }
+		    ],
+		    "Qux": {
+		        "Bar": null,
+		        "Baz": null,
+		        "Qux": 1.223
+		    },
+		    "Quux": [
+		        {
+		            "Bar": null,
+		            "Baz": null,
+		            "Quux": [
+		                null,
+		                true,
+		                false
+		            ]
+		        }
+		    ]
+		}
 	*/
 }
 ```

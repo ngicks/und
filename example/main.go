@@ -60,36 +60,37 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("marshaled by with omitzero =\n%s\n", bin)
-	// see? undefined (=zero value) fields are omitted.
+	// see? undefined (=zero value) fields are omitted with json:",omitzero" option.
+	// ,omitzero is introduced in Go 1.24. For earlier version Go, see example of sample2 below.
 	/*
-	   marshaled by v2=
-	   {
-	       "Foo": "foo",
-	       "Bar": {
-	           "Bar": "foo"
-	       },
-	       "Baz": [
-	           {
-	               "Baz": [
-	                   5,
-	                   null,
-	                   67
-	               ]
-	           }
-	       ],
-	       "Qux": {
-	           "Qux": 1.223
-	       },
-	       "Quux": [
-	           {
-	               "Quux": [
-	                   null,
-	                   true,
-	                   false
-	               ]
-	           }
-	       ]
-	   }
+		marshaled by with omitzero =
+		{
+		    "Foo": "foo",
+		    "Bar": {
+		        "Bar": "foo"
+		    },
+		    "Baz": [
+		        {
+		            "Baz": [
+		                5,
+		                null,
+		                67
+		            ]
+		        }
+		    ],
+		    "Qux": {
+		        "Qux": 1.223
+		    },
+		    "Quux": [
+		        {
+		            "Quux": [
+		                null,
+		                true,
+		                false
+		            ]
+		        }
+		    ]
+		}
 	*/
 
 	s2 := sample2{
@@ -105,42 +106,41 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("marshaled with omitempty =\n%s\n", bin)
-	// You see. Types defined under ./sliceund/ can be omitted by encoding/json.
-	// Types defined in ./ and ./elastic cannot be omitted by it.
+	// You see. Types defined under ./sliceund/ can be omitted by encoding/json@go1.23 or earlier.
 	/*
-	   marshaled by v1=
-	   	{
-	   	    "Foo": "foo",
-	   	    "Bar": {
-	   	        "Bar": "foo",
-	   	        "Baz": null
-	   	    },
-	   	    "Baz": [
-	   	        {
-	   	            "Bar": null,
-	   	            "Baz": [
-	   	                5,
-	   	                null,
-	   	                67
-	   	            ]
-	   	        }
-	   	    ],
-	   	    "Qux": {
-	   	        "Bar": null,
-	   	        "Baz": null,
-	   	        "Qux": 1.223
-	   	    },
-	   	    "Quux": [
-	   	        {
-	   	            "Bar": null,
-	   	            "Baz": null,
-	   	            "Quux": [
-	   	                null,
-	   	                true,
-	   	                false
-	   	            ]
-	   	        }
-	   	    ]
-	   	}
+		marshaled with omitempty =
+		{
+		    "Foo": "foo",
+		    "Bar": {
+		        "Bar": "foo",
+		        "Baz": null
+		    },
+		    "Baz": [
+		        {
+		            "Bar": null,
+		            "Baz": [
+		                5,
+		                null,
+		                67
+		            ]
+		        }
+		    ],
+		    "Qux": {
+		        "Bar": null,
+		        "Baz": null,
+		        "Qux": 1.223
+		    },
+		    "Quux": [
+		        {
+		            "Bar": null,
+		            "Baz": null,
+		            "Quux": [
+		                null,
+		                true,
+		                false
+		            ]
+		        }
+		    ]
+		}
 	*/
 }
