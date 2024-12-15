@@ -14,3 +14,8 @@ func (e *Empty) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+// IsZero always returns true.
+func (e Empty) IsZero() bool {
+	return true
+}
