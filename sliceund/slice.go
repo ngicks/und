@@ -320,6 +320,18 @@ func (u Und[T]) SqlNull() sql.Null[T] {
 	return u.Unwrap().Value().SqlNull()
 }
 
+// State returns u's value state.
+func (u Und[T]) State() und.State {
+	switch {
+	case u.IsUndefined():
+		return und.StateUndefined
+	case u.IsNull():
+		return und.StateNull
+	default:
+		return und.StateDefined
+	}
+}
+
 // Map returns a new Und value whose internal value is mapped by f.
 func Map[T, U any](u Und[T], f func(t T) U) Und[U] {
 	switch {

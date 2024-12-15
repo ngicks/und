@@ -9,6 +9,7 @@ import (
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
+	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 )
 
@@ -155,5 +156,17 @@ func mapSeq[T, U any](f func(T) U, seq iter.Seq[option.Option[T]]) iter.Seq[opti
 				return
 			}
 		}
+	}
+}
+
+// State returns e's value state.
+func (e Elastic[T]) State() und.State {
+	switch {
+	case e.IsUndefined():
+		return und.StateUndefined
+	case e.IsNull():
+		return und.StateNull
+	default:
+		return und.StateDefined
 	}
 }

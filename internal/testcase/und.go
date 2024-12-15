@@ -6,6 +6,7 @@ import (
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
+	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
 )
@@ -21,6 +22,7 @@ type Und[T any] interface {
 	Pointer() *T
 	Unwrap() option.Option[option.Option[T]]
 	Value() T
+	State() und.State
 }
 
 func TestUnd_non_addressable[T Und[U], U any](t *testing.T, defined, null, undefined T, value U, marshaled string) {
@@ -119,5 +121,11 @@ func TestUnd_non_addressable[T Und[U], U any](t *testing.T, defined, null, undef
 		var zero U
 		assert.Equal(t, null.Value(), zero)
 		assert.Equal(t, undefined.Value(), zero)
+	})
+
+	t.Run("State", func(t *testing.T) {
+		assert.Equal(t, und.StateUndefined, undefined.State())
+		assert.Equal(t, und.StateNull, null.State())
+		assert.Equal(t, und.StateDefined, defined.State())
 	})
 }

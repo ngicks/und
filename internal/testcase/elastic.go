@@ -6,6 +6,7 @@ import (
 
 	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-json-experiment/json/jsontext"
+	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
 )
@@ -26,6 +27,7 @@ type Ela[T any] interface {
 	// Unwrap() und.Und[option.Options[T]]
 	Value() T
 	Values() []T
+	State() und.State
 }
 
 func TestElastic_non_addressable[T Ela[U], U comparable](
@@ -144,5 +146,11 @@ func TestElastic_non_addressable[T Ela[U], U comparable](
 		var zero U
 		assert.Equal(t, null.Value(), zero)
 		assert.Equal(t, undefined.Value(), zero)
+	})
+
+	t.Run("State", func(t *testing.T) {
+		assert.Equal(t, und.StateUndefined, undefined.State())
+		assert.Equal(t, und.StateNull, null.State())
+		assert.Equal(t, und.StateDefined, defined.State())
 	})
 }
