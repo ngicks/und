@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"slices"
 
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 )
@@ -118,11 +116,6 @@ func (e *Elastic[T]) UnmarshalJSON(data []byte) error {
 	}
 	*e = FromOptions(t)
 	return nil
-}
-
-// MarshalJSONV2 implements jsonv2.MarshalerV2.
-func (e Elastic[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
-	return jsonv2.MarshalEncode(enc, e.inner(), opts)
 }
 
 // MarshalXML implements xml.Marshaler.

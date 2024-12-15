@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und/elastic"
 	sliceelastic "github.com/ngicks/und/sliceund/elastic"
 	"gotest.tools/v3/assert"
@@ -63,18 +62,11 @@ func TestElastic_serde(t *testing.T) {
 	for _, tc := range elasticTestCases {
 		t.Run(tc.bin, func(t *testing.T) {
 			var (
-				u2 elasticV2
 				s1 sliceElasticV1
-				s2 sliceElasticV2
 			)
 
 			assert.NilError(t, json.Unmarshal([]byte(tc.bin), &s1))
-			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.bin), &u2))
-			assert.NilError(t, jsonv2.Unmarshal([]byte(tc.bin), &s2))
-
-			assertStateElastic(t, u2.V, tc.state, tc.values)
 			assertStateElastic(t, s1.V, tc.state, tc.values)
-			assertStateElastic(t, s2.V, tc.state, tc.values)
 
 			var (
 				bin []byte
@@ -87,14 +79,6 @@ func TestElastic_serde(t *testing.T) {
 			}
 
 			bin, err = json.Marshal(s1)
-			assert.NilError(t, err)
-			assert.Equal(t, string(bin), marshaled)
-
-			bin, err = jsonv2.Marshal(u2)
-			assert.NilError(t, err)
-			assert.Equal(t, string(bin), marshaled)
-
-			bin, err = jsonv2.Marshal(s2)
 			assert.NilError(t, err)
 			assert.Equal(t, string(bin), marshaled)
 		})

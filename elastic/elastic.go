@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"log/slog"
 
-	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/validate"
@@ -16,7 +15,6 @@ var (
 	_ option.Cloner[Elastic[any]]   = Elastic[any]{}
 	_ json.Marshaler                = Elastic[any]{}
 	_ json.Unmarshaler              = (*Elastic[any])(nil)
-	_ jsonv2.MarshalerV2            = Elastic[any]{}
 	// We don't implement UnmarshalJSONV2 since there's variants that cannot be unmarshaled without
 	// calling unmarshal twice or so.
 	// there's 4 possible code paths

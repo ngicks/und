@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/sliceund"
 	"gotest.tools/v3/assert"
@@ -49,18 +48,12 @@ var undefinedTestCases = []serdeTestCase{
 func TestUnd_serde(t *testing.T) {
 	for _, tc := range undefinedTestCases {
 		var (
-			u2 undV2
 			s1 slicesUndV1
-			s2 slicesUndV2
 		)
 
 		assert.NilError(t, json.Unmarshal([]byte(tc.bin), &s1))
-		assert.NilError(t, jsonv2.Unmarshal([]byte(tc.bin), &u2))
-		assert.NilError(t, jsonv2.Unmarshal([]byte(tc.bin), &s2))
 
-		assertState(t, u2.V, tc.state, tc.value)
 		assertState(t, s1.V, tc.state, tc.value)
-		assertState(t, s2.V, tc.state, tc.value)
 
 		var (
 			bin []byte
@@ -68,14 +61,6 @@ func TestUnd_serde(t *testing.T) {
 		)
 
 		bin, err = json.Marshal(s1)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), tc.bin)
-
-		bin, err = jsonv2.Marshal(u2)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), tc.bin)
-
-		bin, err = jsonv2.Marshal(s2)
 		assert.NilError(t, err)
 		assert.Equal(t, string(bin), tc.bin)
 	}

@@ -6,20 +6,16 @@ import (
 	"encoding/xml"
 	"log/slog"
 
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/validate"
 )
 
 var (
-	_ json.Marshaler       = Und[any]{}
-	_ json.Unmarshaler     = (*Und[any])(nil)
-	_ jsonv2.MarshalerV2   = Und[any]{}
-	_ jsonv2.UnmarshalerV2 = (*Und[any])(nil)
-	_ xml.Marshaler        = Und[any]{}
-	_ xml.Unmarshaler      = (*Und[any])(nil)
-	_ slog.LogValuer       = Und[any]{}
+	_ json.Marshaler   = Und[any]{}
+	_ json.Unmarshaler = (*Und[any])(nil)
+	_ xml.Marshaler    = Und[any]{}
+	_ xml.Unmarshaler  = (*Und[any])(nil)
+	_ slog.LogValuer   = Und[any]{}
 )
 
 var (
@@ -223,33 +219,6 @@ func (u *Und[T]) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*u = Defined(t)
-	return nil
-}
-
-// MarshalJSONV2 implements jsonv2.MarshalerV2.
-func (u Und[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
-	if !u.IsDefined() {
-		return enc.WriteToken(jsontext.Null)
-	}
-	return jsonv2.MarshalEncode(enc, u.opt.Value().Value(), opts)
-}
-
-// UnmarshalJSONV2 implements jsonv2.UnmarshalerV2.
-func (u *Und[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) error {
-	if dec.PeekKind() == 'n' {
-		err := dec.SkipValue()
-		if err != nil {
-			return err
-		}
-		*u = Null[T]()
-		return nil
-	}
-	var t T
-	err := jsonv2.UnmarshalDecode(dec, &t, opts)
-	if err != nil {
-		return err
-	}
 	*u = Defined(t)
 	return nil
 }

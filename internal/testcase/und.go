@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
@@ -18,7 +16,6 @@ type Und[T any] interface {
 	IsUndefined() bool
 	IsZero() bool
 	MarshalJSON() ([]byte, error)
-	MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error
 	Pointer() *T
 	Unwrap() option.Option[option.Option[T]]
 	Value() T
@@ -77,24 +74,6 @@ func TestUnd_non_addressable[T Und[U], U any](t *testing.T, defined, null, undef
 		assert.Equal(t, string(bin), "null")
 
 		bin, err = json.Marshal(undefined)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), "null")
-	})
-
-	t.Run("MarshalJSONV2", func(t *testing.T) {
-		var (
-			bin []byte
-			err error
-		)
-		bin, err = jsonv2.Marshal(defined)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), marshaled)
-
-		bin, err = jsonv2.Marshal(null)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), "null")
-
-		bin, err = jsonv2.Marshal(undefined)
 		assert.NilError(t, err)
 		assert.Equal(t, string(bin), "null")
 	})

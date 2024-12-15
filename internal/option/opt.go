@@ -5,19 +5,14 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"log/slog"
-
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 )
 
 var (
-	_ json.Marshaler       = Option[any]{}
-	_ json.Unmarshaler     = (*Option[any])(nil)
-	_ jsonv2.MarshalerV2   = Option[any]{}
-	_ jsonv2.UnmarshalerV2 = (*Option[any])(nil)
-	_ xml.Marshaler        = Option[any]{}
-	_ xml.Unmarshaler      = (*Option[any])(nil)
-	_ slog.LogValuer       = Option[any]{}
+	_ json.Marshaler   = Option[any]{}
+	_ json.Unmarshaler = (*Option[any])(nil)
+	_ xml.Marshaler    = Option[any]{}
+	_ xml.Unmarshaler  = (*Option[any])(nil)
+	_ slog.LogValuer   = Option[any]{}
 )
 
 var (
@@ -205,34 +200,6 @@ func (o *Option[T]) UnmarshalJSON(data []byte) error {
 	}
 	o.some = true
 	o.v = v
-	return nil
-}
-
-func (o Option[T]) MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error {
-	if o.IsNone() {
-		return enc.WriteToken(jsontext.Null)
-	}
-	return jsonv2.MarshalEncode(enc, o.Value(), opts)
-}
-
-func (o *Option[T]) UnmarshalJSONV2(dec *jsontext.Decoder, opts jsonv2.Options) error {
-	if dec.PeekKind() == 'n' {
-		err := dec.SkipValue()
-		if err != nil {
-			return err
-		}
-		o.some = false
-		var zero T
-		o.v = zero
-		return nil
-	}
-	var t T
-	err := jsonv2.UnmarshalDecode(dec, &t, opts)
-	if err != nil {
-		return err
-	}
-	o.some = true
-	o.v = t
 	return nil
 }
 

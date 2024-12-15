@@ -8,8 +8,6 @@ import (
 	"github.com/ngicks/und/elastic"
 	"github.com/ngicks/und/option"
 
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und/sliceund"
 	sliceelastic "github.com/ngicks/und/sliceund/elastic"
 )
@@ -57,11 +55,11 @@ func main() {
 		bin []byte
 		err error
 	)
-	bin, err = jsonv2.Marshal(s1, jsontext.WithIndent("    "))
+	bin, err = json.MarshalIndent(s1, "", "    ")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("marshaled by v2=\n%s\n", bin)
+	fmt.Printf("marshaled by with omitzero =\n%s\n", bin)
 	// see? undefined (=zero value) fields are omitted.
 	/*
 	   marshaled by v2=
@@ -106,7 +104,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("marshaled by v1=\n%s\n", bin)
+	fmt.Printf("marshaled with omitempty =\n%s\n", bin)
 	// You see. Types defined under ./sliceund/ can be omitted by encoding/json.
 	// Types defined in ./ and ./elastic cannot be omitted by it.
 	/*

@@ -5,6 +5,7 @@
     "jsoniter",
     "ngicks",
     "omitempty",
+    "omitzero",
     "serde",
     "sliceund",
     "struct",

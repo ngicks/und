@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	jsonv2 "github.com/go-json-experiment/json"
-	"github.com/go-json-experiment/json/jsontext"
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
@@ -20,7 +18,6 @@ type Ela[T any] interface {
 	Len() int
 	// Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T]
 	MarshalJSON() ([]byte, error)
-	MarshalJSONV2(enc *jsontext.Encoder, opts jsonv2.Options) error
 	Pointer() *T
 	Pointers() []*T
 	// UnmarshalJSON(data []byte) error
@@ -80,24 +77,6 @@ func TestElastic_non_addressable[T Ela[U], U comparable](
 		assert.Equal(t, string(bin), "null")
 
 		bin, err = json.Marshal(undefined)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), "null")
-	})
-
-	t.Run("MarshalJSONV2", func(t *testing.T) {
-		var (
-			bin []byte
-			err error
-		)
-		bin, err = jsonv2.Marshal(defined)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), marshaled)
-
-		bin, err = jsonv2.Marshal(null)
-		assert.NilError(t, err)
-		assert.Equal(t, string(bin), "null")
-
-		bin, err = jsonv2.Marshal(undefined)
 		assert.NilError(t, err)
 		assert.Equal(t, string(bin), "null")
 	})
