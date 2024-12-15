@@ -15,8 +15,12 @@ func (e Elastic[T]) Iter() iter.Seq[option.Option[option.Options[T]]] {
 }
 
 func FromOptionSeq[T any](seq iter.Seq[option.Option[T]]) Elastic[T] {
+	options := option.Options[T](slices.Collect(seq))
+	if options == nil {
+		options = make(option.Options[T], 0)
+	}
 	return Elastic[T]{
-		v: und.Defined(option.Options[T](slices.Collect(seq))),
+		v: und.Defined(options),
 	}
 }
 

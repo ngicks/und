@@ -1,6 +1,7 @@
 package elastic
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/ngicks/und"
@@ -8,6 +9,17 @@ import (
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
 )
+
+func TestElastic_newFuncs(t *testing.T) {
+	for _, e := range []Elastic[int]{
+		FromOptionSeq(slices.Values([]option.Option[int](nil))),
+		FromOptions[int](),
+		FromPointers[int](),
+		FromValues[int](),
+	} {
+		assert.Assert(t, e.Unwrap().Value() != nil)
+	}
+}
 
 func TestElastic(t *testing.T) {
 	opts := []option.Option[string]{

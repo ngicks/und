@@ -69,6 +69,10 @@ func Undefined[T any]() Elastic[T] {
 // FromOptions converts variadic option.Option[T] values into Elastic[T].
 // options is retained by the returned value.
 func FromOptions[T any](options ...option.Option[T]) Elastic[T] {
+	if options == nil {
+		// prevent accidentally returning nil options
+		options = make(option.Options[T], 0)
+	}
 	return Elastic[T]{
 		v: und.Defined(option.Options[T](options)),
 	}

@@ -15,7 +15,11 @@ func (e Elastic[T]) Iter() iter.Seq[option.Option[option.Options[T]]] {
 }
 
 func FromOptionSeq[T any](seq iter.Seq[option.Option[T]]) Elastic[T] {
-	return Elastic[T](sliceund.Defined(option.Options[T](slices.Collect(seq))))
+	options := option.Options[T](slices.Collect(seq))
+	if options == nil {
+		options = make(option.Options[T], 0)
+	}
+	return Elastic[T](sliceund.Defined(options))
 }
 
 // TODO: add more useful into-iterator kind methods here?
