@@ -109,7 +109,7 @@ Note: this will be fixed after Go 1.24 is released.
 ```
 go install golang.org/dl/go1.24rc1@latest
 go1.24rc1 download
-go1.24rc1 run github.com/ngicks/und/example@77f793d0c981807e245c2d3c96dd5b4e3f0f6656
+go1.24rc1 run github.com/ngicks/und/example@v1.0.0-alpha7
 ```
 
 As you can see, types defined in ./ (package `und`) and ./elastic (package `elastic`) can be omitted with `json:",omitzero"` option for Go 1.24 or later version.
@@ -267,11 +267,22 @@ func main() {
 
 ## generate Patcher, Validator, Plain types with github.com/ngicks/go-codegen/codegen
 
+`github.com/ngicks/go-codegen/codegen` has the `undgen` sub command which generates methods to, types from the types that contains any und types(`option.Option[T]`, `und.Und[T]`, `elastic.Elastic[T]`, `sliceund.Und[T]` and `sliceund/elastic.Elastic[T]`).
+
 ```
 go run github.com/ngicks/go-codegen/codegen undgen patch     -v --dir /path/to/root/dir/of/target/package --pkg ./path/to/package ...
 go run github.com/ngicks/go-codegen/codegen undgen validator -v --dir /path/to/root/dir/of/target/package --pkg ./...
 go run github.com/ngicks/go-codegen/codegen undgen plain     -v --dir /path/to/root/dir/of/target/package --pkg ./...
 ```
+
+- The patch sub-sub commands generates patcher for any struct types.
+  - It takes any struct types, then generates the type whose field is same as target's but the type is wrapped in `sliceund.Und` and `json:",omitempty"` added.
+  - The generated patch type can be unmarshaled from partial JSON then can be used to patch(partially overwrite fields) the target struct.
+- The validator sub-sub commands generates validator method for any types containing any of und types.
+  - The method only validates und state of the und fields.
+  - It validates according to `und:""` struct tag.
+- The plain sub-sub commands generates *plain* types and interconversion methods on types.
+  - It takes any types containing any of und fields, then generates *plain* type whose fields is same as target's but the type is unwrapped according to `und:""` struct tag.
 
 Notable flags:
 
@@ -280,7 +291,7 @@ Notable flags:
 - `--pkg`: same package pattern that can be passed to `go list`. must be prefixed with `./`. `patch` sub command only accept pattern that matches only a single package.
 - `types...`: the `patch` sub command needs `types...` arguments to specify target type names. Use `...` to target all types found under `--pkg`.
 
-Examples below assumes `example.go` is defined in `./pkg/example`
+Examples below assumes `example.go` is placed under `./pkg/example` and it contains types described.
 
 ### patch command
 
