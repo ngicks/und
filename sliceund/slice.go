@@ -21,37 +21,27 @@ var (
 	_ slog.LogValuer        = Und[any]{}
 )
 
-// Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
+// Und[T] is a slice-based variant of [und.Und].
 //
-// Und[T] can be a omittable struct field with omitempty option of `encoding/json`.
+// Und[T] exposes same set of methods as [und.Und] and can be used in almost same way.
+// Although it exposes its internal value, it is only intended to let some encoders, e.g. encoding/json, etc, see it as omittable value.
+// You should manipulate the value only through methods.
 //
-// Although it exposes its internal data structure,
-// you should not mutate internal data.
-// Using map[T]U, []T or json.RawMessage as base type is only allowed hacks
-// to make it omittable by `json:",omitempty" option,
-// without losing freedom of adding methods.
-// Any method implemented on Und[T] assumes
-// it has only either 0 or 1 element.
-// So mutating an Und[T] object, e.g. appending it to have 2 or more elements,
-// causes undefined behaviors and not promised to behave same between versions.
-//
-// Und[T] is intended to behave much like a simple variable.
-// There are only 2 way to change its internal state.
-// Assigning a value of corresponding state to the variable you intend to change.
-// Or calling UnmarshalJSON on an addressable Und[T].
+// *undefined* Und[T] struct fields are omitted by encoding/json
+// if either or both of `json:",omitempty"` and `json:",omitzero"` (for Go 1.24 or later) options are attached to those fields.
 type Und[T any] []option.Option[T]
 
-// Defined returns a `defined` Und[T] which contains t.
+// Defined returns a defined Und[T] which contains t.
 func Defined[T any](t T) Und[T] {
 	return Und[T]{option.Some(t)}
 }
 
-// Null returns a `null` Und[T].
+// Null returns a null Und[T].
 func Null[T any]() Und[T] {
 	return Und[T]{option.None[T]()}
 }
 
-// Undefined returns an `undefined` Und[T].
+// Undefined returns an undefined Und[T].
 func Undefined[T any]() Und[T] {
 	return nil
 }

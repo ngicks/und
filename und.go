@@ -23,15 +23,14 @@ var (
 	_ validate.UndChecker   = Und[any]{}
 )
 
-// Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
-// Und[T] is comparable if T is comparable. And it can be copied by assign.
+// Und[T] is a type that can express T (a value of type T), *null* (exists but empty), or *undefined* (absent, unspecified).
 //
-// Und[T] implements IsZero and is omitted when is a struct field of other structs and appropriate marshalers and appropriate struct tag on the field,
-// e.g. "github.com/go-json-experiment/json/jsontext" with omitzero option set to the field,
-// or "github.com/json-iterator/go" with omitempty option to the field and an appropriate extension.
+// Und[T] implements json.Unmarshaler so that it can be unmarshaled from all of those type.
 //
-// If you need to stick with encoding/json v1, you can use github.com/ngicks/und/sliceund,
-// a slice based version of Und[T] whish is already skppable by v1.
+// Und[T] implements IsZero.
+// For Go 1.24 or later version, *undefined* Und[T] struct fields are omitted by [json.Marshal] (or similar functions)
+// if `json:",omitzero"` option is attached to those fields.
+// For Go 1.23 or older version, instead you can use the sliceund variant with `json:",omitempty"` option.
 type Und[T any] struct {
 	opt option.Option[option.Option[T]]
 }
@@ -169,6 +168,7 @@ func (u Und[T]) Value() T {
 }
 
 // Pointer returns u's internal value as a pointer.
+// The value is copied by assignment before returned from Pointer.
 func (u Und[T]) Pointer() *T {
 	if !u.IsDefined() {
 		return nil

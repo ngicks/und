@@ -24,16 +24,17 @@ var (
 	_ validate.ElasticLike  = Elastic[any]{}
 )
 
-// Elastic[T] is a type that can express undefined | null | T | [](null | T).
+// Elastic[T] is a type that can express *undefined* | *null* | T | [](null | T).
 // Elastic[T] implements json.Unmarshaler so that it can be unmarshaled from all of those type.
 // However it always marshaled into an array of JSON value that corresponds to T.
 //
-// Elastic[T] implements IsZero and can be omittable struct fields when marshaled through appropriate marshalers,
-// e.g. "github.com/go-json-experiment/json/jsontext" with omitzero option set to the field,
-// or "github.com/json-iterator/go" with omitempty option to the field and an appropriate extension.
+// Elastic[T] is defined mainly to create/consume JSON documents stored in Elasticsearch.
+// It may also be useful for parsing hand-written configuration files.
 //
-// If you need to stick with encoding/json v1, you can use github.com/ngicks/und/sliceund/elastic,
-// a slice based version of Elastic[T] whish is already skppable by v1.
+// Elastic[T] implements IsZero.
+// For Go 1.24 or later version, *undefined* Elastic[T] struct fields are omitted by encoding/json
+// if `json:",omitzero"` option is attached to those fields.
+// For Go 1.23 or older version, instead you can use the sliceund/elastic variant with `json:",omitempty"` option.
 type Elastic[T any] struct {
 	v und.Und[option.Options[T]]
 }
