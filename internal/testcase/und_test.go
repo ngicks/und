@@ -4,27 +4,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/ngicks/und"
 	"github.com/ngicks/und/sliceund"
 	"gotest.tools/v3/assert"
 )
-
-type undV2 struct {
-	Padding1 int             `json:",omitzero"`
-	V        und.Und[string] `json:",omitzero"`
-	Padding2 int             `json:",omitzero"`
-}
 
 type slicesUndV1 struct {
 	Padding1 int                  `json:",omitempty"`
 	V        sliceund.Und[string] `json:",omitempty"`
 	Padding2 int                  `json:",omitempty"`
-}
-
-type slicesUndV2 struct {
-	Padding1 int                  `json:",omitzero"`
-	V        sliceund.Und[string] `json:",omitzero"`
-	Padding2 int                  `json:",omitzero"`
 }
 
 type serdeTestCase struct {
