@@ -293,7 +293,7 @@ func or[T, U any](t option.Option[T], u option.Option[U]) option.Option[struct{}
 
 func (o UndOpt) ValidElastic(e ElasticLike) bool {
 	// there's possible many intersection
-	validState := option.MapOption(
+	validState := option.Map(
 		o.states,
 		func(s StateValidator) bool {
 			return s.Valid(e)
@@ -306,10 +306,10 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 	if !e.IsDefined() {
 		return true
 	}
-	return option.MapOption(
+	return option.Map(
 		or(o.len, o.values),
 		func(_ struct{}) bool {
-			validLen := option.MapOption(
+			validLen := option.Map(
 				o.len,
 				func(s LenValidator) bool { return s.Valid(e) },
 			).
@@ -318,7 +318,7 @@ func (o UndOpt) ValidElastic(e ElasticLike) bool {
 				return false
 			}
 
-			validValue := option.MapOption(
+			validValue := option.Map(
 				o.values,
 				func(s ValuesValidator) bool {
 					return s.Valid(e)

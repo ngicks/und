@@ -11,6 +11,16 @@ func FromOk[T any](t T, ok bool) Option[T] {
 	return None[T]()
 }
 
+// Assert type-asserts v into T.
+// If v's internal value is T then returns Some of that value,
+// None otherwise.
+func Assert[T any](v any) Option[T] {
+	if t, ok := v.(T); ok {
+		return Some(t)
+	}
+	return None[T]()
+}
+
 // GetMap gets a value associated with key.
 // If key has a value, the Option is some wrapping the value.
 // Otherwise it returns none Option.
