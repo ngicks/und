@@ -11,22 +11,10 @@ import (
 	"gotest.tools/v3/assert/cmp"
 )
 
-type elasticV2 struct {
-	Padding1 int                     `json:",omitzero"`
-	V        elastic.Elastic[string] `json:",omitzero"`
-	Padding2 int                     `json:",omitzero"`
-}
-
 type sliceElasticV1 struct {
 	Padding1 int                          `json:",omitempty"`
 	V        sliceelastic.Elastic[string] `json:",omitempty"`
 	Padding2 int                          `json:",omitempty"`
-}
-
-type sliceElasticV2 struct {
-	Padding1 int                          `json:",omitzero"`
-	V        sliceelastic.Elastic[string] `json:",omitzero"`
-	Padding2 int                          `json:",omitzero"`
 }
 
 type serdeTestCaseElastic struct {

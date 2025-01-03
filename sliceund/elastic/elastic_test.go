@@ -57,7 +57,13 @@ func TestElastic_Methods(t *testing.T) {
 			{null, null},
 			{undefined, undefined},
 		} {
-			assert.Assert(t, combo[0].Equal(combo[1]))
+			assert.Assert(
+				t,
+				combo[0].EqualFunc(
+					combo[1],
+					func(i, j string) bool { return i == j },
+				),
+			)
 		}
 
 		for _, combo := range [][2]Elastic[string]{
@@ -65,7 +71,13 @@ func TestElastic_Methods(t *testing.T) {
 			{mixed2, undefined},
 			{null, undefined},
 		} {
-			assert.Assert(t, !combo[0].Equal(combo[1]))
+			assert.Assert(
+				t,
+				!combo[0].EqualFunc(
+					combo[1],
+					func(i, j string) bool { return i == j },
+				),
+			)
 		}
 	})
 
@@ -110,25 +122,69 @@ func TestElastic_Methods(t *testing.T) {
 
 		assert.Assert(
 			t,
-			mixed1.Map(mapper).Equal(FromOptions(
-				option.Some("foofoo"),
-				option.None[string](),
-				option.Some("barbar"),
-			)),
+			mixed1.Map(mapper).EqualFunc(
+				FromOptions(
+					option.Some("foofoo"),
+					option.None[string](),
+					option.Some("barbar"),
+				),
+				func(i, j string) bool { return i == j },
+			),
 		)
 		assert.Assert(
 			t,
-			null.Map(mapper).Equal(Null[string]()),
+			null.Map(mapper).EqualFunc(Null[string](), func(i, j string) bool { return i == j }),
 		)
 		assert.Assert(
 			t,
-			undefined.Map(mapper).Equal(Undefined[string]()),
+			undefined.Map(mapper).EqualFunc(Undefined[string](), func(i, j string) bool { return i == j }),
 		)
 	})
 
 	t.Run("Unwrap", func(t *testing.T) {
-		assert.Assert(t, mixed2.Unwrap().Equal(sliceund.Defined(option.Options[string]{option.None[string](), option.Some("bar")})))
-		assert.Assert(t, null.Unwrap().Equal(sliceund.Null[option.Options[string]]()))
-		assert.Assert(t, undefined.Unwrap().Equal(sliceund.Undefined[option.Options[string]]()))
+		assert.Assert(t, mixed2.Unwrap().EqualFunc(sliceund.Defined(option.Options[string]{option.None[string](), option.Some("bar")}), option.EqualOptions))
+		assert.Assert(t, null.Unwrap().EqualFunc(sliceund.Null[option.Options[string]](), option.EqualOptions))
+		assert.Assert(t, undefined.Unwrap().EqualFunc(sliceund.Undefined[option.Options[string]](), option.EqualOptions))
 	})
+}
+
+func Test_Clone(t *testing.T) {
+	foo := "foo"
+	bar := "bar"
+
+	org := foo
+	def := WrapPointer(&org)
+	null := Null[*string]()
+	undefined := Undefined[*string]()
+
+	assert.Equal(t, foo, *def.Value())
+
+	cloneStringP := func(s *string) *string {
+		if s == nil {
+			return nil
+		}
+		v := *s
+		return &v
+	}
+	cloned := def.CloneFunc(cloneStringP)
+	assert.Equal(t, foo, *cloned.Value())
+	shallow := Clone(def)
+	assert.Equal(t, foo, *shallow.Value())
+
+	org = bar
+	assert.Equal(t, bar, *def.Value())
+	assert.Equal(t, bar, *shallow.Value())
+	assert.Equal(t, foo, *cloned.Value())
+
+	cloned = null.CloneFunc(cloneStringP)
+	assert.Assert(t, cloned.IsNull())
+
+	cloned = Clone(null)
+	assert.Assert(t, cloned.IsNull())
+
+	cloned = undefined.CloneFunc(cloneStringP)
+	assert.Assert(t, cloned.IsUndefined())
+
+	cloned = Clone(undefined)
+	assert.Assert(t, cloned.IsUndefined())
 }

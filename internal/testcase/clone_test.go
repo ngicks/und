@@ -13,74 +13,62 @@ import (
 	sliceelastic "github.com/ngicks/und/sliceund/elastic"
 )
 
-var (
-	_ option.Cloner[option.Option[any]]        = option.Option[any]{}
-	_ option.Cloner[option.Options[any]]       = option.Options[any]{}
-	_ option.Cloner[und.Und[any]]              = und.Und[any]{}
-	_ option.Cloner[sliceund.Und[any]]         = sliceund.Und[any]{}
-	_ option.Cloner[elastic.Elastic[any]]      = elastic.Elastic[any]{}
-	_ option.Cloner[sliceelastic.Elastic[any]] = sliceelastic.Elastic[any]{}
-)
-
-type clonable []int
-
-func (c clonable) Clone() clonable {
-	return slices.Clone(c)
-}
-
 func TestCloner(t *testing.T) {
-	clonerTetSet[[]int](t, false)
-	clonerTetSet[clonable](t, true)
+	clonerTetSet(t)
 }
 
-func clonerTetSet[T ~[]U, U int](t *testing.T, shouldDiffer bool) {
+func clonerTetSet(t *testing.T) {
 	testCloner(
 		t,
-		shouldDiffer,
-		option.Some(T{1, 2, 3}),
+		option.Some([]int{1, 2, 3}),
+		slices.Clone,
 		testDifferenceValuer,
 	)
 	testCloner(
 		t,
-		shouldDiffer,
-		option.Options[T]{option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})},
+		option.Options[[]int]{option.Some([]int{1, 2, 3}), option.Some([]int{4, 5, 6})},
+		slices.Clone,
 		testDifferenceOptions,
 	)
 	testCloner(
 		t,
-		shouldDiffer,
-		und.Defined(T{1, 2, 3}),
+		und.Defined([]int{1, 2, 3}),
+		slices.Clone,
 		testDifferenceValuer,
 	)
 	testCloner(
 		t,
-		shouldDiffer,
-		sliceund.Defined(T{1, 2, 3}),
+		sliceund.Defined([]int{1, 2, 3}),
+		slices.Clone,
 		testDifferenceValuer,
 	)
 	testCloner(
 		t,
-		shouldDiffer,
-		elastic.FromOptions(option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})),
-		func(a, b elastic.Elastic[T]) (bool, unsafe.Pointer, unsafe.Pointer) {
+		elastic.FromOptions(option.Some([]int{1, 2, 3}), option.Some([]int{4, 5, 6})),
+		slices.Clone,
+		func(a, b elastic.Elastic[[]int]) (bool, unsafe.Pointer, unsafe.Pointer) {
 			return testDifferenceOptions(a.Unwrap().Value(), b.Unwrap().Value())
 		},
 	)
 	testCloner(
 		t,
-		shouldDiffer,
-		sliceelastic.FromOptions(option.Some(T{1, 2, 3}), option.Some(T{4, 5, 6})),
-		func(a, b sliceelastic.Elastic[T]) (bool, unsafe.Pointer, unsafe.Pointer) {
+		sliceelastic.FromOptions(option.Some([]int{1, 2, 3}), option.Some([]int{4, 5, 6})),
+		slices.Clone,
+		func(a, b sliceelastic.Elastic[[]int]) (bool, unsafe.Pointer, unsafe.Pointer) {
 			return testDifferenceOptions(a.Unwrap().Value(), b.Unwrap().Value())
 		},
 	)
 }
 
-func testCloner[T option.Cloner[U], U any](t *testing.T, shouldDiffer bool, initial T, isDifferent func(a T, b U) (bool, unsafe.Pointer, unsafe.Pointer)) {
+type cloner[T, U any] interface {
+	CloneFunc(cloneU func(U) U) T
+}
+
+func testCloner[C cloner[T, U], T, U any](t *testing.T, initial C, cloneU func(U) U, isDifferent func(a C, b T) (bool, unsafe.Pointer, unsafe.Pointer)) {
 	t.Helper()
-	cloned := initial.Clone()
+	cloned := initial.CloneFunc(cloneU)
 	diff, ap, bp := isDifferent(initial, cloned)
-	if diff != shouldDiffer {
+	if !diff {
 		t.Fatalf("not different: left = %#v, right = %#v, left pointer = %p, right pointer = %p", initial, cloned, ap, bp)
 	}
 }

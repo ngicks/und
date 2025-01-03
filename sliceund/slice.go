@@ -12,15 +12,13 @@ import (
 )
 
 var (
-	_ option.Equality[Und[any]] = Und[any]{}
-	_ option.Cloner[Und[any]]   = Und[any]{}
-	_ validate.UndValidator     = Und[any]{}
-	_ validate.UndChecker       = Und[any]{}
-	_ json.Marshaler            = Und[any]{}
-	_ json.Unmarshaler          = (*Und[any])(nil)
-	_ xml.Marshaler             = Und[any]{}
-	_ xml.Unmarshaler           = (*Und[any])(nil)
-	_ slog.LogValuer            = Und[any]{}
+	_ validate.UndValidator = Und[any]{}
+	_ validate.UndChecker   = Und[any]{}
+	_ json.Marshaler        = Und[any]{}
+	_ json.Unmarshaler      = (*Und[any])(nil)
+	_ xml.Marshaler         = Und[any]{}
+	_ xml.Unmarshaler       = (*Und[any])(nil)
+	_ slog.LogValuer        = Und[any]{}
 )
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
@@ -169,26 +167,24 @@ func (u *Und[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Equal implements Equality[Und[T]].
-// Equal panics if T is uncomparable and does not implement Equality[T].
-func (u Und[T]) Equal(other Und[T]) bool {
-	if u.IsUndefined() || other.IsUndefined() {
-		return u.IsUndefined() == other.IsUndefined()
-	}
-	return u[0].Equal(other[0])
-}
-
 // EqualFunc reports whether two Und values are equal.
 // EqualFunc checks state of both. If both state does not match, it returns false.
 // If both are "defined" state, then checks equality of their value by cmp,
 // then returns true if they are equal.
-func (u Und[T]) EqualFunc(other Und[T], cmp func(i, j T) bool) bool {
-	if u.IsUndefined() || other.IsUndefined() {
-		return u.IsUndefined() == other.IsUndefined()
+func (u Und[T]) EqualFunc(v Und[T], cmp func(i, j T) bool) bool {
+	if u.IsUndefined() || v.IsUndefined() {
+		return u.IsUndefined() == v.IsUndefined()
 	}
-	return u[0].EqualFunc(other[0], cmp)
+	return u[0].EqualFunc(v[0], cmp)
 }
 
+// Equal tests equality of l and r then returns true if they are equal, false otherwise.
+// For those types that are comparable but need special tests, e.g. time.Time, you should use [Und.EqualFunc] instead.
+func Equal[T comparable](l, r Und[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool { return i == j })
+}
+
+// CloneFunc clones u using the cloneT functions.
 func (u Und[T]) CloneFunc(cloneT func(T) T) Und[T] {
 	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] {
 		return o.CloneFunc(func(o option.Option[T]) option.Option[T] { return o.CloneFunc(cloneT) })
@@ -196,9 +192,8 @@ func (u Und[T]) CloneFunc(cloneT func(T) T) Und[T] {
 }
 
 // Clone clones u.
-// This is only a copy-by-assign unless T implements Cloner[T].
-func (u Und[T]) Clone() Und[T] {
-	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
+func Clone[T comparable](u Und[T]) Und[T] {
+	return u.CloneFunc(func(t T) T { return t })
 }
 
 func (u Und[T]) UndValidate() error {

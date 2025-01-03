@@ -36,12 +36,12 @@ type valueSet[T any] struct {
 	SliceEla sliceelastic.Elastic[T]
 }
 
-func (v valueSet[T]) Equal(t *testing.T, v2 valueSet[T]) {
-	assert.Assert(t, v2.Opt.Equal(v.Opt), "left = %+v, right %+v", v2.SliceUnd, v.SliceUnd)
-	assert.Assert(t, v2.Und.Equal(v.Und), "left = %+v, right %+v", v2.SliceUnd, v.SliceUnd)
-	assert.Assert(t, v2.SliceUnd.Equal(v.SliceUnd), "left = %+v, right %+v", v2.SliceUnd, v.SliceUnd)
-	assert.Assert(t, v2.Ela.Equal(v.Ela), "left = %+v, right %+v", v2.Ela, v.Ela)
-	assert.Assert(t, v2.SliceEla.Equal(v.SliceEla), "left = %+v, right %+v", v2.SliceEla, v.SliceEla)
+func (v valueSet[T]) EqualFunc(t *testing.T, v2 valueSet[T], cmp func(i, j T) bool) {
+	assert.Assert(t, v2.Opt.EqualFunc(v.Opt, cmp), "left = %+v, right %+v", v2.SliceUnd, v.SliceUnd)
+	assert.Assert(t, v2.Und.EqualFunc(v.Und, cmp), "left = %+v, right %+v", v2.SliceUnd, v.SliceUnd)
+	assert.Assert(t, v2.SliceUnd.EqualFunc(v.SliceUnd, cmp), "left = %+v, right %+v", v2.SliceUnd, v.SliceUnd)
+	assert.Assert(t, v2.Ela.EqualFunc(v.Ela, cmp), "left = %+v, right %+v", v2.Ela, v.Ela)
+	assert.Assert(t, v2.SliceEla.EqualFunc(v.SliceEla, cmp), "left = %+v, right %+v", v2.SliceEla, v.SliceEla)
 }
 
 type xmlMarshaler[T any] struct {
@@ -97,7 +97,7 @@ func TestXmlMarshaler(t *testing.T) {
 		var s xmlMarshaler[int]
 		err := xml.Unmarshal([]byte(tc.bin), &s)
 		assert.NilError(t, err)
-		tc.values.Equal(t, s.into())
+		tc.values.EqualFunc(t, s.into(), func(i, j int) bool { return i == j })
 		bin, err := xml.Marshal(s)
 		assert.NilError(t, err)
 		assert.Equal(t, string(bin), tc.bin)
@@ -113,11 +113,11 @@ type nested struct {
 }
 
 func (n nested) Equal(v nested) bool {
-	return n.Opt.Equal(v.Opt) &&
-		n.Und.Equal(v.Und) &&
-		n.SliceUnd.Equal(v.SliceUnd) &&
-		n.Ela.Equal(v.Ela) &&
-		n.SliceEla.Equal(v.SliceEla)
+	return option.Equal(n.Opt, v.Opt) &&
+		und.Equal(n.Und, v.Und) &&
+		sliceund.Equal(n.SliceUnd, v.SliceUnd) &&
+		elastic.Equal(n.Ela, v.Ela) &&
+		sliceelastic.Equal(n.SliceEla, v.SliceEla)
 }
 
 func TestXmlMarshaler_nested(t *testing.T) {
@@ -156,7 +156,7 @@ func TestXmlMarshaler_nested(t *testing.T) {
 		var s xmlMarshaler[nested]
 		err := xml.Unmarshal([]byte(tc.bin), &s)
 		assert.NilError(t, err)
-		tc.values.Equal(t, s.into())
+		tc.values.EqualFunc(t, s.into(), func(i, j nested) bool { return i.Equal(j) })
 		bin, err := xml.Marshal(s)
 		assert.NilError(t, err)
 		assert.Equal(t, string(bin), tc.bin)

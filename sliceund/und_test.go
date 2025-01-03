@@ -99,7 +99,8 @@ func TestUnd_Methods(t *testing.T) {
 			{definedNull, definedNull},
 			{undefined, undefined},
 		} {
-			assert.Assert(t, combo[0].Equal(combo[1]))
+			assert.Assert(t, combo[0].EqualFunc(combo[1], func(i, j string) bool { return i == j }))
+			assert.Assert(t, Equal(combo[0], combo[1]))
 		}
 
 		for _, combo := range [][2]Und[string]{
@@ -107,7 +108,7 @@ func TestUnd_Methods(t *testing.T) {
 			{definedBar, undefined},
 			{definedNull, undefined},
 		} {
-			assert.Assert(t, !combo[0].Equal(combo[1]))
+			assert.Assert(t, !combo[0].EqualFunc(combo[1], func(i, j string) bool { return i == j }))
 		}
 	})
 
@@ -140,21 +141,36 @@ func TestUnd_Methods(t *testing.T) {
 	t.Run("Map", func(t *testing.T) {
 		assert.Assert(
 			t,
-			definedBar.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
-				return Defined(o.Value().Value() + o.Value().Value()).Unwrap()
-			}).Equal(Defined("barbar")),
+			definedBar.Map(
+				func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+					return Defined(o.Value().Value() + o.Value().Value()).Unwrap()
+				},
+			).EqualFunc(
+				Defined("barbar"),
+				func(i, j string) bool { return i == j },
+			),
 		)
 		assert.Assert(
 			t,
-			definedNull.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
-				return Defined("aa").Unwrap()
-			}).Equal(Defined("aa")),
+			definedNull.Map(
+				func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+					return Defined("aa").Unwrap()
+				},
+			).EqualFunc(
+				Defined("aa"),
+				func(i, j string) bool { return i == j },
+			),
 		)
 		assert.Assert(
 			t,
-			undefined.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
-				return Defined("bb").Unwrap()
-			}).Equal(Defined("bb")),
+			undefined.Map(
+				func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+					return Defined("bb").Unwrap()
+				},
+			).EqualFunc(
+				Defined("bb"),
+				func(i, j string) bool { return i == j },
+			),
 		)
 	})
 
@@ -163,4 +179,45 @@ func TestUnd_Methods(t *testing.T) {
 		assert.Equal(t, definedNull.Unwrap(), option.Some(option.None[string]()))
 		assert.Equal(t, undefined.Unwrap(), option.None[option.Option[string]]())
 	})
+}
+
+func Test_Clone(t *testing.T) {
+	foo := "foo"
+	bar := "bar"
+
+	org := foo
+	def := WrapPointer(&org)
+	null := Null[*string]()
+	undefined := Undefined[*string]()
+
+	assert.Equal(t, foo, *def.Value())
+
+	cloneStringP := func(s *string) *string {
+		if s == nil {
+			return nil
+		}
+		v := *s
+		return &v
+	}
+	cloned := def.CloneFunc(cloneStringP)
+	assert.Equal(t, foo, *cloned.Value())
+	shallow := Clone(def)
+	assert.Equal(t, foo, *shallow.Value())
+
+	org = bar
+	assert.Equal(t, bar, *def.Value())
+	assert.Equal(t, bar, *shallow.Value())
+	assert.Equal(t, foo, *cloned.Value())
+
+	cloned = null.CloneFunc(cloneStringP)
+	assert.Assert(t, cloned.IsNull())
+
+	cloned = Clone(null)
+	assert.Assert(t, cloned.IsNull())
+
+	cloned = undefined.CloneFunc(cloneStringP)
+	assert.Assert(t, cloned.IsUndefined())
+
+	cloned = Clone(undefined)
+	assert.Assert(t, cloned.IsUndefined())
 }

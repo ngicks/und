@@ -19,10 +19,8 @@ var (
 )
 
 var (
-	_ option.Equality[Und[any]] = Und[any]{}
-	_ option.Cloner[Und[any]]   = Und[any]{}
-	_ validate.UndValidator     = Und[any]{}
-	_ validate.UndChecker       = Und[any]{}
+	_ validate.UndValidator = Und[any]{}
+	_ validate.UndChecker   = Und[any]{}
 )
 
 // Und[T] is a type that can express a value (`T`), empty (`null`), or absent (`undefined`).
@@ -87,7 +85,7 @@ func FromOption[T any](opt option.Option[option.Option[T]]) Und[T] {
 }
 
 // FromSqlNull converts a valid sql.Null[T] to a defined Und[T]
-// and invalid one into a null Und[].
+// and invalid one into a null Und[T].
 func FromSqlNull[T any](v sql.Null[T]) Und[T] {
 	if !v.Valid {
 		return Null[T]()
@@ -115,25 +113,29 @@ func (u Und[T]) IsUndefined() bool {
 	return u.opt.IsNone()
 }
 
-// Equal implements Equality[Und[T]].
-// Equal panics if T is uncomparable and does not implement Equality[T].
-func (u Und[T]) Equal(other Und[T]) bool {
-	return u.opt.Equal(other.opt)
-}
-
 // EqualFunc reports whether two Und values are equal.
 // EqualFunc checks state of both. If both state does not match, it returns false.
-// If both are "defined" state, then checks equality of their value by cmp,
+// If both are *defined* state, then it checks equality of their value by cmp,
 // then returns true if they are equal.
-func (u Und[T]) EqualFunc(other Und[T], cmp func(i, j T) bool) bool {
+func (u Und[T]) EqualFunc(t Und[T], cmp func(i, j T) bool) bool {
 	return u.opt.EqualFunc(
-		other.opt,
+		t.opt,
 		func(i, j option.Option[T]) bool {
 			return i.EqualFunc(j, cmp)
 		},
 	)
 }
 
+// Equal tests equality of l and r then returns true if they are equal, false otherwise.
+// For those types that are comparable but need special tests, e.g. time.Time, you should use [Und.EqualFunc] instead.
+//
+// This only sits here only to keep consistency to sliceund, elastic, sliceund/elastic.
+// You can simply test their equality by only doing l == r.
+func Equal[T comparable](l, r Und[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool { return i == j })
+}
+
+// CloneFunc clones u using the cloneT functions.
 func (u Und[T]) CloneFunc(cloneT func(T) T) Und[T] {
 	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] {
 		return o.CloneFunc(func(o option.Option[T]) option.Option[T] {
@@ -143,9 +145,10 @@ func (u Und[T]) CloneFunc(cloneT func(T) T) Und[T] {
 }
 
 // Clone clones u.
-// This is only a copy-by-assign unless T implements Cloner[T].
-func (u Und[T]) Clone() Und[T] {
-	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] { return o.Clone() })
+//
+// It just returns u; this only sits here only for consistency to sliceund, elastic, sliceund/elastic.
+func Clone[T comparable](u Und[T]) Und[T] {
+	return u
 }
 
 func (u Und[T]) UndValidate() error {

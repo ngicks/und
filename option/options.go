@@ -9,23 +9,13 @@ import (
 )
 
 var (
-	_ Equality[Options[any]] = Options[any]{}
-	_ Cloner[Options[any]]   = Options[any]{}
-	_ validate.UndValidator  = Options[any]{}
-	_ validate.UndChecker    = Options[any]{}
+	_ validate.UndValidator = Options[any]{}
+	_ validate.UndChecker   = Options[any]{}
 )
 
 type Options[T any] []Option[T]
 
-func (o Options[T]) Equal(opts Options[T]) bool {
-	return slices.EqualFunc(
-		o, opts,
-		func(o1, o2 Option[T]) bool {
-			return o1.Equal(o2)
-		},
-	)
-}
-
+// EqualFunc tests equality of l and r using an equality function cmp.
 func (o Options[T]) EqualFunc(opts Options[T], cmp func(i, j T) bool) bool {
 	return slices.EqualFunc(
 		o, opts,
@@ -35,30 +25,33 @@ func (o Options[T]) EqualFunc(opts Options[T], cmp func(i, j T) bool) bool {
 	)
 }
 
+// EqualOptions tests equality of l and r then returns true if they are equal, false otherwise
+func EqualOptions[T comparable, S ~[]Option[T]](l, r S) bool {
+	return Options[T](l).EqualFunc(Options[T](r), func(i, j T) bool { return i == j })
+}
+
+// EqualOptionsFunc tests equality of l and r using cmp then returns true if they are equal, false otherwise.
+func EqualOptionsFunc[T any, S ~[]Option[T]](l, r S, cmp func(i, j T) bool) bool {
+	return Options[T](l).EqualFunc(Options[T](r), cmp)
+}
+
 func (o Options[T]) CloneFunc(cloneT func(T) T) Options[T] {
 	if o == nil { // in case it matters.
 		return nil
 	}
-	opts := make(Options[T], len(o))
+	opts := make(Options[T], len(o), cap(o)) // exact cap copying, in case it matters.
 	for i, v := range o {
 		opts[i] = v.CloneFunc(cloneT)
 	}
 	return opts
 }
 
-func (o Options[T]) Clone() Options[T] {
+func CloneOptions[T comparable, S ~[]Option[T]](o S) Options[T] {
 	if o == nil {
 		return nil
 	}
-	opts := make(Options[T], len(o))
-	var zero T
-	if _, hasClone := any(zero).(Cloner[T]); hasClone {
-		for i, v := range o {
-			opts[i] = v.Map(func(v T) T { return any(v).(Cloner[T]).Clone() })
-		}
-	} else {
-		copy(opts, o)
-	}
+	opts := make(Options[T], len(o), cap(o)) // exact cap copying, in case it matters.
+	copy(opts, o)
 	return opts
 }
 

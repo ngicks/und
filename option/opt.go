@@ -15,19 +15,6 @@ var (
 	_ slog.LogValuer   = Option[any]{}
 )
 
-var (
-	_ Equality[Option[int]] = (*Option[int])(nil)
-	_ Cloner[Option[any]]   = Option[any]{}
-)
-
-type Equality[T any] interface {
-	Equal(T) bool
-}
-
-type Cloner[T any] interface {
-	Clone() T
-}
-
 // Option represents an optional value.
 type Option[T any] struct {
 	some bool
@@ -116,57 +103,11 @@ func (o Option[T]) Pointer() *T {
 	return &t
 }
 
+// CloneFunc clones o using the cloneT function.
 func (o Option[T]) CloneFunc(cloneT func(T) T) Option[T] {
 	return o.Map(func(t T) T {
 		return cloneT(t)
 	})
-}
-
-func (o Option[T]) Clone() Option[T] {
-	return o.Map(func(v T) T {
-		if cloner, ok := any(v).(Cloner[T]); ok {
-			return cloner.Clone()
-		}
-		return v
-	})
-}
-
-// Equal implements Equality[Option[T]].
-//
-// Equal tests o and other if both are Some or None.
-// If both have value, it tests equality of their values.
-//
-// Equal panics If T or dynamic type of T is not comparable.
-//
-// Option is comparable if T is comparable.
-// Equal only exists for cases where T needs a special Equal method (e.g. time.Time, slice based types)
-//
-// Equal first checks if T implements Equality[T], then also for *T.
-// If it does not, then Equal compares by the `==` comparison operator.
-func (o Option[T]) Equal(other Option[T]) bool {
-	if !o.some || !other.some { // inlined simple case
-		return o.some == other.some
-	}
-
-	return equal(o.v, other.v)
-}
-
-func equal[T any](t, u T) bool {
-	// Try type assertion first.
-	// The implemented interface has precedence.
-
-	// Check for T. Below *T is also checked but in case T is already a pointer type, when T = *U, *(*U) might not implement Equality.
-	eq, ok := any(t).(Equality[T])
-	if ok {
-		return eq.Equal(u)
-	}
-	// check for *T so that we can find method implemented for *T not only ones for T.
-	eq, ok = any(&t).(Equality[T])
-	if ok {
-		return eq.Equal(u)
-	}
-
-	return any(t) == any(u) // may panic if T or dynamic type of T is uncomparable.
 }
 
 // EqualFunc tests o and other if both are Some or None.
@@ -178,6 +119,11 @@ func (o Option[T]) EqualFunc(other Option[T], cmp func(i, j T) bool) bool {
 	}
 
 	return cmp(o.v, other.v)
+}
+
+// Equal tests an equality of l and r then returns true if they are equal, false otherwise
+func Equal[T comparable](l, r Option[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool { return i == j })
 }
 
 func (o Option[T]) MarshalJSON() ([]byte, error) {

@@ -105,7 +105,7 @@ func TestUnd_Methods(t *testing.T) {
 			{null, null},
 			{undefined, undefined},
 		} {
-			assert.Assert(t, combo[0].Equal(combo[1]))
+			assert.Assert(t, und.Equal(combo[0], combo[1]))
 		}
 
 		for _, combo := range [][2]und.Und[string]{
@@ -113,7 +113,7 @@ func TestUnd_Methods(t *testing.T) {
 			{definedBar, undefined},
 			{null, undefined},
 		} {
-			assert.Assert(t, !combo[0].Equal(combo[1]))
+			assert.Assert(t, !und.Equal(combo[0], combo[1]))
 		}
 	})
 
@@ -125,6 +125,7 @@ func TestUnd_Methods(t *testing.T) {
 			{undefined, undefined},
 		} {
 			assert.Assert(t, combo[0].EqualFunc(combo[1], func(i, j string) bool { return i == j }))
+			assert.Assert(t, und.Equal(combo[0], combo[1]))
 		}
 
 		for _, combo := range [][2]und.Und[string]{
@@ -171,4 +172,45 @@ func TestUnd_Methods(t *testing.T) {
 		assert.Equal(t, null.Unwrap(), option.Some(option.None[string]()))
 		assert.Equal(t, undefined.Unwrap(), option.None[option.Option[string]]())
 	})
+}
+
+func Test_Clone(t *testing.T) {
+	foo := "foo"
+	bar := "bar"
+
+	org := foo
+	def := und.WrapPointer(&org)
+	null := und.Null[*string]()
+	undefined := und.Undefined[*string]()
+
+	assert.Equal(t, foo, *def.Value())
+
+	cloneStringP := func(s *string) *string {
+		if s == nil {
+			return nil
+		}
+		v := *s
+		return &v
+	}
+	cloned := def.CloneFunc(cloneStringP)
+	assert.Equal(t, foo, *cloned.Value())
+	shallow := und.Clone(def)
+	assert.Equal(t, foo, *shallow.Value())
+
+	org = bar
+	assert.Equal(t, bar, *def.Value())
+	assert.Equal(t, bar, *shallow.Value())
+	assert.Equal(t, foo, *cloned.Value())
+
+	cloned = null.CloneFunc(cloneStringP)
+	assert.Assert(t, cloned.IsNull())
+
+	cloned = und.Clone(null)
+	assert.Assert(t, cloned.IsNull())
+
+	cloned = undefined.CloneFunc(cloneStringP)
+	assert.Assert(t, cloned.IsUndefined())
+
+	cloned = und.Clone(undefined)
+	assert.Assert(t, cloned.IsUndefined())
 }

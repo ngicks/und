@@ -11,23 +11,11 @@ import (
 )
 
 var (
-	_ option.Equality[Elastic[any]] = Elastic[any]{}
-	_ option.Cloner[Elastic[any]]   = Elastic[any]{}
-	_ json.Marshaler                = Elastic[any]{}
-	_ json.Unmarshaler              = (*Elastic[any])(nil)
-	// We don't implement UnmarshalJSONV2 since there's variants that cannot be unmarshaled without
-	// calling unmarshal twice or so.
-	// there's 4 possible code paths
-	//
-	//   - input is T
-	//   - input is []T
-	//   - input starts with [ but T is []U
-	//   - input starts with [ but T implements UnmarshalJSON v1 or v2; it's ambiguous.
-	//
-	// That'll needs unnecessary complexity to code base, e.g. teeing tokens and token stream decoder.
-	//
-	// _ jsonv2.UnmarshalerV2          = (*Elastic[any])(nil)
-	_ slog.LogValuer = Elastic[any]{}
+	_ json.Marshaler   = Elastic[any]{}
+	_ json.Unmarshaler = (*Elastic[any])(nil)
+	_ xml.Marshaler    = Elastic[any]{}
+	_ xml.Unmarshaler  = (*Elastic[any])(nil)
+	_ slog.LogValuer   = Elastic[any]{}
 )
 
 var (
@@ -103,13 +91,6 @@ func (e Elastic[T]) IsUndefined() bool {
 	return e.v.IsUndefined()
 }
 
-// Equal implements option.Equality[Elastic[T]].
-//
-// Equal panics if T is uncomparable.
-func (e Elastic[T]) Equal(other Elastic[T]) bool {
-	return e.v.Equal(other.v)
-}
-
 // EqualFunc reports whether two Elastic values are equal.
 // EqualFunc checks state of both. If both state does not match, it returns false.
 // If both are "defined" and lengths of their internal value match,
@@ -124,6 +105,14 @@ func (e Elastic[T]) EqualFunc(other Elastic[T], cmp func(i, j T) bool) bool {
 	)
 }
 
+// Equal tests equality of l and r then returns true if they are equal, false otherwise.
+// For those types that are comparable but need special tests, e.g. time.Time, you should use [Elastic.EqualFunc] instead.
+//
+// Equal is a specialized [slices.Equal] where it also considers value state of l and r.
+func Equal[T comparable](l, r Elastic[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool { return i == j })
+}
+
 func (e Elastic[T]) CloneFunc(cloneT func(T) T) Elastic[T] {
 	return e.Map(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
 		return u.CloneFunc(func(o option.Options[T]) option.Options[T] {
@@ -132,12 +121,9 @@ func (e Elastic[T]) CloneFunc(cloneT func(T) T) Elastic[T] {
 	})
 }
 
-// Clone implements option.Cloner[Elastic[T]].
-//
-// Clone clones its internal option.Option slice by copy.
-// Or if T implements Cloner[T], each element is cloned.
-func (e Elastic[T]) Clone() Elastic[T] {
-	return Elastic[T]{v: e.v.Clone()}
+// Clone clones e.
+func Clone[T comparable](e Elastic[T]) Elastic[T] {
+	return e.CloneFunc(func(t T) T { return t })
 }
 
 // Len returns length of values.

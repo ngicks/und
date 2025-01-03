@@ -13,7 +13,7 @@ func TestIter(t *testing.T) {
 	n := Null[int]()
 	u := Undefined[int]()
 
-	assert.DeepEqual(t, []option.Option[int]{option.Some(5)}, slices.Collect(d.Iter()))
-	assert.DeepEqual(t, []option.Option[int]{option.None[int]()}, slices.Collect(n.Iter()))
-	assert.DeepEqual(t, []option.Option[int](nil), slices.Collect(u.Iter()))
+	assert.Assert(t, option.EqualOptions([]option.Option[int]{option.Some(5)}, slices.Collect(d.Iter())))
+	assert.Assert(t, option.EqualOptions([]option.Option[int]{option.None[int]()}, slices.Collect(n.Iter())))
+	assert.Assert(t, option.EqualOptions([]option.Option[int](nil), slices.Collect(u.Iter())))
 }

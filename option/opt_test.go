@@ -9,7 +9,6 @@ import (
 	_ "time/tzdata"
 
 	"gotest.tools/v3/assert"
-	"gotest.tools/v3/assert/cmp"
 )
 
 var (
@@ -54,10 +53,10 @@ func TestOption_Equal(t *testing.T) {
 		s1 := Some(10)
 		s2 := Some(20)
 
-		assert.Assert(t, n.Equal(n))
-		assert.Assert(t, !n.Equal(s1))
-		assert.Assert(t, s1.Equal(s1))
-		assert.Assert(t, !s1.Equal(s2))
+		assert.Assert(t, Equal(n, n))
+		assert.Assert(t, !Equal(n, s1))
+		assert.Assert(t, Equal(s1, s1))
+		assert.Assert(t, !Equal(s1, s2))
 	})
 
 	t.Run("comparable_but_Equaler", func(t *testing.T) {
@@ -72,28 +71,12 @@ func TestOption_Equal(t *testing.T) {
 		assert.Equal(t, s1, s2)
 		assert.Assert(t, s3 != s4)
 
-		assert.Assert(t, n.Equal(n))
-		assert.Assert(t, !s1.Equal(n))
-		assert.Assert(t, s1.Equal(s2))
-		assert.Assert(t, s3.Equal(s4))
-	})
+		assert.Assert(t, Equal(n, n))
+		assert.Assert(t, !Equal(s1, n))
+		assert.Assert(t, Equal(s1, s2))
 
-	t.Run("uncomparable", func(t *testing.T) {
-		n := None[[]string]()
-		s1 := Some([]string{"foo", "bar"})
-		s2 := Some([]string{"foo", "bar"})
-
-		assert.Assert(t, n.Equal(n))
-		assert.Assert(t, !n.Equal(s1))
-		assert.Assert(t, cmp.Panics(func() { s1.Equal(s1) }))
-		assert.Assert(t, cmp.Panics(func() { s1.Equal(s2) }))
-	})
-
-	t.Run("Equal implementor", func(t *testing.T) {
-		assert.Assert(t, Some(eq1{true, true}).Equal(Some(eq1{true, true})))
-		assert.Assert(t, !Some(eq1{true, true}).Equal(Some(eq1{true, false})))
-		assert.Assert(t, Some(eq2{"foo", "bar"}).Equal(Some(eq2{"foo", "bar"})))
-		assert.Assert(t, !Some(eq2{"foo", "foo"}).Equal(Some(eq2{"foo", "bar"})))
+		assert.Assert(t, !Equal(s3, s4)) // not uses Equal implementation
+		assert.Assert(t, s3.EqualFunc(s4, func(i, j time.Time) bool { return i.Equal(j) }))
 	})
 
 	t.Run("EqualFunc", func(t *testing.T) {
@@ -122,18 +105,6 @@ func TestOption_Equal(t *testing.T) {
 				),
 		)
 	})
-}
-
-type eq1 []bool
-
-func (e eq1) Equal(e2 eq1) bool {
-	return slices.Equal(e, e2)
-}
-
-type eq2 []string
-
-func (e *eq2) Equal(e2 eq2) bool {
-	return slices.Equal(*e, e2)
 }
 
 func TestOption_methods(t *testing.T) {
