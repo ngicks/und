@@ -26,12 +26,12 @@ func (o Options[T]) EqualFunc(opts Options[T], cmp func(i, j T) bool) bool {
 }
 
 // EqualOptions tests equality of l and r then returns true if they are equal, false otherwise
-func EqualOptions[T comparable, S ~[]Option[T]](l, r S) bool {
+func EqualOptions[T comparable, Opts ~[]Option[T]](l, r Opts) bool {
 	return Options[T](l).EqualFunc(Options[T](r), func(i, j T) bool { return i == j })
 }
 
 // EqualOptionsFunc tests equality of l and r using cmp then returns true if they are equal, false otherwise.
-func EqualOptionsFunc[T any, S ~[]Option[T]](l, r S, cmp func(i, j T) bool) bool {
+func EqualOptionsFunc[T any, Opts ~[]Option[T]](l, r Opts, cmp func(i, j T) bool) bool {
 	return Options[T](l).EqualFunc(Options[T](r), cmp)
 }
 
@@ -46,13 +46,13 @@ func (o Options[T]) CloneFunc(cloneT func(T) T) Options[T] {
 	return opts
 }
 
-func CloneOptions[T comparable, S ~[]Option[T]](o S) Options[T] {
+func CloneOptions[T comparable, Opts ~[]Option[T]](o Opts) Opts {
 	if o == nil {
 		return nil
 	}
 	opts := make(Options[T], len(o), cap(o)) // exact cap copying, in case it matters.
 	copy(opts, o)
-	return opts
+	return Opts(opts)
 }
 
 func (o Options[T]) UndValidate() error {
