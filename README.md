@@ -109,7 +109,7 @@ Note: this will be fixed after Go 1.24 is released.
 ```
 go install golang.org/dl/go1.24rc1@latest
 go1.24rc1 download
-go1.24rc1 run github.com/ngicks/und/example@v1.0.0-alpha7
+go1.24rc1 run github.com/ngicks/und/example@v1.0.0-alpha8
 ```
 
 As you can see, types defined in ./ (package `und`) and ./elastic (package `elastic`) can be omitted with `json:",omitzero"` option for Go 1.24 or later version.
