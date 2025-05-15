@@ -126,6 +126,13 @@ func Equal[T comparable](l, r Option[T]) bool {
 	return l.EqualFunc(r, func(i, j T) bool { return i == j })
 }
 
+// EqualEqualer test equality of l and r by calling Equal method implemented on l.
+func EqualEqualer[T interface{ Equal(t T) bool }](l, r Option[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool {
+		return i.Equal(j)
+	})
+}
+
 func (o Option[T]) MarshalJSON() ([]byte, error) {
 	if o.IsNone() {
 		// same as bytes.Clone.

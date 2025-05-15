@@ -3,8 +3,10 @@ package elastic
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/ngicks/und/internal/testcase"
+	"github.com/ngicks/und/internal/testtime"
 	"github.com/ngicks/und/option"
 	"github.com/ngicks/und/sliceund"
 	"gotest.tools/v3/assert"
@@ -78,6 +80,31 @@ func TestElastic_Methods(t *testing.T) {
 					func(i, j string) bool { return i == j },
 				),
 			)
+		}
+	})
+
+	t.Run("EqualEqualer", func(t *testing.T) {
+		mixed1 := FromOptions(option.Some(testtime.CurrInUTC), option.None[time.Time](), option.Some(testtime.CurrInAsiaTokyo))
+		mixed1_2 := FromOptions(option.Some(testtime.CurrInUTC), option.None[time.Time](), option.Some(testtime.CurrInAsiaTokyo))
+		mixed2 := FromOptions(option.None[time.Time](), option.Some(testtime.CurrInAsiaTokyo))
+		null := Null[time.Time]()
+		undefined := Undefined[time.Time]()
+
+		for _, combo := range [][2]Elastic[time.Time]{
+			{mixed1, mixed1_2},
+			{mixed2, mixed2},
+			{null, null},
+			{undefined, undefined},
+		} {
+			assert.Assert(t, EqualEqualer(combo[0], combo[1]))
+		}
+
+		for _, combo := range [][2]Elastic[time.Time]{
+			{mixed2, null},
+			{mixed2, undefined},
+			{null, undefined},
+		} {
+			assert.Assert(t, !EqualEqualer(combo[0], combo[1]))
 		}
 	})
 

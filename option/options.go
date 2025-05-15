@@ -30,6 +30,13 @@ func EqualOptions[T comparable, Opts ~[]Option[T]](l, r Opts) bool {
 	return Options[T](l).EqualFunc(Options[T](r), func(i, j T) bool { return i == j })
 }
 
+// EqualEqualer test equality of l and r by calling Equal method implemented on l.
+func EqualOptionsEqualer[T interface{ Equal(t T) bool }, Opts ~[]Option[T]](l, r Opts) bool {
+	return Options[T](l).EqualFunc(Options[T](r), func(i, j T) bool {
+		return i.Equal(j)
+	})
+}
+
 // EqualOptionsFunc tests equality of l and r using cmp then returns true if they are equal, false otherwise.
 func EqualOptionsFunc[T any, Opts ~[]Option[T]](l, r Opts, cmp func(i, j T) bool) bool {
 	return Options[T](l).EqualFunc(Options[T](r), cmp)

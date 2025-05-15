@@ -114,6 +114,13 @@ func Equal[T comparable](l, r Elastic[T]) bool {
 	return l.EqualFunc(r, func(i, j T) bool { return i == j })
 }
 
+// EqualEqualer test equality of l and r by calling Equal method implemented on l.
+func EqualEqualer[T interface{ Equal(t T) bool }](l, r Elastic[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool {
+		return i.Equal(j)
+	})
+}
+
 func (e Elastic[T]) CloneFunc(cloneT func(T) T) Elastic[T] {
 	return e.Map(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
 		return u.CloneFunc(func(o option.Options[T]) option.Options[T] {

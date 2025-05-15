@@ -3,8 +3,10 @@ package sliceund
 import (
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/ngicks/und/internal/testcase"
+	"github.com/ngicks/und/internal/testtime"
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
 )
@@ -82,6 +84,7 @@ func TestUnd_new_functions(t *testing.T) {
 // Tests for.
 //
 // - Equal
+// - EqualEqualer
 // - EqualFunc
 // - Map
 // - Unwrap()
@@ -109,6 +112,31 @@ func TestUnd_Methods(t *testing.T) {
 			{definedNull, undefined},
 		} {
 			assert.Assert(t, !combo[0].EqualFunc(combo[1], func(i, j string) bool { return i == j }))
+		}
+	})
+
+	t.Run("EqualEqualer", func(t *testing.T) {
+		definedFoo := Defined(testtime.CurrInUTC)
+		definedFoo2 := Defined(testtime.CurrInAsiaTokyo)
+		definedBar := Defined(testtime.OneSecLater)
+		null := Null[time.Time]()
+		undefined := Undefined[time.Time]()
+
+		for _, combo := range [][2]Und[time.Time]{
+			{definedFoo, definedFoo2},
+			{definedBar, definedBar},
+			{null, null},
+			{undefined, undefined},
+		} {
+			assert.Assert(t, EqualEqualer(combo[0], combo[1]))
+		}
+
+		for _, combo := range [][2]Und[time.Time]{
+			{definedBar, null},
+			{definedBar, undefined},
+			{null, undefined},
+		} {
+			assert.Assert(t, !EqualEqualer(combo[0], combo[1]))
 		}
 	})
 

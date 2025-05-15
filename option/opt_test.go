@@ -76,7 +76,7 @@ func TestOption_Equal(t *testing.T) {
 		assert.Assert(t, Equal(s1, s2))
 
 		assert.Assert(t, !Equal(s3, s4)) // not uses Equal implementation
-		assert.Assert(t, s3.EqualFunc(s4, func(i, j time.Time) bool { return i.Equal(j) }))
+		assert.Assert(t, EqualEqualer(s3, s4))
 	})
 
 	t.Run("EqualFunc", func(t *testing.T) {

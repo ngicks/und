@@ -3,9 +3,11 @@ package und_test
 import (
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/ngicks/und"
 	"github.com/ngicks/und/internal/testcase"
+	"github.com/ngicks/und/internal/testtime"
 	"github.com/ngicks/und/option"
 	"gotest.tools/v3/assert"
 )
@@ -83,6 +85,7 @@ func TestUnd_new_functions(t *testing.T) {
 // Tests for.
 //
 // - Equal
+// - EqualEqualer
 // - EqualFunc
 // - Map
 // - Unwrap()
@@ -114,6 +117,36 @@ func TestUnd_Methods(t *testing.T) {
 			{null, undefined},
 		} {
 			assert.Assert(t, !und.Equal(combo[0], combo[1]))
+		}
+	})
+
+	t.Run("EqualEqualer", func(t *testing.T) {
+		definedFoo := und.Defined(testtime.CurrInUTC)
+		definedFoo2 := und.Defined(testtime.CurrInAsiaTokyo)
+		definedBar := und.Defined(testtime.OneSecLater)
+		null := und.Null[time.Time]()
+		undefined := und.Undefined[time.Time]()
+
+		assert.Assert(t, definedFoo != definedFoo2)
+		assert.Assert(t, definedFoo != definedBar)
+		assert.Assert(t, null == null.Map(func(o option.Option[option.Option[time.Time]]) option.Option[option.Option[time.Time]] { return o }))
+		assert.Assert(t, null != undefined)
+
+		for _, combo := range [][2]und.Und[time.Time]{
+			{definedFoo, definedFoo2},
+			{definedBar, definedBar},
+			{null, null},
+			{undefined, undefined},
+		} {
+			assert.Assert(t, und.EqualEqualer(combo[0], combo[1]))
+		}
+
+		for _, combo := range [][2]und.Und[time.Time]{
+			{definedBar, null},
+			{definedBar, undefined},
+			{null, undefined},
+		} {
+			assert.Assert(t, !und.EqualEqualer(combo[0], combo[1]))
 		}
 	})
 
