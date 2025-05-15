@@ -13,7 +13,7 @@ type sample struct {
 }
 ```
 
-The zero value is *undefined*, `encoding/json` skips fields.
+The zero value is _undefined_, both v1 nad v2 of `encoding/json` skips fields.
 
 ```go
 s := sample{}
@@ -25,7 +25,7 @@ fmt.Printf("zero = %s\n", bin)
 */
 ```
 
-Use `Null` functions to create *null* objects.
+Use `Null` functions to create _null_ objects.
 
 ```go
 s.Foo = und.Null[string]()
@@ -41,7 +41,7 @@ fmt.Printf("null = %s\n", bin)
 */
 ```
 
-Use `Defined` functions to create *defined* objects.
+Use `Defined` functions to create _defined_ objects.
 
 ```go
 s.Foo = und.Defined("foo")
@@ -57,7 +57,7 @@ fmt.Printf("defined = %s\n", bin)
 */
 ```
 
-Use `Undefined` functions to create *undefined*  objects.
+Use `Undefined` functions to create _undefined_ objects.
 
 ```go
 s.Foo = und.Undefined[string]()
@@ -76,17 +76,18 @@ fmt.Printf("undefined = %s\n", bin)
   - can be Some or None.
   - zero is None.
   - is comparable if `T` is comparable.
-  - have `Equal` method in case `T` is not comparable or comparable but needs custom equality tests(e.g. `time.Time`)
-    - `T` should implement `type Equality[T any] interface { Equal(T) bool }` interface.
-  - have `EqualFunc` method for cases where `T` is not comparable and does not implement `Equality`.
+  - have `EqualFunc[T](t Option[T], cmp func(i, j T) bool)` method to test equality of 2 options.
+    - `cmp` should return value in the same manner as `cmp.Compare` does.
+    - use `option.Equal` if options can simply be compared by equality `a == b`.
+    - use `option.EqualEqualer` if options can be compared by calling `Equal` method on type `T`.
   - has convenient methods stolen from rust's `core::option::Option<T>`
   - can be used in some (not all) place of `*T`
   - is copied by assign.
 
 Other types are based on `Option[T]`.
 
-- `Und[T]`: *undefined* (*empty* or *unspecified*), *null* or `T` (any type you like)
-- `Elastic[T]`: *undefined* (*empty* or *unspecified*), *null*, `T` or [](`T` | null)
+- `Und[T]`: _undefined_ (_empty_ or _unspecified_), _null_ or `T` (any type you like)
+- `Elastic[T]`: _undefined_ (_empty_ or _unspecified_), _null_, `T` or [](`T` | null)
   - mainly for consuming elasticsearch JSON documents.
   - or maybe useful for user hand written configuration files.
 
@@ -102,15 +103,17 @@ There are 2 variants
 
 ## Example
 
-run example by
-
-Note: this will be fixed after Go 1.24 is released.
+run example in 2 versions, go 1.24.0 (or later) and go 1.23.0.
 
 ```
-go install golang.org/dl/go1.24rc1@latest
-go1.24rc1 download
-go1.24rc1 run github.com/ngicks/und/example@v1.0.0-alpha8
+GOTOOLCHAIN=go1.24.0 go run github.com/ngicks/und/example@v1.0.0-alpha9
 ```
+
+```
+GOTOOLCHAIN=go1.23.0 go run github.com/ngicks/und/example@v1.0.0-alpha9
+```
+
+see that `sliceund` and `sliceund/elastic` can be omitted even in go1.23.0.
 
 As you can see, types defined in ./ (package `und`) and ./elastic (package `elastic`) can be omitted with `json:",omitzero"` option for Go 1.24 or later version.
 
@@ -281,12 +284,12 @@ go run github.com/ngicks/go-codegen/codegen undgen plain     -v --dir /path/to/r
 - The validator sub-sub commands generates validator method for any types containing any of und types.
   - The method only validates und state of the und fields.
   - It validates according to `und:""` struct tag.
-- The plain sub-sub commands generates *plain* types and interconversion methods on types.
-  - It takes any types containing any of und fields, then generates *plain* type whose fields is same as target's but the type is unwrapped according to `und:""` struct tag.
+- The plain sub-sub commands generates _plain_ types and interconversion methods on types.
+  - It takes any types containing any of und fields, then generates _plain_ type whose fields is same as target's but the type is unwrapped according to `und:""` struct tag.
 
 Notable flags:
 
-- `-v`   : verbose logs.
+- `-v` : verbose logs.
 - `--dir`: specify directory under which the target packages are placed.
 - `--pkg`: same package pattern that can be passed to `go list`. must be prefixed with `./`. `patch` sub command only accept pattern that matches only a single package.
 - `types...`: the `patch` sub command needs `types...` arguments to specify target type names. Use `...` to target all types found under `--pkg`.
@@ -366,7 +369,7 @@ func (p PatchExamplePatch) ApplyPatch(v PatchExample) PatchExample {
 
 To generate validator, you must specify its required states by struct tag `und:""` before executing the command.
 
-- `def` requires value to be *defined*, `null` be *null*, `und` be *undefined*. These 3 can be combined.
+- `def` requires value to be _defined_, `null` be _null_, `und` be _undefined_. These 3 can be combined.
 - `required` and `nullish` are shorthand for `def`, `null,und` respectively. Exclusive to each other and other `def`, `null`, `und`.
 - `len` and `values` are only applicable to `Elastic` types.
 - `len` specifies required length of field. This also has same effect specifying `def`.
@@ -508,8 +511,8 @@ func (v Example) UndValidate() (err error) {
 
 ### plain command
 
-`plain` sub command emits generated *Plain* types where all und-kind types are converted to *normal* Go types,
-and conversion methods between *Plain* and *Raw*(the original) types.
+`plain` sub command emits generated _Plain_ types where all und-kind types are converted to _normal_ Go types,
+and conversion methods between _Plain_ and _Raw_(the original) types.
 
 To generate plain, you must specify its required states by struct tag `und:""` before executing the command as like `validator` command.
 
@@ -526,7 +529,7 @@ Here's conversion rule for `plain`.
 - `len==n` option strips `Elastic` type into `und.Und[[n]option.Option[T]]`
 - `len==1` is special case where it strip `[]T` to `T`, (`und.Und[[]option.Option[T]]` -> `und.Und[option.Option[T]]`).
 - `len>n`, `len>=n`, `len<n` and `len<=n` assures field length at conversion time.
-  - For example, the field value of *Plain* type converted though `UndPlain` has at least `n`+1 length if `len>n` is specified.
+  - For example, the field value of _Plain_ type converted though `UndPlain` has at least `n`+1 length if `len>n` is specified.
   - In case input was shorter, conversion method extends slice with zero value.
 - `values:nonnull` unwraps `und.Und[[]option.Option[T]]` into `und.Und[[]T]`
 
