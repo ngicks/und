@@ -49,9 +49,7 @@ var elasticTestCases = []serdeTestCaseElastic{
 func TestElastic_serde(t *testing.T) {
 	for _, tc := range elasticTestCases {
 		t.Run(tc.bin, func(t *testing.T) {
-			var (
-				s1 sliceElasticV1
-			)
+			var s1 sliceElasticV1
 
 			assert.NilError(t, json.Unmarshal([]byte(tc.bin), &s1))
 			assertStateElastic(t, s1.V, tc.state, tc.values)
