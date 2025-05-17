@@ -113,6 +113,9 @@ func (o Option[T]) CloneFunc(cloneT func(T) T) Option[T] {
 // EqualFunc tests o and other if both are Some or None.
 // If their state does not match, it returns false immediately.
 // If both have value, it tests equality of their values by cmp.
+//
+// If T is just a comparable type, use [Equal].
+// If T is an implementor of interface { Equal(t T) bool }, e.g time.Time, use [EqualEqualer].
 func (o Option[T]) EqualFunc(other Option[T], cmp func(i, j T) bool) bool {
 	if !o.some || !other.some {
 		return o.some == other.some
@@ -121,9 +124,16 @@ func (o Option[T]) EqualFunc(other Option[T], cmp func(i, j T) bool) bool {
 	return cmp(o.v, other.v)
 }
 
-// Equal tests an equality of l and r then returns true if they are equal, false otherwise
+// Equal tests equality of l and r then returns true if they are equal, false otherwise
 func Equal[T comparable](l, r Option[T]) bool {
 	return l.EqualFunc(r, func(i, j T) bool { return i == j })
+}
+
+// EqualEqualer tests equality of l and r by calling Equal method implemented on l.
+func EqualEqualer[T interface{ Equal(t T) bool }](l, r Option[T]) bool {
+	return l.EqualFunc(r, func(i, j T) bool {
+		return i.Equal(j)
+	})
 }
 
 func (o Option[T]) MarshalJSON() ([]byte, error) {
