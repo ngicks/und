@@ -161,6 +161,9 @@ func (u *Und[T]) UnmarshalJSON(data []byte) error {
 // EqualFunc checks state of both. If both state does not match, it returns false.
 // If both are "defined" state, then checks equality of their value by cmp,
 // then returns true if they are equal.
+//
+// If T is just a comparable type, use [Equal].
+// If T is an implementor of interface { Equal(t T) bool }, e.g time.Time, use [EqualEqualer].
 func (u Und[T]) EqualFunc(v Und[T], cmp func(i, j T) bool) bool {
 	if u.IsUndefined() || v.IsUndefined() {
 		return u.IsUndefined() == v.IsUndefined()

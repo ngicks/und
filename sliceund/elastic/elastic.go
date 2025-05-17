@@ -94,6 +94,9 @@ func (e Elastic[T]) IsUndefined() bool {
 // If both are *defined* and lengths of their internal value match,
 // it then checks equality of their value by cmp.
 // It returns true if they are equal.
+//
+// If T is just a comparable type, use [Equal].
+// If T is an implementor of interface { Equal(t T) bool }, e.g time.Time, use [EqualEqualer].
 func (e Elastic[T]) EqualFunc(f Elastic[T], cmp func(i, j T) bool) bool {
 	return e.inner().EqualFunc(
 		f.inner(),

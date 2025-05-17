@@ -16,6 +16,9 @@ var (
 type Options[T any] []Option[T]
 
 // EqualFunc tests equality of l and r using an equality function cmp.
+//
+// If T is just a comparable type, use [EqualOptions].
+// If T is an implementor of interface { Equal(t T) bool }, e.g time.Time, use [EqualOptionsEqualer].
 func (o Options[T]) EqualFunc(opts Options[T], cmp func(i, j T) bool) bool {
 	return slices.EqualFunc(
 		o, opts,
