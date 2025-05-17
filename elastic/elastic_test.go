@@ -139,7 +139,7 @@ func TestElastic_Methods(t *testing.T) {
 
 		assert.Assert(
 			t,
-			mixed1.Map(mapper).EqualFunc(
+			mixed1.InnerMap(mapper).EqualFunc(
 				FromOptions(
 					option.Some("foofoo"), option.None[string](), option.Some("barbar"),
 				),
@@ -148,11 +148,11 @@ func TestElastic_Methods(t *testing.T) {
 		)
 		assert.Assert(
 			t,
-			null.Map(mapper).EqualFunc(Null[string](), func(i, j string) bool { return i == j }),
+			null.InnerMap(mapper).EqualFunc(Null[string](), func(i, j string) bool { return i == j }),
 		)
 		assert.Assert(
 			t,
-			undefined.Map(mapper).EqualFunc(Undefined[string](), func(i, j string) bool { return i == j }),
+			undefined.InnerMap(mapper).EqualFunc(Undefined[string](), func(i, j string) bool { return i == j }),
 		)
 	})
 

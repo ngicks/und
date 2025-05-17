@@ -122,7 +122,7 @@ func EqualEqualer[T interface{ Equal(t T) bool }](l, r Elastic[T]) bool {
 }
 
 func (e Elastic[T]) CloneFunc(cloneT func(T) T) Elastic[T] {
-	return e.Map(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
+	return e.InnerMap(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
 		return u.CloneFunc(func(o option.Options[T]) option.Options[T] {
 			return o.CloneFunc(cloneT)
 		})
@@ -220,12 +220,18 @@ func (e Elastic[T]) Unwrap() und.Und[option.Options[T]] {
 	return e.v
 }
 
-// Map returns a new Elastic[T] whose internal value is e's mapped by f.
+// Deprecated: Renamed to [Elastic.InnerMap]. The method had same name but behavior was inconsistent to [Map].
+func (e Elastic[T]) Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T] {
+	return e.InnerMap(f)
+}
+
+// InnerMap returns a new Elastic[T] whose internal value is e's mapped by f.
+// Unlike [Map], f is always called, even when e is not a defined value.
 //
 // The internal slice of e is capped to its length before passed to f.
-func (e Elastic[T]) Map(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T] {
+func (e Elastic[T]) InnerMap(f func(und.Und[option.Options[T]]) und.Und[option.Options[T]]) Elastic[T] {
 	return Elastic[T]{
-		v: f(e.v.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
+		v: f(e.v.InnerMap(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
 			return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
 				return v.Map(func(v option.Options[T]) option.Options[T] {
 					return v[:len(v):len(v)]
@@ -246,8 +252,8 @@ func (e *Elastic[T]) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error 
 	if len(e.inner().Value()) == 0 {
 		*e = FromOptions(t...)
 	} else {
-		*e = e.Map(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
-			return u.Map(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
+		*e = e.InnerMap(func(u und.Und[option.Options[T]]) und.Und[option.Options[T]] {
+			return u.InnerMap(func(o option.Option[option.Option[option.Options[T]]]) option.Option[option.Option[option.Options[T]]] {
 				return o.Map(func(v option.Option[option.Options[T]]) option.Option[option.Options[T]] {
 					return v.Map(func(v option.Options[T]) option.Options[T] {
 						return append(v, t...)

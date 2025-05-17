@@ -169,7 +169,7 @@ func TestUnd_Methods(t *testing.T) {
 	t.Run("Map", func(t *testing.T) {
 		assert.Assert(
 			t,
-			definedBar.Map(
+			definedBar.InnerMap(
 				func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 					return Defined(o.Value().Value() + o.Value().Value()).Unwrap()
 				},
@@ -180,7 +180,7 @@ func TestUnd_Methods(t *testing.T) {
 		)
 		assert.Assert(
 			t,
-			definedNull.Map(
+			definedNull.InnerMap(
 				func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 					return Defined("aa").Unwrap()
 				},
@@ -191,7 +191,7 @@ func TestUnd_Methods(t *testing.T) {
 		)
 		assert.Assert(
 			t,
-			undefined.Map(
+			undefined.InnerMap(
 				func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 					return Defined("bb").Unwrap()
 				},

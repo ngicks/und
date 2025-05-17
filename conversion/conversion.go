@@ -54,11 +54,11 @@ func lenNAtMostMapper[Opts ~[]T, T any](n int) func(o option.Option[option.Optio
 }
 
 func LenNAtMost[Opts ~[]T, T any](n int, u und.Und[Opts]) und.Und[Opts] {
-	return u.Map(lenNAtMostMapper[Opts](n))
+	return u.InnerMap(lenNAtMostMapper[Opts](n))
 }
 
 func LenNAtMostSlice[Opts ~[]T, T any](n int, u sliceund.Und[Opts]) sliceund.Und[Opts] {
-	return u.Map(lenNAtMostMapper[Opts](n))
+	return u.InnerMap(lenNAtMostMapper[Opts](n))
 }
 
 func lenNAtLeastMapper[Opts ~[]T, T any](n int) func(o option.Option[option.Option[Opts]]) option.Option[option.Option[Opts]] {
@@ -81,11 +81,11 @@ func lenNAtLeastMapper[Opts ~[]T, T any](n int) func(o option.Option[option.Opti
 }
 
 func LenNAtLeast[Opts ~[]T, T any](n int, u und.Und[Opts]) und.Und[Opts] {
-	return u.Map(lenNAtLeastMapper[Opts](n))
+	return u.InnerMap(lenNAtLeastMapper[Opts](n))
 }
 
 func LenNAtLeastSlice[Opts ~[]T, T any](n int, u sliceund.Und[Opts]) sliceund.Und[Opts] {
-	return u.Map(lenNAtLeastMapper[Opts](n))
+	return u.InnerMap(lenNAtLeastMapper[Opts](n))
 }
 
 func nonNullMapper[Opts ~[]option.Option[T], T any](o option.Option[Opts]) option.Option[[]T] {

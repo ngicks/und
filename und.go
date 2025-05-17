@@ -143,7 +143,7 @@ func EqualEqualer[T interface{ Equal(t T) bool }](l, r Und[T]) bool {
 
 // CloneFunc clones u using the cloneT functions.
 func (u Und[T]) CloneFunc(cloneT func(T) T) Und[T] {
-	return u.Map(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] {
+	return u.InnerMap(func(o option.Option[option.Option[T]]) option.Option[option.Option[T]] {
 		return o.CloneFunc(func(o option.Option[T]) option.Option[T] {
 			return o.CloneFunc(cloneT)
 		})
@@ -203,8 +203,14 @@ func (u Und[T]) Unwrap() option.Option[option.Option[T]] {
 	return u.opt
 }
 
-// Map returns a new Und[T] whose internal value is u's mapped by f.
+// Deprecated: Renamed to [Und.InnerMap]. Und.Map has same name but behavior is inconsistent to [Map].
 func (u Und[T]) Map(f func(option.Option[option.Option[T]]) option.Option[option.Option[T]]) Und[T] {
+	return u.InnerMap(f)
+}
+
+// InnerMap returns a new Und[T] whose internal value is u's mapped by f.
+// Unlike [Map], f is invoked even when u is not an undined value.
+func (u Und[T]) InnerMap(f func(option.Option[option.Option[T]]) option.Option[option.Option[T]]) Und[T] {
 	return Und[T]{opt: f(u.opt)}
 }
 

@@ -99,7 +99,7 @@ func TestUnd_Methods(t *testing.T) {
 	t.Run("Equal", func(t *testing.T) {
 		assert.Assert(t, definedFoo == definedFoo2)
 		assert.Assert(t, definedFoo != definedBar)
-		assert.Assert(t, null == null.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] { return o }))
+		assert.Assert(t, null == null.InnerMap(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] { return o }))
 		assert.Assert(t, null != undefined)
 
 		for _, combo := range [][2]und.Und[string]{
@@ -129,7 +129,7 @@ func TestUnd_Methods(t *testing.T) {
 
 		assert.Assert(t, definedFoo != definedFoo2)
 		assert.Assert(t, definedFoo != definedBar)
-		assert.Assert(t, null == null.Map(func(o option.Option[option.Option[time.Time]]) option.Option[option.Option[time.Time]] { return o }))
+		assert.Assert(t, null == null.InnerMap(func(o option.Option[option.Option[time.Time]]) option.Option[option.Option[time.Time]] { return o }))
 		assert.Assert(t, null != undefined)
 
 		for _, combo := range [][2]und.Und[time.Time]{
@@ -179,21 +179,21 @@ func TestUnd_Methods(t *testing.T) {
 	t.Run("Map", func(t *testing.T) {
 		assert.Equal(
 			t,
-			definedBar.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+			definedBar.InnerMap(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 				return und.Defined(o.Value().Value() + o.Value().Value()).Unwrap()
 			}),
 			und.Defined("barbar"),
 		)
 		assert.Equal(
 			t,
-			null.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+			null.InnerMap(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 				return und.Defined("aa").Unwrap()
 			}),
 			und.Defined("aa"),
 		)
 		assert.Equal(
 			t,
-			undefined.Map(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
+			undefined.InnerMap(func(o option.Option[option.Option[string]]) option.Option[option.Option[string]] {
 				return und.Defined("bb").Unwrap()
 			}),
 			und.Defined("bb"),
