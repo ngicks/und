@@ -2,6 +2,15 @@
 
 Types to interoperate with applications that make full use of JSON.
 
+## Notice: minimum Go version will be Go 1.25
+
+As of [#71497](https://github.com/golang/go/issues/71497), `encoding/json/v2` would be added to `Go 1.25` under `GOEXPERIMENT=jsonv2` constraint if nothing goes wrong.
+And also it might added by default at `Go 1.26`.
+
+**Go version will be Go 1.25 at least. If any significant API change DOES occur, it will be Go 1.26**
+
+Slice variants will also be supported for some code that might still need to stick to `v1`.
+
 ## Express T | null | undefined by only using the types in struct field.
 
 Just use `und.Und` (for Go 1.24 or later) or `sliceund.Und` (for Go 1.23 or earlier) as struct field type then place `,omitzero`, `,omitempty` respectively.
